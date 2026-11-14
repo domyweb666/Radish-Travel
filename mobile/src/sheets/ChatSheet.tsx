@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { DomyButton, DomyText, T, typeStyle, useDomy } from '@domy/design';
+import { BUDDY_SIZE, RadishBuddy } from '../components/buddy/RadishBuddy';
 import { IconSend } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { Card, Chip } from '../components/ui';
@@ -129,7 +130,12 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
       ) : (
         <>
           <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={{ gap: T.space[2], paddingVertical: T.space[2] }} keyboardShouldPersistTaps="handled">
-            <Bubble m={{ r: 'ai', t: FIRST }} />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: T.space[2] }}>
+              <RadishBuddy action={busy ? 'think' : 'idle'} crop="bust" size={BUDDY_SIZE.avatar} />
+              <View style={{ flex: 1 }}>
+                <Bubble m={{ r: 'ai', t: FIRST }} />
+              </View>
+            </View>
             {s.chat.map((m, i) => (
               <Bubble key={i} m={m} />
             ))}

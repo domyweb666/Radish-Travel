@@ -74,6 +74,7 @@ npm run bundle:check
 - AI 排行程、地點查證、韓文地址：HANDOFF 階段 2。
 - 通知（出發前一週、要先訂的）：還沒做，現在只在「行前」分頁最上面提醒。
 - 付費：還沒做，要先過 UIUX 閘門 4。
-- 蘿蔔是占位的向量圖，還沒換成黏土插圖；拔蘿蔔沒有動畫。
+- 蘿蔔是占位的向量圖，還沒換成黏土插圖。
+- 蘿蔔人（`src/components/buddy/`）只在網頁預覽看過，沒在真機上看過順不順。「抓頭」「指向」兩個動作寫好了還沒用到。
 - `@domy/design` 裝的是 v1.1.0。本機的 `E:\domy-design` 已經到 v1.4.0 但還沒推上 GitHub；手機端的元件和代號兩版一樣，差別只在桌面版。
 - 送 EAS Build 前要在 `app.json` 補 `ios.bundleIdentifier`，並讓 EAS 讀得到私人的 domy-design（給 GitHub token，或把套件改成複製進來）。

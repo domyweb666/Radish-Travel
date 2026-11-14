@@ -21,3 +21,13 @@ export const radishColors = {
   leaf: '#4F9D5B', // domy-ignore: 角色色，葉子
   soil: '#C9A27A', // domy-ignore: 角色色，土
 } as const;
+
+// 蘿蔔人：戴蘿蔔頭套的火柴人。頭套沿用上面的橘蘿蔔和葉子。
+export const buddyColors = {
+  ink: '#2B2329', // domy-ignore: 角色色，五官
+  face: '#FFFFFF', // domy-ignore: 角色色，臉
+  faceRim: '#B85F12', // domy-ignore: 角色色，臉外圈
+  shine: '#FFC48A', // domy-ignore: 角色色，頭套反光
+  leafDark: '#3B7F47', // domy-ignore: 角色色，中間那片葉子
+  sweat: '#7EC3EA', // domy-ignore: 角色色，汗
+} as const;

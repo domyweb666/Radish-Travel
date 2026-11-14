@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DomyButton, DomyEmptyState, DomyScreen, DomySection, DomyText, T, useTabBarClearance } from '@domy/design';
-import { CatIcon, IconSprout, TabBasket } from '../components/icons';
+import { RadishBuddy } from '../components/buddy/RadishBuddy';
+import { CatIcon, IconSprout } from '../components/icons';
 import { Radish } from '../components/Radish';
 import { Segmented } from '../components/ui';
 import { allItems, restoreSeed } from '../domain/plan';
@@ -67,7 +68,7 @@ export function BasketScreen({ goTrip }: { goTrip: () => void }) {
           </>
         ) : (
           <DomyEmptyState
-            icon={(color) => <TabBasket color={color} />}
+            icon={() => <RadishBuddy action="shrug" crop="bust" size={T.size.emptyIcon - T.space[2]} />}
             title="還沒有拔過蘿蔔"
             body="旅途中每去過一站，按「去過了，拔起來」，它就收在這裡，連同你寫的那一句。一趟旅行一籃。"
             action={s.trip ? undefined : { title: '去排一趟', onPress: goTrip }}

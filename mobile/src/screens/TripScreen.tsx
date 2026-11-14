@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { DomyButton, DomyScreen, DomySection, DomyText, T, useDomy, useTabBarClearance } from '@domy/design';
+import { BUDDY_SIZE, RadishBuddy, useBuddyBurst } from '../components/buddy/RadishBuddy';
 import { CatIcon } from '../components/icons';
 import { Radish } from '../components/Radish';
 import { Banner, Card, Tag, TagRow, TextRow } from '../components/ui';
@@ -124,14 +125,21 @@ function DayCard({ trip, day }: { trip: Trip; day: number }) {
 function NextStop({ trip, day }: { trip: Trip; day: number }) {
   const { act } = useApp();
   const sheets = useSheets();
+  // 蘿蔔人平常站著，按「拔起來」之後歡呼一下
+  const [mood, play] = useBuddyBurst('idle');
   const left = dayStops(trip, day).filter((x) => x.it.status === 'kept');
   if (!left.length) {
     return (
       <Card>
-        <DomyText variant="title2">今天的都拔完了</DomyText>
-        <DomyText variant="body" tone="secondary">
-          剩下的時間是你的。
-        </DomyText>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3] }}>
+          <View style={{ flex: 1, gap: T.space[1] }}>
+            <DomyText variant="title2">今天的都拔完了</DomyText>
+            <DomyText variant="body" tone="secondary">
+              剩下的時間是你的。
+            </DomyText>
+          </View>
+          <RadishBuddy action={mood} />
+        </View>
       </Card>
     );
   }
@@ -152,6 +160,7 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
           ) : null}
         </View>
         <Radish size={it.s} scale={1.4} />
+        <RadishBuddy action={mood} />
       </View>
       {it.tip ? (
         <DomyText variant="subheadline" tone="secondary">
@@ -164,6 +173,7 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
         haptic={false}
         onPress={() => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          play('cheer', 2.2);
           act(
             (d) => {
               const x = d.trip ? allItems(d.trip).find((y) => y.it.id === it.id) : undefined;
@@ -203,6 +213,9 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
   const trip = s.trip;
   const today = phase?.kind === 'trip' ? phase.day : undefined;
   const [day, setDay] = useState(today ?? 1);
+  // 進到這頁先揮一下手，之後站著
+  const [greet, playGreet] = useBuddyBurst('idle');
+  useEffect(() => playGreet('wave', 2.4), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (today) setDay(today);
   }, [today]);
@@ -214,17 +227,26 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
 
   return (
     <DomyScreen title={`首爾 ${trip.days} 天`} bottomInset={clearance}>
-      <DomyText variant="subheadline" tone="secondary" style={{ marginTop: -T.space[4] }}>
-        {fmtDay(trip.start)}–{fmtDay(end)}
-        {phase.kind === 'plan' ? `・還有 ${phase.daysToGo} 天出發` : phase.kind === 'trip' ? `・今天是第 ${phase.day} 天` : '・已經回來了'}
-      </DomyText>
+      {/* 出發前蘿蔔人站在日期旁邊；旅途中它在「下一站」卡裡，回來後在「這一籃收好了」卡裡 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3], marginTop: -T.space[4] }}>
+        <DomyText variant="subheadline" tone="secondary" style={{ flex: 1 }}>
+          {fmtDay(trip.start)}–{fmtDay(end)}
+          {phase.kind === 'plan' ? `・還有 ${phase.daysToGo} 天出發` : phase.kind === 'trip' ? `・今天是第 ${phase.day} 天` : '・已經回來了'}
+        </DomyText>
+        {phase.kind === 'plan' ? <RadishBuddy action={greet} /> : null}
+      </View>
 
       {phase.kind === 'done' ? (
         <Card>
-          <DomyText variant="title2">這一籃收好了</DomyText>
-          <DomyText variant="body" tone="secondary">
-            這趟拔了 {pulled} 顆。回來一週內，挑一顆講給沒去的人聽。
-          </DomyText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3] }}>
+            <View style={{ flex: 1, gap: T.space[1] }}>
+              <DomyText variant="title2">這一籃收好了</DomyText>
+              <DomyText variant="body" tone="secondary">
+                這趟拔了 {pulled} 顆。回來一週內，挑一顆講給沒去的人聽。
+              </DomyText>
+            </View>
+            <RadishBuddy action="bow" />
+          </View>
           <DomyButton title="收進蘿蔔籃，開新的一趟" fullWidth onPress={() => act((d) => archiveTrip(d), { undoable: true })} />
         </Card>
       ) : null}

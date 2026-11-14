@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DomyButton, DomyScreen, DomyText, T, useDomy, useTabBarClearance } from '@domy/design';
+import { BUDDY_SIZE, RadishBuddy } from '../components/buddy/RadishBuddy';
 import { Calendar } from '../components/Calendar';
 import { Chip, ChipRow } from '../components/ui';
 import { CAT, PURPOSE } from '../data/seoul';
@@ -185,6 +186,10 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
   return (
     <DomyScreen title="蘿蔔旅行" bottomInset={clearance}>
       <View style={{ gap: T.space[3] }}>
+        {/* 還沒答第一題時揮手打招呼，開始答了就安靜站著 */}
+        <View style={{ alignItems: 'center' }}>
+          <RadishBuddy action={a.purpose ? 'idle' : 'wave'} size={BUDDY_SIZE.hero} />
+        </View>
         <DomyText variant="subheadline" tone="secondary">
           回答幾題，我把整趟排好。排完想改，用講的就可以。
         </DomyText>
