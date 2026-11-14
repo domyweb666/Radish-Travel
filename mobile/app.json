@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "蘿蔔旅行",
+    "slug": "radish-travel",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "打開地圖按「我在哪」的時候，用來在地圖上標出你的位置。",
+        "LSApplicationQueriesSchemes": ["nmap"]
+      }
+    },
+    "web": { "bundler": "metro" }
+  }
+}
