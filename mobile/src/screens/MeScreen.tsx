@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { DomyButton, DomyListRow, DomyScreen, DomySection, DomySettingsRow, DomyText, DomyTextField, T, useTabBarClearance } from '@domy/design';
 import { Sheet } from '../components/Sheet';
 import { Chip, ChipRow, Segmented } from '../components/ui';
-import { CAT, FLV, FOOD, HOTEL, STAY } from '../data/seoul';
+import { AVOID, CAT, FLV, FOOD, HOTEL, STAY } from '../data/seoul';
 import { foodPct, money } from '../domain/plan';
 import type { BaseKey, Cat, FoodKind, Settings } from '../domain/types';
 import { blankState, hydrate, useApp } from '../store';
@@ -37,7 +37,7 @@ const BUDGET: Array<Opt<number>> = [1000, 1500, 2500, 4000].map((b) => ({ v: b, 
 
 const labelOf = <V,>(opts: Array<Opt<V>>, v: V) => opts.find((o) => o.v === v)?.label ?? '';
 
-type Editing = 'pace' | 'wake' | 'move' | 'base' | 'stay' | 'budget' | 'food' | 'play' | 'import' | 'reset' | null;
+type Editing = 'pace' | 'wake' | 'move' | 'base' | 'stay' | 'budget' | 'food' | 'avoid' | 'play' | 'import' | 'reset' | null;
 
 /** 單選的一張卡：選了就關 */
 function PickSheet<V extends string | number>({ title, options, value, onPick, onClose }: { title: string; options: Array<Opt<V>>; value: V; onPick: (v: V) => void; onClose: () => void }) {
@@ -81,6 +81,7 @@ export function MeScreen() {
       <DomySection title="平常的我" footer={`設一次，之後每趟都照這個排。${s.trip ? '改了之後，回「這趟」可以照新的重排。' : ''}`}>
         <DomySettingsRow label="節奏" value={labelOf(PACE, st.pace)} onPress={() => setEditing('pace')} />
         <DomySettingsRow label="吃的偏好" value={`${FOOD[topFood].name}為主`} onPress={() => setEditing('food')} />
+        <DomySettingsRow label="不吃的" value={st.avoid.length ? st.avoid.join('、') : '沒有'} onPress={() => setEditing('avoid')} />
         <DomySettingsRow label="喜歡做什麼" value={likesText} onPress={() => setEditing('play')} />
         <DomySettingsRow label="早上" value={labelOf(WAKE, st.wake)} onPress={() => setEditing('wake')} />
         <DomySettingsRow label="怎麼移動" value={labelOf(MOVE, st.move)} onPress={() => setEditing('move')} />
@@ -144,6 +145,19 @@ export function MeScreen() {
             <Segmented value={String(st.food[k])} onChange={(v) => setSettings({ food: { ...st.food, [k]: Number(v) } })} options={FLV.map((l, i) => [String(i), l])} />
           </View>
         ))}
+        <DomyButton title="好了" fullWidth onPress={close} />
+      </Sheet>
+
+      <Sheet visible={editing === 'avoid'} title="不吃的" onClose={close}>
+        <DomyText variant="subheadline" tone="secondary">
+          可以選好幾個。這一版先記著，還不會照這個挑店；接上 AI 之後，排餐廳和用講的改行程都會避開。
+        </DomyText>
+        <ChipRow>
+          {AVOID.map((a) => {
+            const on = st.avoid.includes(a);
+            return <Chip key={a} label={a} selected={on} onPress={() => setSettings({ avoid: on ? st.avoid.filter((x) => x !== a) : [...st.avoid, a] })} />;
+          })}
+        </ChipRow>
         <DomyButton title="好了" fullWidth onPress={close} />
       </Sheet>
 
