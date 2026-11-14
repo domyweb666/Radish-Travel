@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>蘿蔔旅行 手感原型</title>
+<style>
+:root{
+  --bg:#F2F2F7; --card:#FFFFFF; --text:#000; --sub:rgba(60,60,67,.6); --line:rgba(60,60,67,.18);
+  --main:#FF9500; --mainText:#fff; --soil:#C9A27A; --leaf:#34C759; --chip:#E9E9EE; --red:#FF3B30; --yel:#FFCC00;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#000; --card:#1C1C1E; --text:#fff; --sub:rgba(235,235,245,.6); --line:rgba(84,84,88,.6);
+    --main:#FF9F0A; --soil:#6B5138; --chip:#2C2C2E; --leaf:#30D158; --red:#FF453A; --yel:#FFD60A; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,"PingFang TC","Noto Sans TC","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;font-size:17px;line-height:1.4}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+.pages{display:flex;height:100dvh;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pages::-webkit-scrollbar,.scrollx::-webkit-scrollbar{display:none}
+.pages.lock{overflow-x:hidden}
+.page{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;overflow-y:auto;padding:54px 16px 120px;max-width:100vw}
+.wrap{max-width:460px;margin:0 auto}
+.dots{position:fixed;top:14px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:5}
+.dots button{width:8px;height:8px;border-radius:50%;background:var(--line);position:relative}
+.dots button.on{background:var(--text)}
+.dots button::after{content:"";position:absolute;inset:-12px -4px}
+h1{font-size:34px;font-weight:700;margin:6px 4px 0}
+.subt{color:var(--sub);margin:2px 4px 18px}
+h2{font-size:22px;font-weight:700;margin:26px 4px 10px}
+.card{background:var(--card);border-radius:26px;padding:18px;margin-bottom:14px}
+.card.flush{padding:0;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:56px;padding:12px 18px;position:relative;width:100%;text-align:left}
+.row + .row::before,.row + .leg::before,.leg + .row::before{content:"";position:absolute;top:0;left:18px;right:0;height:.5px;background:var(--line)}
+.row .grow{flex:1;min-width:0}
+.row .val{color:var(--sub);white-space:nowrap}
+.small{font-size:13px;color:var(--sub)}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--sub);margin:0 6px 6px 0;vertical-align:middle}
+.tag.book{background:rgba(255,149,0,.16);color:var(--main)}
+.tag.ok{background:rgba(52,199,89,.16);color:var(--leaf)}
+.tag.red{background:rgba(255,59,48,.15);color:var(--red)}
+.tag.yel{background:rgba(255,204,0,.22);color:#A07800}
+@media (prefers-color-scheme: dark){.tag.yel{color:var(--yel)}}
+.where{font-size:13px;color:var(--sub);font-weight:600}
+.name{font-size:24px;font-weight:700;margin:4px 0 10px}
+.kr{font-size:13px;color:var(--sub)}
+.note{font-size:15px;color:var(--sub);margin-top:4px}
+.btn{display:block;width:100%;height:56px;border-radius:999px;background:var(--main);color:var(--mainText);font-weight:700;font-size:19px;margin-top:16px;text-align:center;line-height:56px;text-decoration:none}
+.btn:active{transform:scale(.98)}
+.pair{display:flex;gap:10px;margin-top:10px}
+.pill{flex:1;height:44px;border-radius:999px;background:var(--chip);font-weight:600;font-size:15px;text-align:center;line-height:44px;text-decoration:none;color:var(--text);white-space:nowrap}
+.pill.on{background:var(--main);color:#fff}
+.mini{display:inline-block;height:32px;line-height:32px;padding:0 14px;border-radius:999px;background:var(--chip);font-size:13px;font-weight:600;margin:8px 8px 0 0;text-decoration:none;color:var(--text)}
+.link{display:block;margin:6px auto 0;color:var(--sub);font-size:15px;padding:10px}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:2px;margin-top:8px}
+.seg button{flex:1;height:34px;border-radius:8px;font-size:14px;font-weight:600;color:var(--sub);white-space:nowrap}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.scrollx{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.scrollx > *{flex:0 0 auto}
+.dayp{min-width:52px;height:40px;border-radius:999px;background:var(--card);font-weight:700;font-size:15px;padding:0 14px}
+.dayp.on{background:var(--main);color:#fff}
+.q{font-size:20px;font-weight:700;margin:0 0 4px}
+/* 對話 */
+.bub{max-width:86%;padding:12px 16px;border-radius:22px;margin:0 0 8px;font-size:17px;animation:fade .25s ease-out both;white-space:pre-wrap;overflow-wrap:anywhere}
+.bub.bot{background:var(--card);border-bottom-left-radius:8px;width:fit-content}
+.bub.me{background:var(--main);color:#fff;margin-left:auto;border-bottom-right-radius:8px;font-weight:600;width:fit-content}
+.bub.sys{background:none;color:var(--sub);font-size:13px;padding:2px 6px;max-width:100%}
+.opts{margin-top:14px}
+.opts button{display:block;width:100%;min-height:54px;border-radius:999px;background:var(--card);font-size:18px;font-weight:600;margin-bottom:10px;border:1.5px solid var(--line);animation:fade .25s ease-out both}
+.opts button:active{background:var(--chip)}
+.opts.inline{display:flex;gap:8px;flex-wrap:wrap}
+.opts.inline button{flex:1 0 56px}
+.thread{max-height:44dvh;min-height:120px;overflow-y:auto;padding:4px 0 6px}
+.sheet .thread .bub.bot{background:var(--card)}
+.sendrow{display:flex;gap:8px;margin-top:10px}
+.sendrow input{flex:1;height:52px;border-radius:999px;padding:0 20px;font-size:17px}
+.sendrow button{flex:0 0 52px;height:52px;border-radius:50%;background:var(--main);color:#fff;font-size:22px;font-weight:700}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* 田 */
+.field{display:grid;grid-template-columns:34px 1fr 1fr 1fr;gap:6px;align-items:stretch}
+.field .hd{font-size:12px;color:var(--sub);text-align:center;font-weight:600;padding-bottom:2px}
+.field .dl{font-size:13px;color:var(--sub);font-weight:700;display:flex;align-items:center}
+.hole{position:relative;height:62px;border-radius:16px;background:var(--bg);display:flex;align-items:flex-end;justify-content:center;gap:2px;padding-bottom:9px;overflow:hidden}
+.hole::after{content:"";position:absolute;left:8px;right:8px;bottom:5px;height:13px;border-radius:50%;background:var(--soil)}
+.hole.off{opacity:.35}
+.hole.off::after{display:none}
+.hole.cur{outline:2.5px solid var(--main);outline-offset:-2.5px}
+.hole svg{position:relative;z-index:1;width:26px;height:36px}
+.hole svg.L{width:30px;height:42px}
+.hole .rest{position:absolute;top:5px;right:7px;font-size:10px;font-weight:700;color:var(--sub);z-index:2}
+.hole .offt{font-size:11px;color:var(--sub);align-self:center}
+@keyframes pop{0%{transform:scale(.1) translateY(16px)}60%{transform:scale(1.25) translateY(-6px)}100%{transform:scale(1) translateY(0)}}
+@keyframes pull{0%{transform:translateY(0)}40%{transform:translateY(-10px) rotate(-8deg)}100%{transform:translateY(-70px) rotate(10deg);opacity:0}}
+.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
+.pull{animation:pull .55s ease-in forwards}
+@media (prefers-reduced-motion: reduce){.pop,.pull,.bub,.opts button{animation:none}}
+.leg{position:relative;padding:8px 18px 8px 30px;font-size:13px;color:var(--sub);display:flex;gap:8px;align-items:center}
+.leg b{color:var(--text);font-weight:600}
+.leg i{width:2px;height:18px;background:var(--line);border-radius:1px;flex:0 0 2px;margin-right:8px}
+.route{display:block;width:100%;height:120px;background:var(--bg);border-radius:16px}
+#map{height:56dvh;border-radius:20px;overflow:hidden;background:var(--chip)}
+.mk{width:26px;height:26px;border-radius:50%;background:#FF9500;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.mk.h{background:#000}.mk.me{background:#007AFF;width:18px;height:18px}
+.sum{display:flex;justify-content:space-between;padding:6px 0}
+.sum.total{font-weight:700;font-size:20px;border-top:.5px solid var(--line);margin-top:8px;padding-top:12px}
+.bar{height:10px;border-radius:5px;background:var(--chip);overflow:hidden;display:flex;margin:10px 0 4px}
+.bar span{display:block;height:100%}
+.lv{display:inline-flex;align-items:center;font-size:15px;font-weight:600;padding:8px 14px;border-radius:999px;background:var(--chip);color:var(--sub);margin:0 8px 8px 0}
+.lv.l1{background:rgba(255,149,0,.16);color:var(--main)}
+.lv.l2{background:var(--main);color:#fff}
+.ic{width:36px;height:36px;border-radius:10px;flex:0 0 36px;display:flex;align-items:center;justify-content:center}
+.ic svg{width:22px;height:22px}
+.big{font-size:38px;font-weight:700;text-align:center;line-height:1.25;padding:26px 8px;word-break:keep-all}
+.toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
+  padding:12px 20px;border-radius:999px;font-weight:600;font-size:15px;opacity:0;transition:all .25s;z-index:30;max-width:86vw;text-align:center;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.back{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:10;opacity:0;pointer-events:none;transition:opacity .2s}
+.back.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-radius:34px 34px 0 0;z-index:11;padding:10px 16px calc(26px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.9,.3,1);max-height:92dvh;overflow-y:auto}
+.sheet.on{transform:none}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet h3{font-size:20px;margin:0 4px 12px}
+input[type=text],textarea{width:100%;font:inherit;font-size:20px;color:var(--text);background:var(--card);border:0;border-radius:16px;padding:16px;outline:none}
+textarea{font-size:13px;height:110px}
+.chk{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:0 0 26px;display:flex;align-items:center;justify-content:center}
+.chk.on{background:var(--leaf);border-color:var(--leaf)}
+.chk.on::after{content:"";width:7px;height:12px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.ico{width:26px;height:34px;flex:0 0 26px}
+.loading{text-align:center;padding:40px 0;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="dots" id="dots"><button data-go="0" aria-label="行程與須知"></button><button data-go="1" class="on" aria-label="主畫面"></button><button data-go="2" aria-label="設定"></button></div>
+<div class="pages" id="pages">
+  <section class="page" id="pOther"><div class="wrap" id="other"></div></section>
+  <section class="page" id="pMain"><div class="wrap" id="main"></div></section>
+  <section class="page" id="pSet"><div class="wrap" id="set"></div></section>
+</div>
+<div class="back" id="back"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========= 資料 ========= */
+const AREA={A:'鐘路・景福宮',B:'仁寺洞・益善洞',C:'明洞・南山',D:'弘大・延南・望遠',E:'聖水・首爾林',F:'蠶室',G:'江南・COEX',H:'汝矣島・漢江',I:'東大門・清溪川',K:'龍山・梨泰院',J:'首爾近郊（當日來回）'};
+const ADJ={A:['B','C'],B:['A','I','C'],C:['B','I','K'],D:['H'],E:['I','F'],F:['E','G'],G:['F','H'],H:['D','G','K'],I:['B','C','E'],K:['C','H'],J:[]};
+const HOTEL={C:[37.5636,126.9850,'明洞','명동역'],D:[37.5563,126.9236,'弘大','홍대입구역'],G:[37.4980,127.0276,'江南','강남역'],I:[37.5665,127.0092,'東大門','동대문역사문화공원역']};
+// 名稱, 韓文, 區, 大小, 類別, 緯度, 經度, {b 要先訂, fee 粗估 NT$, tip 須知, l 輕鬆, f 吃的種類, ic 圖示}
+const P=[
+ ['景福宮','경복궁','A','L','sight',37.5796,126.9770,{fee:70,tip:'要買票；有固定休館日，去之前查官網'}],
+ ['國立現代美術館 首爾館','국립현대미술관 서울','A','L','art',37.5786,126.9800,{fee:120,tip:'部分展覽要買票'}],
+ ['北村韓屋村','북촌한옥마을','A','S','sight',37.5826,126.9836,{tip:'是住宅區，有開放參觀的時段，講話小聲'}],
+ ['通仁市場','통인시장','A','S','eat',37.5807,126.9700,{f:'street',ic:'market',tip:'帶一點現金'}],
+ ['蔘雞湯老店（挑一間）','','A','S','eat',37.5778,126.9716,{f:'local',tip:'用餐時間常要排隊'}],
+ ['韓服體驗','','A','S','fun',37.5770,126.9800,{fee:500,tip:'店很多，現場挑或先上網訂'}],
+ ['昌德宮與後苑','창덕궁','B','L','sight',37.5794,126.9910,{b:1,fee:230,tip:'後苑有名額限制，要先上網訂；有固定休館日'}],
+ ['益善洞韓屋巷','익선동 한옥거리','B','S','cafe',37.5744,126.9895,{tip:'假日人多'}],
+ ['仁寺洞街','인사동','B','S','shop',37.5740,126.9850,{}],
+ ['廣藏市場','광장시장','B','S','eat',37.5700,126.9995,{f:'street',ic:'market',tip:'人多，先問價錢再點'}],
+ ['明洞逛街','명동','C','S','shop',37.5636,126.9850,{}],
+ ['N 首爾塔','N서울타워','C','S','sight',37.5512,126.9882,{ic:'view',fee:600,tip:'展望台要買票；晚上去看夜景'}],
+ ['南大門市場','남대문시장','C','S','eat',37.5592,126.9776,{f:'street',ic:'market',tip:'帶一點現金'}],
+ ['汗蒸幕（挑一間）','','C','S','fun',37.5600,126.9800,{l:1,ic:'spa',fee:400}],
+ ['亂打秀之類的公演','','C','S','night',37.5640,126.9840,{b:1,ic:'fun',fee:1200,tip:'先買票'}],
+ ['K-pop 周邊店巡禮','','C','S','kpop',37.5630,126.9830,{}],
+ ['明洞的名店韓定食（挑一間）','','C','S','eat',37.5645,126.9835,{f:'famous',b:1,fee:1200,tip:'熱門，要先訂位'}],
+ ['弘大商圈','홍대','D','S','shop',37.5563,126.9236,{}],
+ ['延南洞咖啡街','연남동','D','S','cafe',37.5620,126.9250,{l:1}],
+ ['望遠市場','망원시장','D','S','eat',37.5560,126.9060,{f:'street',ic:'market'}],
+ ['手作體驗工坊（挑一間）','','D','S','fun',37.5550,126.9240,{b:1,fee:800,tip:'多半要先預約'}],
+ ['弘大的夜晚','홍대 클럽거리','D','S','night',37.5540,126.9225,{}],
+ ['弘大的排隊炸雞店（挑一間）','','D','S','eat',37.5570,126.9240,{f:'famous',fee:600,tip:'用餐時間要排隊'}],
+ ['聖水洞','성수동','E','S','shop',37.5446,127.0560,{tip:'快閃店多，熱門的要排隊'}],
+ ['聖水洞咖啡廳','성수동 카페거리','E','S','cafe',37.5450,127.0570,{}],
+ ['首爾林','서울숲','E','S','nature',37.5444,127.0374,{l:1}],
+ ['聖水的烤肉店（挑一間）','','E','S','eat',37.5440,127.0550,{f:'local',tip:'晚餐時間常要等位'}],
+ ['樂天世界','롯데월드','F','L','fun',37.5111,127.0980,{b:1,fee:1400,tip:'先上網買票通常比較便宜；假日人多'}],
+ ['Seoul Sky 展望台','서울스카이','F','S','sight',37.5126,127.1025,{ic:'view',fee:700,tip:'要買票'}],
+ ['石村湖散步','석촌호수','F','S','nature',37.5090,127.1000,{l:1}],
+ ['蠶室的在地小館（挑一間）','','F','S','eat',37.5120,127.0990,{f:'local'}],
+ ['星空圖書館','별마당 도서관','G','S','sight',37.5100,127.0600,{}],
+ ['狎鷗亭羅德奧','압구정로데오','G','S','shop',37.5270,127.0400,{}],
+ ['米其林指南收錄的餐廳（挑一間）','','G','S','eat',37.5240,127.0400,{f:'fine',b:1,fee:3000,tip:'一定要先訂位，有的要付訂金'}],
+ ['江南的名店烤肉（挑一間）','','G','S','eat',37.5000,127.0280,{f:'famous',b:1,fee:1500,tip:'熱門，要先訂位'}],
+ ['娛樂公司周邊巡禮','','G','S','kpop',37.5200,127.0400,{}],
+ ['汝矣島漢江公園','여의도한강공원','H','S','nature',37.5285,126.9340,{l:1,tip:'可以買泡麵坐著吃'}],
+ ['The Hyundai Seoul','더현대 서울','H','S','shop',37.5259,126.9284,{}],
+ ['漢江遊船','한강유람선','H','S','fun',37.5290,126.9320,{ic:'boat',fee:450,tip:'要買票，班次先查'}],
+ ['東大門設計廣場 DDP','동대문디자인플라자','I','S','art',37.5665,127.0092,{}],
+ ['清溪川散步','청계천','I','S','nature',37.5690,126.9900,{l:1}],
+ ['東大門商場','동대문 패션타운','I','S','shop',37.5670,127.0070,{tip:'有些商場很晚才開'}],
+ ['一隻雞街','동대문 닭한마리 골목','I','S','eat',37.5705,127.0060,{f:'local'}],
+ ['乙支路啤酒巷','을지로 노가리골목','I','S','night',37.5660,126.9920,{}],
+ ['國立中央博物館','국립중앙박물관','K','L','art',37.5240,126.9800,{tip:'常設展通常免費，特展要買票'}],
+ ['戰爭紀念館','전쟁기념관','K','L','art',37.5366,126.9770,{}],
+ ['梨泰院・經理團路','이태원','K','S','eat',37.5345,126.9940,{f:'local'}],
+ ['漢南洞的精緻餐廳（挑一間）','','K','S','eat',37.5360,127.0010,{f:'fine',b:1,fee:2200,tip:'要先訂位'}],
+ ['梨泰院的酒吧','이태원','K','S','night',37.5345,126.9945,{}],
+ ['水原華城','수원화성','J','L','sight',37.2870,127.0120,{fee:50,tip:'來回加逛要一整個白天'}],
+ ['愛寶樂園','에버랜드','J','L','fun',37.2940,127.2020,{b:1,fee:1500,tip:'會用掉一整天；先上網買票'}],
+ ['南怡島','남이섬','J','L','nature',37.7900,127.5250,{fee:400,tip:'要搭船進島；來回車程長'}],
+].map((p,i)=>({id:'p'+i,n:p[0],kr:p[1],a:p[2],s:p[3],c:p[4],lat:p[5],lng:p[6],...p[7]}));
+const CAT={eat:'吃吃喝喝',shop:'逛街購物',fun:'遊樂設施與體驗',sight:'古蹟與地標',art:'博物館美術館',nature:'公園散步',cafe:'咖啡廳',night:'夜生活',kpop:'追星'};
+const FOOD={street:['市場與路邊小吃','便宜、站著吃、邊走邊吃'],local:['在地人常去的小館','沒有觀光客菜單的那種'],famous:['排隊名店','網路上很紅、要排要訂'],fine:['米其林與精緻餐廳','一餐當一個行程']};
+const FLV=['不要','偶爾','常常','主力'];
+const AVOID=['牛肉','豬肉','海鮮','辣','生食','內臟','吃素'];
+const PURPOSE={rest:'放鬆回來',eat:'吃到爽',fun:'玩到盡興',see:'看到想看的'};
+const PART={am:'上午',pm:'下午',eve:'晚上'};
+const PULL=['拔起來了。','這顆是你的了。','收進籃子。','今天有收成。','好大一顆。','少一個坑，多一顆蘿蔔。'];
+const V='2026-11-14';
+const TABOO=[
+  [3,'不要拍軍事設施和執勤的警察','可能被要求當場刪照片，甚至被盤問','二手核對',V,'遠見 2025-04'],
+  [3,'食物和飲料不能帶上公車','司機會不讓你上車','來源較舊',V,'Funliday 2024-03'],
+  [3,'地鐵博愛座不要坐，空著也一樣；粉紅色的孕婦座也是','會被當面唸','二手核對',V,'遠見 2025-04、Funliday、Creatrip'],
+  [2,'地鐵車廂和公共場所講話小聲','會被側目','二手核對',V,'遠見 2025-04'],
+  [2,'筷子不要插在飯上','那是祭拜的動作','二手核對',V,'遠見 2025-04'],
+  [2,'不要拿筷子敲碗','被看成沒禮貌','二手核對',V,'遠見 2025-04'],
+  [1,'遞東西給長輩用雙手','做了會加分，沒做通常不會怎樣','二手核對',V,'遠見 2025-04'],
+  [1,'不用給小費','硬塞對方反而尷尬','二手核對',V,'遠見 2025-04'],
+];
+const LV={3:['會出事','red'],2:['會被白眼','yel'],1:['知道比較好','']};
+const DIFF=[
+  ['電壓 220V、圓形雙針插頭（C／F 型）。台灣是 110V 扁插，要帶轉接頭；只支援 110V 的吹風機、捲髮棒不能用','二手核對',V,'HaniSeoul 2026-07、Trip.com'],
+  ['首爾公車不收現金，要用交通卡','來源較舊',V,'Funliday 2024-03'],
+  ['餐廳一年四季都先上冰水','未核對','','—'],
+];
+const CHECK=[
+  ['c1','每次入境都要填電子入境卡 e-Arrival Card：抵達前 72 小時內線上填，免費。官網 e-arrivalcard.go.kr','二手核對',V,'多家 2026 入境整理，未直接讀官方頁'],
+  ['c2','K-ETA：台灣護照暫免申請到 2026-12-31。2027 年以後出發，要回官方 k-eta.go.kr 看有沒有延長','二手核對',V,'多家 2026 入境整理'],
+  ['c3','護照效期和免簽天數：以韓國官方與外交部領事事務局為準','未核對','','—'],
+  ['c4','轉接頭（C／F 型）','二手核對',V,'HaniSeoul 2026-07'],
+  ['c5','eSIM 或網卡','未核對','','—'],
+  ['c6','旅遊險','未核對','','—'],
+  ['c7','換錢：先帶少量韓元付第一天的交通，其餘到市區換錢所換（明洞一帶很多，要帶護照），大筆的刷卡。機場匯率通常比較差','二手核對',V,'Money101 2026-07、股感、Creatrip'],
+  ['c8','交通卡','未核對','','—'],
+  ['c9','行動電源、暖暖包要隨身帶，不能託運','二手核對',V,'JOYTEL 2026'],
+  ['c10','在手機裝好 Naver 地圖：韓國當地找路、查大眾運輸多半用它','未核對','','—'],
+];
+const STAY={cheap:['便宜就好',900],mid:['普通',2600],nice:['要住好',6000]};
+/* 圖示：一眼看得出是哪一種地方 */
+const ICON={
+  eat:['餐廳','#FF9500','M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 2-3 5-2 9h2'],
+  market:['市場','#FF9500','M4 9l1-5h14l1 5M5 9v11h14V9M4 9c0 2.5 4 2.5 4 0 0 2.5 4 2.5 4 0 0 2.5 4 2.5 4 0 0 2.5 4 2.5 4 0M10 20v-5h4v5'],
+  shop:['逛街','#FF2D55','M6 8h12l1 12H5L6 8zM9 8V6a3 3 0 0 1 6 0v2'],
+  fun:['遊樂與體驗','#AF52DE','M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7zM14 7v10'],
+  sight:['古蹟地標','#A2845E','M3 20h18M5 20v-8M9 20v-8M15 20v-8M19 20v-8M3 12h18M12 4l9 6H3l9-6z'],
+  art:['博物館美術館','#5856D6','M4 5h16v14H4zM4 16l4-4 4 4 3-3 5 5M15 9.5h.01'],
+  nature:['公園','#34C759','M12 21v-6M12 15a5 5 0 0 1-4-8 4 4 0 0 1 8 0 5 5 0 0 1-4 8z'],
+  cafe:['咖啡廳','#C69C6D','M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V9zM16 10h2a2 2 0 0 1 0 5h-2M8 3v3M12 3v3'],
+  night:['夜生活','#5E5CE6','M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10z'],
+  kpop:['追星','#FF375F','M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z'],
+  spa:['汗蒸幕與溫泉','#32ADE6','M4 17c0 3 16 3 16 0M8 4c-1.5 2 1.5 3 0 6M12 4c-1.5 2 1.5 3 0 6M16 4c-1.5 2 1.5 3 0 6'],
+  boat:['遊船','#32ADE6','M3 17l2 3h14l2-3zM5 17v-5h14v5M12 12V5l5 4'],
+  view:['展望台','#30B0C7','M12 3v18M8 21h8M9.5 9h5l-1-4h-3zM10 9l-2 12M14 9l2 12'],
+  pin:['自己加的','#8E8E93','M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'],
+};
+const icon=it=>{const k=it.mine?'pin':(ICON[it.ic]?it.ic:(ICON[it.c]?it.c:'pin')), d=ICON[k];return `<span class="ic" style="background:${d[1]}" title="${d[0]}"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d[2]}"/></svg></span>`;};
+const kind=it=>ICON[it.mine?'pin':(ICON[it.ic]?it.ic:it.c)]?.[0]||'';
+
+/* ========= 狀態 ========= */
+const KEY='luobo-proto-v3';
+const blank=()=>({settings:{stay:'cheap',stayBudget:900,food:{street:2,local:3,famous:1,fine:0},avoid:[],queue:'some',mealMax:1500,budget:1500,play:{eat:2},pace:'mid',move:'transit',wake:'normal',base:'C'},trip:null,
+  seeds:[{n:'南怡島',a:'首爾近郊',demo:1,why:'上次排不進去'},{n:'國立中央博物館',a:'龍山・梨泰院',demo:1,why:'你按了「下次再來」'},{n:'釜山 海雲台',a:'釜山',demo:1,why:'你自己丟進來的'}],
+  pool:[],checks:{},chat:[],
+  baskets:[{title:'釜山 3 天（示範）',demo:1,items:[{n:'札嘎其市場',s:'S',c:'eat',ic:'market',say:'阿姨一直叫我多吃一點'},{n:'甘川洞文化村',s:'L',c:'sight',say:'階梯比照片上多三倍'},{n:'海雲台',s:'S',c:'nature',say:'冬天的海邊沒什麼人，很好'},{n:'豬肉湯飯',s:'S',c:'eat',say:'湯比想像中清'},{n:'廣安大橋夜景',s:'S',c:'sight',ic:'view',say:''}]}],
+  tab:'plan',planDay:1,subKnow:'taboo'});
+let S=blank();
+try{const raw=localStorage.getItem(KEY); if(raw){const o=JSON.parse(raw); S=Object.assign(blank(),o); S.settings=Object.assign(blank().settings,o.settings||{});}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+let draft={i:0,ans:{}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const money=n=>'NT$ '+Math.round(n).toLocaleString('en-US');
+
+/* ========= 蘿蔔（占位，之後換黏土插圖） ========= */
+const leaves='<path d="M12 12C9 9 6 6 5 2c4 1 6 4 7 8 1-4 3-7 7-8-1 4-4 7-7 10z" fill="var(--leaf)"/>';
+function svg(size,cls){
+  const c=(size==='L'?'L ':'')+(cls||'');
+  if(size==='L') return `<svg class="${c}" viewBox="0 0 24 34"><g transform="translate(0,-1)">${leaves}</g><path d="M6 14c0-3 3-4 6-4s6 1 6 4c0 8-3 18-6 18S6 22 6 14z" fill="#FAFAF5" stroke="#D8D8CE" stroke-width="1.2"/><path d="M9 17h3M13 22h2" stroke="#D8D8CE" stroke-width="1" stroke-linecap="round"/></svg>`;
+  return `<svg class="${c}" viewBox="0 0 24 34"><g transform="translate(0,1)">${leaves}</g><path d="M7 15c0-2 2-3 5-3s5 1 5 3c0 6-3 16-5 16S7 21 7 15z" fill="#FF9500"/><path d="M9.5 18h3M12 23h2.5" stroke="#E07E00" stroke-width="1" stroke-linecap="round"/></svg>`;
+}
+
+/* ========= 排行程（本機規則；接上 AI 後由對話調整） ========= */
+function foodLv(){const f=S.settings.food; const any=Object.values(f).some(v=>v>0); return any?f:{street:0,local:1,famous:0,fine:0};}
+function foodPct(){const f=foodLv(), t=Object.values(f).reduce((a,b)=>a+b,0); const o={}; Object.keys(FOOD).forEach(k=>o[k]=Math.round(f[k]/t*100)); return o;}
+function weights(purpose){
+  const w={}; Object.keys(CAT).forEach(k=>w[k]=1+2*(S.settings.play[k]||0));
+  ({rest:()=>{w.nature+=2;w.cafe+=1},eat:()=>w.eat+=2,fun:()=>{w.fun+=2},see:()=>{w.sight+=2;w.art+=1}}[purpose]||(()=>{}))();
+  return w;
+}
+function generate(d,shuffle){
+  const st=S.settings, w=weights(d.purpose), used=new Set(), pace=st.pace, base=st.base, lv=foodLv();
+  const jit=()=>shuffle?Math.random()*2.5:0;
+  const score=p=>w[p.c]+(d.purpose==='rest'&&p.l?2:0);
+  const take=(areas,size,want)=>{
+    let c=P.filter(p=>!used.has(p.id)&&areas.includes(p.a)&&(!size||p.s===size)&&(!want||want(p)));
+    if(!c.length) return null;
+    c=c.map(p=>[p,score(p)+jit()]).sort((x,y)=>y[1]-x[1]); used.add(c[0][0].id);
+    return {...c[0][0],status:'kept',swaps:0};
+  };
+  const near=a=>[a,...ADJ[a]], ALL=Object.keys(AREA);
+  const areaScore=a=>P.filter(p=>p.a===a).reduce((s,p)=>s+score(p),0)/P.filter(p=>p.a===a).length+jit();
+  const order=ALL.filter(a=>a!=='J').map(a=>[a,areaScore(a)]).sort((x,y)=>y[1]-x[1]).map(x=>x[0]);
+  const usedArea=new Set(), slots=[];
+  const nextArea=()=>{const a=order.find(x=>!usedArea.has(x)); if(a){usedArea.add(a);return a;} usedArea.clear(); usedArea.add(order[0]); return order[0];};
+  const full=[]; for(let i=2;i<d.days;i++) full.push(i);
+  const tripDays=new Set();
+  if(d.days>=5&&pace!=='slow'&&(w.sight>=3||w.fun>=3||w.nature>=3)){ for(let i=Math.min(2,full.length-1);i<full.length&&tripDays.size<3;i+=4) tripDays.add(full[i]); }
+  const dayOK=p=>p.c!=='night'&&(p.c!=='eat'||((p.f==='street'||p.f==='local')&&lv[p.f]>0));
+  // 晚餐照吃的比例分
+  const kinds=Object.keys(FOOD), tot=kinds.reduce((a,k)=>a+lv[k],0), cnt={street:0,local:0,famous:0,fine:0}; let eveK=0;
+  const nextKind=()=>{eveK++; let best=null,bv=-1e9; kinds.forEach(k=>{if(!lv[k]) return; const v=lv[k]/tot*eveK-cnt[k]; if(v>bv){bv=v;best=k;}}); cnt[best]++; return best;};
+  for(let day=1;day<=d.days;day++){
+    let parts=['am','pm','eve'];
+    if(day===1) parts={am:['pm','eve'],pm:['eve'],eve:[]}[d.arrive];
+    if(day===d.days) parts={am:[],pm:['am'],eve:['am','pm']}[d.leave];
+    const edge=day===1||day===d.days, fi=full.indexOf(day);
+    const lightDay=!edge&&(pace==='fast'?fi%6===5:fi%3===2);
+    let amA,pmA;
+    if(edge){amA=pmA=base;}
+    else if(tripDays.has(day)){amA=pmA='J';}
+    else{amA=nextArea(); pmA=amA; if(pace!=='slow'){pmA=ADJ[amA].filter(x=>!usedArea.has(x)).sort((x,y)=>order.indexOf(x)-order.indexOf(y))[0]||amA; usedArea.add(pmA);}}
+    ['am','pm','eve'].forEach(part=>{
+      if(!parts.includes(part)){slots.push({day,part,off:true,items:[]});return;}
+      const a=part==='am'?amA:pmA, items=[]; let rest=false;
+      const add=x=>{if(x) items.push(x)};
+      const city=a==='J'?[base]:near(a);
+      if(part==='eve'){
+        const k=nextKind();
+        add(take(city,'S',p=>p.c==='eat'&&p.f===k)||take(ALL,'S',p=>p.c==='eat'&&p.f===k)||take(city,'S',p=>p.c==='eat'&&lv[p.f]>0)||take(ALL,'S',p=>p.c==='eat'&&lv[p.f]>0));
+        if(pace==='fast'&&!edge) add(take(city,'S',p=>p.c!=='eat'&&!p.l));
+        if(pace!=='slow') rest=true;
+      }else if(edge){
+        add(take(near(a),'S',p=>dayOK(p)&&(p.l||p.c==='shop'||p.c==='cafe'||p.c==='eat'))||take(near(a),'S',p=>dayOK(p)&&!p.b));
+      }else if(a==='J'){
+        if(part==='am') add(take(['J'],'L')); else rest=true;
+      }else{
+        const big=!lightDay&&(part==='am'?st.wake!=='late':pace!=='slow'||st.wake==='late');
+        add((big&&take([a],'L'))||take([a],'S',dayOK)||take(near(a),'S',dayOK));
+        if(pace==='fast'||((!items[0]||items[0].s==='S')&&pace!=='slow')) add(take([a],'S',dayOK)||take(near(a),'S',dayOK));
+        if(pace==='slow'&&part==='pm') rest=true;
+      }
+      if(!items.length) rest=true;
+      slots.push({day,part,items,rest});
+    });
+  }
+  return {purpose:d.purpose,days:d.days,arrive:d.arrive,leave:d.leave,people:d.people,phase:'plan',slots,today:1,flight:0};
+}
+const T=()=>S.trip;
+const allItems=()=>T().slots.flatMap(s=>s.items.map(it=>({it,s})));
+const usedIds=()=>new Set(allItems().map(x=>x.it.id));
+const halfDays=()=>T().slots.filter(s=>!s.off&&s.part!=='eve').length;
+const findItem=id=>allItems().find(x=>x.it.id===id);
+const slotAt=(day,part)=>T().slots.find(s=>s.day===day&&s.part===part&&!s.off);
+const bigCount=day=>T().slots.filter(s=>s.day===day).flatMap(s=>s.items).filter(i=>i.s==='L').length;
+const areaOf=it=>AREA[it.a]||(it.mine?'自己加的':'AI 加的');
+
+/* ========= 移動、對調 ========= */
+function moveItem(id,day,part){
+  const x=findItem(id), to=slotAt(day,part); if(!x) return '找不到那個行程'; if(!to) return `第 ${day} 天${PART[part]||''}你在路上，放不進去`;
+  if(to===x.s) return null;
+  x.s.items=x.s.items.filter(i=>i!==x.it); if(!x.s.items.length) x.s.rest=true;
+  to.items.push(x.it); if(part!=='eve') to.rest=false; x.it._fx='pop'; return null;
+}
+function swapParts(day,a,b){
+  const A=slotAt(day,a),B=slotAt(day,b); if(!A||!B) return `第 ${day} 天沒有兩個時段可以對調`;
+  [A.items,B.items]=[B.items,A.items]; [A.rest,B.rest]=[B.rest,A.rest]; [...A.items,...B.items].forEach(i=>i._fx='pop'); return null;
+}
+function swapDays(a,b){
+  let moved=0;
+  ['am','pm','eve'].forEach(p=>{const A=slotAt(a,p),B=slotAt(b,p); if(A&&B){[A.items,B.items]=[B.items,A.items];[A.rest,B.rest]=[B.rest,A.rest];moved++;}});
+  return moved?null:'這兩天沒有對得上的時段';
+}
+function seedOut(it,s,why){S.seeds.unshift({n:it.n,a:areaOf(it),why:why||'你按了「下次再來」'});s.items=s.items.filter(x=>x!==it);if(!s.items.length) s.rest=true;}
+function warnings(){const t=T(),w=[]; for(let d=1;d<=t.days;d++){const n=bigCount(d); if(n>2) w.push(`第 ${d} 天現在有 ${n} 個大行程，會很累。`);} return w;}
+
+/* ========= 怎麼去、多遠、多久（估算） ========= */
+function km(a,b){
+  if(!a||!b||a.lat==null||b.lat==null) return null;
+  const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
+  const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h))*1.3;
+}
+function leg(a,b){
+  const d=km(a,b); if(d==null) return null;
+  const mv=S.settings.move, walkMax=mv==='walk'?2:1;
+  if(d<0.15) return {mode:'就在旁邊',km:d,min:2,cost:0};
+  if(d<=walkMax) return {mode:'走路',km:d,min:Math.round(d*13),cost:0};
+  if(d>=25) return {mode:'火車或巴士',km:d,min:Math.round(d*1.3+25),cost:250};
+  if(mv==='taxi') return {mode:'計程車',km:d,min:Math.round(d*2.4+6),cost:d*30+110};
+  return {mode:'地鐵或公車',km:d,min:Math.round(d*2.6+10),cost:35};
+}
+const hotelPt=()=>{const h=HOTEL[S.settings.base];return {lat:h[0],lng:h[1],n:'住的地方（'+h[2]+'）',kr:h[3]};};
+function dayStops(day){return T().slots.filter(s=>s.day===day&&!s.off).flatMap(s=>s.items.map(it=>({it,s})));}
+function dayLegs(day){
+  const stops=dayStops(day).map(x=>x.it), out=[]; if(!stops.length) return out;
+  const pts=[hotelPt(),...stops,hotelPt()];
+  for(let i=0;i<pts.length-1;i++) out.push(leg(pts[i],pts[i+1]));
+  return out;
+}
+function routeSvg(day){
+  const pts=[hotelPt(),...dayStops(day).map(x=>x.it).filter(p=>p.lat!=null)];
+  if(pts.length<2) return '';
+  const la=pts.map(p=>p.lat),lo=pts.map(p=>p.lng),W=320,H=120,pad=22;
+  const minLa=Math.min(...la),maxLa=Math.max(...la),minLo=Math.min(...lo),maxLo=Math.max(...lo);
+  const sx=(W-2*pad)/Math.max(maxLo-minLo,.004),sy=(H-2*pad)/Math.max(maxLa-minLa,.004),k=Math.min(sx,sy*1.25);
+  const cx=(minLo+maxLo)/2,cy=(minLa+maxLa)/2;
+  const c=pts.map(p=>[W/2+(p.lng-cx)*k,H/2-(p.lat-cy)*k/1.25]);
+  return `<svg class="route" viewBox="0 0 ${W} ${H}" role="img" aria-label="第 ${day} 天路線示意"><polyline points="${c.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="var(--main)" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="1 6" stroke-linecap="round"/>${c.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i?10:7}" fill="${i?'var(--main)':'var(--text)'}"/>${i?`<text x="${p[0].toFixed(1)}" y="${(p[1]+4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${i}</text>`:''}`).join('')}</svg>`;
+}
+function gmapsDay(day){
+  const st=dayStops(day).map(x=>x.it).filter(i=>i.kr); if(!st.length) return '';
+  const e=encodeURIComponent, last=st[st.length-1], mid=st.slice(0,-1).map(i=>i.kr).join('|');
+  return `https://www.google.com/maps/dir/?api=1&origin=${e(hotelPt().kr)}&destination=${e(last.kr)}${mid?'&waypoints='+e(mid):''}&travelmode=transit`;
+}
+
+/* ========= 真的地圖（頁面放在 Claude 外面時才載得到圖磚） ========= */
+let mapOK=null, Lmap=null, watchId=null;
+function tileTest(){return new Promise(res=>{ if(mapOK!==null) return res(mapOK); const im=new Image(); const t=setTimeout(()=>{mapOK=false;res(false)},4000); im.onload=()=>{clearTimeout(t);mapOK=true;res(true)}; im.onerror=()=>{clearTimeout(t);mapOK=false;res(false)}; im.src='https://tile.openstreetmap.org/11/1746/793.png?'+Date.now(); });}
+function loadLeaflet(){return new Promise((res,rej)=>{ if(window.L) return res(); const c=document.createElement('link'); c.rel='stylesheet'; c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; document.head.appendChild(c); const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload=()=>res(); s.onerror=()=>rej(); document.head.appendChild(s); });}
+function stopMap(){ if(watchId!=null&&navigator.geolocation){navigator.geolocation.clearWatch(watchId);} watchId=null; if(Lmap){try{Lmap.remove();}catch(e){} Lmap=null;} }
+async function openMap(day){
+  const g=gmapsDay(day);
+  const foot=`${g?`<a class="btn" href="${g}" target="_blank" rel="noopener">在 Google 地圖打開這天的路線</a><p class="small" style="padding:6px 6px 0">會跳到 Google 地圖，那裡看得到你現在的位置。韓國當地找路 Naver 地圖比較準，每個點的「地圖與韓文」裡有連結。</p>`:''}<button class="link" data-act="close">關掉</button>`;
+  openSheet(`<h3>第 ${day} 天的地圖</h3><div id="mapbox"><div class="loading">地圖載入中…</div></div>${foot}`);
+  const ok=await tileTest(); const box=$('mapbox'); if(!box) return;
+  if(ok){ try{
+    await loadLeaflet();
+    box.innerHTML='<div id="map"></div><div class="pair"><button class="pill" data-act="locate">我在哪</button><button class="pill" data-act="fit">看整條路線</button></div><p class="small" style="padding:6px 6px 0">點的位置是大概的，正式版會用地圖資料的精確座標。</p>';
+    const pts=[hotelPt(),...dayStops(day).map(x=>x.it).filter(p=>p.lat!=null)];
+    Lmap=L.map('map',{zoomControl:true,attributionControl:true});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(Lmap);
+    const ll=pts.map(p=>[p.lat,p.lng]);
+    L.polyline(ll,{color:'#FF9500',weight:4,dashArray:'2 8'}).addTo(Lmap);
+    pts.forEach((p,i)=>L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="mk${i?'':' h'}">${i||''}</div>`,iconSize:[26,26],iconAnchor:[13,13]})}).addTo(Lmap).bindPopup(esc(p.n)+(p.kr?'<br>'+esc(p.kr):'')));
+    Lmap._fitAll=()=>Lmap.fitBounds(ll,{padding:[30,30],maxZoom:15}); Lmap._fitAll();
+    setTimeout(()=>Lmap&&Lmap.invalidateSize(),350);
+    return;
+  }catch(e){} }
+  box.innerHTML=`<div class="card">${routeSvg(day)||'<div class="note">這天沒有排點。</div>'}<div class="small" style="margin-top:8px">黑點是住的地方。這張是照大概位置畫的示意圖。</div></div><div class="card"><div class="note">這個原型現在是在 Claude 裡面開的，Claude 會擋掉外部地圖圖磚和定位，所以這裡畫不出真的地圖。同一個檔案放到 GitHub Pages 開，這裡就會是可以拖、可以放大、會顯示你位置的地圖。</div></div>`;
+}
+
+/* ========= 花費（粗估） ========= */
+function cost(){
+  const t=T(), st=S.settings, n=t.people||1, nights=Math.max(t.days-1,0);
+  const items=allItems().map(x=>x.it);
+  const stay=nights*st.stayBudget/(n>=2?2:1);
+  const fineExtra=items.filter(i=>i.c==='eat').reduce((s,i)=>s+(i.fee||0),0);
+  const food=t.days*st.budget+fineExtra;
+  const ticket=items.filter(i=>i.c!=='eat').reduce((s,i)=>s+(+i.fee||0),0);
+  let move=600; for(let d=1;d<=t.days;d++) dayLegs(d).forEach(l=>{if(l) move+=l.mode==='計程車'?l.cost/n:l.cost;});
+  const pre=700, flight=t.flight||0;
+  const rows=[['住宿',stay,`${nights} 晚 × ${money(st.stayBudget)}${n>=2?'，兩人分':''}`],['吃喝',food,`${t.days} 天 × ${money(st.budget)}${fineExtra?'，名店另加 '+money(fineExtra):''}`],['門票與體驗',ticket,'行程裡要付費的項目加總'],['交通',move,'市內移動＋機場來回'],['行前',pre,'網卡、旅遊險'],['機票',flight,flight?'你自己填的':'還沒填']];
+  return {rows,total:rows.reduce((s,r)=>s+r[1],0),n};
+}
+
+/* ========= 開一趟的對話 ========= */
+function settingsSummary(){
+  const st=S.settings, fp=foodPct(), likes=Object.keys(CAT).filter(k=>st.play[k]).sort((a,b)=>st.play[b]-st.play[a]).map(k=>CAT[k]+(st.play[k]===2?'（最愛）':''));
+  const food=Object.keys(FOOD).filter(k=>fp[k]).map(k=>`${FOOD[k][0]} ${fp[k]}%`).join('、');
+  return `住${STAY[st.stay][0]}；吃的比例是${food}，一天吃喝 ${money(st.budget)}${st.avoid.length?'，不吃'+st.avoid.join('、'):''}；喜歡${likes.join('、')||'什麼都可以'}；節奏${{slow:'慢',mid:'中等',fast:'趕'}[st.pace]}；住${HOTEL[st.base][2]}`;
+}
+const QS=[
+  {k:'purpose',q:'要去首爾對吧。這趟回來，你希望怎樣？',o:()=>Object.entries(PURPOSE)},
+  {k:'days',q:'去幾天？',o:()=>[3,4,5,6,7,8,9,10,12,14].map(d=>[d,d+' 天']),inline:1},
+  {k:'arrive',q:'第一天幾點到？',o:()=>[['am','中午前'],['pm','下午'],['eve','晚上']],inline:1},
+  {k:'leave',q:'最後一天幾點走？',o:()=>[['am','上午'],['pm','下午'],['eve','晚上']],inline:1},
+  {k:'people',q:'幾個人去？',o:()=>[[1,'我一個人'],[2,'兩個人'],[4,'三四個人']]},
+  {k:'ok',q:()=>'我照你平常的習慣排。'+settingsSummary()+'。這樣可以嗎？',o:()=>[['go','可以，幫我排'],['edit','我先調一下']]},
+];
+function onboardHTML(){
+  let h='<h1>蘿蔔旅行</h1><p class="subt">回答幾題，我幫你整趟排好。排完還可以跟我討論怎麼改</p>';
+  QS.forEach((Q,i)=>{
+    if(i>draft.i) return;
+    h+=`<div class="bub bot">${esc(typeof Q.q==='function'?Q.q():Q.q)}</div>`;
+    if(i<draft.i){const o=Q.o().find(o=>String(o[0])===String(draft.ans[Q.k])); h+=`<div class="bub me">${esc(o?o[1]:'')}</div>`;}
+    else h+=`<div class="opts${Q.inline?' inline':''}">${Q.o().map(o=>`<button data-act="ans" data-k="${Q.k}" data-v="${o[0]}">${esc(o[1])}</button>`).join('')}</div>`;
+  });
+  if(draft.i>0) h+='<button class="link" data-act="redo">從頭回答</button>';
+  return h;
+}
+
+/* ========= 跟 AI 討論行程 ========= */
+let sampleFn=null, busy=false, undoSnap=null;
+function initAI(n){ try{ if(window.claude&&claude.use){ claude.use('sample').then(f=>{sampleFn=f||null; if($('aistate')) renderChat();}).catch(()=>{}); return; } }catch(e){} if((n||0)<5) setTimeout(()=>initAI((n||0)+1),800); }
+function planText(){
+  const t=T(); let s='';
+  for(let d=1;d<=t.days;d++){ s+=`第${d}天\n`; ['am','pm','eve'].forEach(p=>{const sl=t.slots.find(x=>x.day===d&&x.part===p); if(sl.off){s+=`  ${PART[p]}: (在路上，不能排)\n`;return;} s+=`  ${PART[p]}: ${sl.items.map(i=>`[${i.id}] ${i.n}(${i.s==='L'?'大':'小'},${CAT[i.c]||i.c},${areaOf(i)})`).join('；')||'(空)'}${sl.rest?'；留白':''}\n`;}); }
+  return s;
+}
+function aiPrompt(msg){
+  const used=usedIds(), cand=P.filter(p=>!used.has(p.id)).map(p=>`[${p.id}] ${p.n}(${p.s==='L'?'大':'小'},${CAT[p.c]},${AREA[p.a]}${p.b?',要先訂':''})`).join('\n');
+  const hist=S.chat.slice(-8).map(m=>(m.r==='me'?'使用者：':'你：')+m.t).join('\n');
+  return `你是旅遊行程 app「蘿蔔旅行」裡的助手，幫一位台灣使用者調整他的首爾行程。用繁體中文、口語、簡短回答（三句內），不要用 markdown、不要用表情符號。
+
+規則：
+- 一天最多 2 個大行程。使用者堅持要超過時照做，但在 reply 裡提醒會累。
+- 第一天和最後一天只排小的。標「在路上」的時段不能排東西。
+- 同一個半天的點盡量在同一區，減少來回跑。
+- 你不知道即時資訊。營業時間、票價、是否需要預約都不要講成確定的事，說「去之前查一下」。
+- 要加新的地方時，優先從候選清單挑（用它的 id）。清單裡沒有適合的，才自己提一個真實存在的首爾地點，給中文名、韓文名、類別、大小、大概經緯度。
+- 使用者只是問問題、沒有要改行程時，ops 給空陣列。
+
+使用者的習慣：${settingsSummary()}。這趟的目的：${PURPOSE[T().purpose]}，${T().people||1} 人。
+
+目前行程（方括號裡是 id）：
+${planText()}
+還沒用到的候選：
+${cand}
+
+${hist?'前面的對話：\n'+hist+'\n\n':''}使用者現在說：${msg}
+
+只回一個 JSON 物件，不要有其他文字：
+{"reply":"給使用者看的話","ops":[...]}
+ops 可用的動作：
+{"op":"move","id":"p3","day":2,"part":"am"}        把一個行程移到某天某時段（part: am/pm/eve）
+{"op":"swapParts","day":2,"a":"am","b":"pm"}       同一天兩個時段對調
+{"op":"swapDays","a":2,"b":4}                      兩天整天對調
+{"op":"remove","id":"p3"}                          拿掉（會放進下次再來）
+{"op":"add","day":3,"part":"pm","id":"p12"}        從候選加進來
+{"op":"add","day":3,"part":"pm","place":{"n":"中文名","kr":"韓文名","c":"eat|shop|fun|sight|art|nature|cafe|night|kpop","s":"L|S","tip":"一句須知","lat":37.5,"lng":127.0}}
+{"op":"replace","id":"p3","with":"p12"}            換成候選裡的另一個（with 也可以是上面那種 place 物件）
+{"op":"rest","day":3,"part":"pm","on":true}        把某個時段設成留白或取消留白`;
+}
+let aiSeq=0;
+function mkPlace(o){
+  if(typeof o==='string'){const p=P.find(q=>q.id===o); if(!p||usedIds().has(p.id)) return null; return {...p,status:'kept',swaps:0,_fx:'pop'};}
+  if(!o||typeof o!=='object'||!o.n) return null;
+  const lat=+o.lat,lng=+o.lng, okLL=lat>33&&lat<39&&lng>124&&lng<131;
+  return {id:'ai'+Date.now()+(aiSeq++),n:String(o.n).slice(0,40),kr:String(o.kr||'').slice(0,60),a:'',s:o.s==='L'?'L':'S',c:CAT[o.c]?o.c:'sight',tip:String(o.tip||'').slice(0,80),lat:okLL?lat:null,lng:okLL?lng:null,ai:true,status:'kept',swaps:0,_fx:'pop'};
+}
+function applyOps(ops){
+  const notes=[]; if(!Array.isArray(ops)) return notes;
+  ops.slice(0,20).forEach(o=>{ try{
+    let err=null;
+    if(o.op==='move') err=moveItem(o.id,+o.day,o.part);
+    else if(o.op==='swapParts') err=swapParts(+o.day,o.a,o.b);
+    else if(o.op==='swapDays') err=swapDays(+o.a,+o.b);
+    else if(o.op==='remove'){const x=findItem(o.id); if(x) seedOut(x.it,x.s,'跟 AI 討論時拿掉的'); else err='找不到要拿掉的行程';}
+    else if(o.op==='add'){const sl=slotAt(+o.day,o.part), p=mkPlace(o.id||o.place); if(!sl) err=`第 ${o.day} 天那個時段你在路上`; else if(!p) err='要加的地方不在候選裡'; else {sl.items.push(p); if(o.part!=='eve') sl.rest=false;}}
+    else if(o.op==='replace'){const x=findItem(o.id), p=mkPlace(o.with); if(!x||!p) err='換不了，找不到其中一個'; else x.s.items[x.s.items.indexOf(x.it)]=p;}
+    else if(o.op==='rest'){const sl=slotAt(+o.day,o.part); if(sl) sl.rest=!!o.on; else err='那個時段你在路上';}
+    if(err) notes.push(err);
+  }catch(e){notes.push('有一步沒做成');} });
+  return notes;
+}
+function localBrain(msg){
+  const t=T(); let m;
+  const find=name=>allItems().find(x=>x.it.n.includes(name.trim())||name.trim().includes(x.it.n.replace(/（.*?）/g,'')));
+  if(/重排|重新排/.test(msg)) return {reply:'好，我整個重排一次。',regen:true};
+  if((m=msg.match(/第\s*(\d+)\s*天.*第\s*(\d+)\s*天.*(對調|交換|互換)/))) return {reply:`第 ${m[1]} 天和第 ${m[2]} 天整天對調了。`,ops:[{op:'swapDays',a:+m[1],b:+m[2]}]};
+  if((m=msg.match(/第\s*(\d+)\s*天.*(對調|交換|互換)/))) return {reply:`第 ${m[1]} 天的上午和下午對調了。`,ops:[{op:'swapParts',day:+m[1],a:'am',b:'pm'}]};
+  if((m=msg.match(/把?(.+?)(?:移|搬|挪|改|放)到?第\s*(\d+)\s*天\s*(上午|下午|晚上)?/))){const x=find(m[1]); if(x){const part={上午:'am',下午:'pm',晚上:'eve'}[m[3]]||x.s.part; return {reply:`「${x.it.n}」移到第 ${m[2]} 天${PART[part]}了。`,ops:[{op:'move',id:x.it.id,day:+m[2],part}]};}}
+  if((m=msg.match(/(?:不要|拿掉|刪掉|移除|不去)(.+)/))){const x=find(m[1].replace(/了|吧|。/g,'')); if(x) return {reply:`「${x.it.n}」拿掉了，放進下次再來。`,ops:[{op:'remove',id:x.it.id}]};}
+  if((m=msg.match(/第\s*(\d+)\s*天.*(輕鬆|少一點|太累|太滿)/))){const x=dayStops(+m[1]).find(x=>x.it.s==='L')||dayStops(+m[1])[0]; if(x) return {reply:`第 ${m[1]} 天拿掉「${x.it.n}」，鬆一點。`,ops:[{op:'remove',id:x.it.id}]};}
+  return {reply:'這裡現在沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「重排」。在 Claude 裡打開這一頁，就能用講的隨便改。',ops:[]};
+}
+async function askAI(msg){
+  if(busy||!T()) return; busy=true;
+  S.chat.push({r:'me',t:msg}); renderChat(true);
+  const snap=JSON.stringify({trip:S.trip,seeds:S.seeds});
+  let out=null, viaAI=false;
+  if(sampleFn){
+    try{
+      const prompt=aiPrompt(msg);
+      try{ out=await sampleFn.json(prompt,{cache:false}); }
+      catch(e){ if(e&&(e.code==='not_granted'||e.code==='rate_limited')) throw e; const r=await sampleFn(prompt,{cache:false}); out=JSON.parse((r.text.match(/\{[\s\S]*\}/)||['{}'])[0]); }
+      if(typeof out==='string') out=JSON.parse((out.match(/\{[\s\S]*\}/)||['{}'])[0]);
+      viaAI=true;
+    }catch(e){
+      out=null;
+      if(e&&e.code==='rate_limited') S.chat.push({r:'sys',t:'AI 現在太忙，等一下再試。先用內建的簡單指令。'});
+      else if(e&&e.code==='not_granted'){sampleFn=null; S.chat.push({r:'sys',t:'沒有開放 AI，先用內建的簡單指令。'});}
+      else S.chat.push({r:'sys',t:'AI 這次沒回好，先用內建的簡單指令。'});
+    }
+  }
+  if(!out) out=localBrain(msg);
+  if(out.regen){const t=T(); draft.ans={purpose:t.purpose,days:t.days,arrive:t.arrive,leave:t.leave,people:t.people}; const fl=t.flight; S.trip=generate(draft.ans,true); S.trip.flight=fl; allItems().forEach(x=>x.it._fx='pop'); undoSnap=snap;}
+  const notes=applyOps(out.ops);
+  if(out.ops&&out.ops.length) undoSnap=snap;
+  S.chat.push({r:'ai',t:String(out.reply||'好了。').slice(0,600)});
+  [...notes,...warnings()].forEach(n=>S.chat.push({r:'sys',t:n}));
+  if(viaAI&&out.ops&&out.ops.some(o=>o.place||(o.with&&typeof o.with==='object'))) S.chat.push({r:'sys',t:'AI 自己加的地點沒有核對過，去之前查一下。'});
+  S.chat=S.chat.slice(-40); busy=false; render(); renderChat();
+}
+const CHIPS=['第 2 天上午下午對調','第 3 天輕鬆一點','多排一點咖啡廳','有一天想整天逛街','雨天備案是什麼','重排'];
+function chatBody(wait){
+  const th=S.chat.length?S.chat.map(m=>`<div class="bub ${m.r==='me'?'me':m.r==='sys'?'sys':'bot'}">${esc(m.t)}</div>`).join(''):'<div class="bub bot">行程排好了。想怎麼改直接說，例如哪天太滿、哪個不想去、想多一點什麼。我改完你再看。</div>';
+  return `<div class="thread" id="thread">${th}${wait?'<div class="bub bot">想一下…</div>':''}</div>
+   <div class="scrollx" style="margin-top:6px">${CHIPS.map(c=>`<button class="mini" style="margin:0" data-act="chip" data-t="${esc(c)}">${esc(c)}</button>`).join('')}${undoSnap?'<button class="mini" style="margin:0" data-act="undo">復原上一步</button>':''}</div>
+   <div class="sendrow"><input type="text" id="msg" placeholder="跟我說要怎麼改" maxlength="200" autocomplete="off" enterkeyhint="send"><button data-act="send" aria-label="送出">↑</button></div>
+   <div class="small" id="aistate" style="margin-top:8px">${sampleFn?'已接上 AI。它不知道即時的營業時間和票價。':'這裡沒接上 AI，只聽得懂上面那幾種說法。'}</div>`;
+}
+function renderChat(wait){const b=$('chatbox'); if(!b) return; b.innerHTML=chatBody(wait); const t=$('thread'); if(t) t.scrollTop=t.scrollHeight;}
+
+/* ========= 畫面：主頁 ========= */
+function fieldHTML(hl){
+  const t=T(); let h='<div class="field"><div></div><div class="hd">上午</div><div class="hd">下午</div><div class="hd">晚上</div>', n=0;
+  for(let d=1;d<=t.days;d++){
+    h+=`<div class="dl">D${d}</div>`;
+    t.slots.filter(s=>s.day===d).forEach(s=>{
+      const i=t.slots.indexOf(s);
+      if(s.off){h+='<div class="hole off"><span class="offt">在路上</span></div>';return;}
+      h+=`<button class="hole${hl&&s.items.some(it=>it.id===hl)?' cur':''}" data-act="slot" data-i="${i}">${s.rest?'<span class="rest">留白</span>':''}${s.items.filter(it=>it.status!=='pulled').slice(0,3).map(it=>{const fx=it._fx==='pop'?` style="animation-delay:${Math.min(n++,30)*40}ms"`:'';return svg(it.s,it._fx||'').replace('<svg','<svg'+fx);}).join('')}</button>`;
+    });
+  }
+  return h+'</div>';
+}
+function tags(it){
+  let h=`<span class="tag">${it.s==='L'?'大行程':'小行程'}</span>`;
+  if(it.b) h+='<span class="tag book">要先訂</span>';
+  if(it.fee) h+=`<span class="tag">約 ${money(it.fee)}</span>`;
+  h+=it.mine?'<span class="tag ok">自己加的</span>':it.ai?'<span class="tag">AI 加的・未核對</span>':'<span class="tag">未核對</span>';
+  return h;
+}
+function renderMain(){
+  const m=$('main'), t=T();
+  if(!t){m.innerHTML=onboardHTML();return;}
+  const all=allItems();
+  if(t.phase==='plan'){
+    const c=cost(), big=all.filter(x=>x.it.s==='L').length, books=all.filter(x=>x.it.b).length;
+    m.innerHTML=`<h1>首爾 ${t.days} 天</h1><p class="subt">${halfDays()} 個半天・${all.length} 顆蘿蔔・${t.slots.filter(s=>s.rest).length} 段留白</p>
+      <div class="card"><div class="name">排好了</div>
+        <div class="note">${big} 個大行程、${all.length-big} 個小的${books?`，其中 ${books} 個要先訂`:''}。每人粗估 ${money(c.total*0.85)}–${money(c.total*1.15)}${t.flight?'':'（不含機票）'}。</div>
+        <button class="btn" data-act="chat">跟 AI 討論怎麼改</button>
+        <div class="pair"><button class="pill" data-act="see">看每天怎麼走</button><button class="pill" data-act="depart">我出發了</button></div></div>
+      <div class="card">${fieldHTML()}<div class="small" style="margin-top:10px">一顆蘿蔔是一個行程，白的是大行程。點一個坑可以看內容、換掉或移走</div></div>
+      <button class="link" data-act="add">自己丟一個點進來</button>
+      <button class="link" data-act="newtrip">整趟重來</button>`;
+  }else{
+    const left=dayStops(t.today).filter(x=>x.it.status==='kept');
+    const allLeft=all.filter(x=>x.it.status==='kept').length;
+    let top;
+    if(left.length){
+      const {it,s}=left[0];
+      top=`<div class="card"><div class="where">${PART[s.part]}・${areaOf(it)}</div><div style="display:flex;gap:12px;align-items:center;margin:8px 0 10px">${icon(it)}<div><div class="name" style="margin:0">${esc(it.n)}</div>${it.kr?`<div class="kr">${esc(it.kr)}</div>`:''}</div></div><div>${tags(it)}</div>
+        ${it.tip?`<div class="note">${esc(it.tip)}。</div>`:''}
+        <button class="btn" data-act="pull">去過了，拔起來</button>
+        <div class="pair"><button class="pill" data-act="map" data-id="${it.id}">地圖</button><button class="pill" data-act="tired">今天累</button><button class="pill" data-act="skip">不去了</button></div></div>`;
+    }else if(allLeft){
+      top=`<div class="card"><div class="name">今天的都拔完了</div><div class="note">剩下的時間是你的。</div>${t.today<t.days?'<button class="btn" data-act="next">到第 '+(t.today+1)+' 天</button>':''}</div>`;
+    }else{
+      top=`<div class="card"><div class="name">這一籃收好了</div><div class="note">回來一週內，挑一顆講給沒去的人聽。</div><button class="btn" data-act="archive">收起來，開新的一趟</button></div>`;
+    }
+    m.innerHTML=`<h1>第 ${t.today} 天</h1><p class="subt">首爾 ${t.days} 天・原型用下面的按鈕假裝換日</p>${top}
+      <div class="scrollx" style="margin:0 0 14px">${Array.from({length:t.days},(_,i)=>`<button class="dayp ${t.today===i+1?'on':''}" data-act="day" data-d="${i+1}">D${i+1}</button>`).join('')}</div>
+      <div class="card">${fieldHTML(left[0]&&left[0].it.id)}</div>
+      <button class="link" data-act="replan">回去改行程</button>`;
+  }
+  all.forEach(x=>delete x.it._fx);
+}
+
+/* ========= 畫面：其他功能頁 ========= */
+function badge(st,date){return `<span class="tag ${st==='二手核對'?'ok':''}">${st}${date?' '+date:''}</span>`;}
+function legHTML(l){return l?`<div class="leg"><i></i><span><b>${l.mode}</b>・約 ${l.km.toFixed(1)} 公里・${l.min} 分鐘</span></div>`:'<div class="leg"><i></i><span>這一段距離不明，到時候查地圖</span></div>';}
+function renderOther(){
+  const o=$('other'), t=T();
+  const tabs=[['plan','行程'],['cost','花費'],['know','須知'],['check','檢查表'],['keep','收藏']];
+  let h=`<h1>${Object.fromEntries(tabs)[S.tab]||'行程'}</h1><div class="seg" style="margin:10px 0 18px">${tabs.map(([k,v])=>`<button data-act="tab" data-k="${k}" class="${S.tab===k?'on':''}">${v}</button>`).join('')}</div>`;
+  const none='<div class="card"><div class="note">還沒有行程。回主畫面回答幾題，我就排。</div></div>';
+  if(S.tab==='plan'){
+    if(!t) h+=none;
+    else{
+      const d=Math.min(Math.max(S.planDay||1,1),t.days); S.planDay=d;
+      h+=`<div class="scrollx" style="margin-bottom:14px">${Array.from({length:t.days},(_,i)=>`<button class="dayp ${d===i+1?'on':''}" data-act="pday" data-d="${i+1}">第 ${i+1} 天</button>`).join('')}</div>`;
+      const stops=dayStops(d), ss=t.slots.filter(s=>s.day===d&&!s.off), legs=dayLegs(d), tot=legs.reduce((a,l)=>a+(l?l.min:0),0);
+      if(!ss.length) h+='<div class="card"><div class="note">這天你整天在路上，沒有排東西。</div></div>';
+      else{
+        const books=stops.filter(x=>x.it.b);
+        h+=`<div class="card"><b>${stops.length} 站・路上大約 ${tot} 分鐘</b><div class="small">${ss.filter(s=>s.rest).length?'留白：'+ss.filter(s=>s.rest).map(s=>PART[s.part]).join('、')+'。':''}${books.length?'要先訂：'+books.map(x=>esc(x.it.n)).join('、')+'。':''}${bigCount(d)>2?'大行程超過 2 個，會很累。':''}</div>
+          <div class="pair"><button class="pill on" data-act="daymap" data-d="${d}">打開地圖</button>${slotAt(d,'am')&&slotAt(d,'pm')?`<button class="pill" data-act="swapap" data-d="${d}">上午下午對調</button>`:''}</div></div><div class="card flush">`;
+        if(stops.length) h+=`<div class="row" style="min-height:44px"><div class="grow small">從${hotelPt().n}出發</div></div>`;
+        stops.forEach(({it,s},i)=>{
+          h+=legHTML(legs[i]);
+          h+=`<div class="row"><div class="grow"><div class="small">${i+1}・${PART[s.part]}・${areaOf(it)}・${kind(it)}</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:6px">${icon(it)}<div><b${it.status==='pulled'?' style="color:var(--sub);text-decoration:line-through"':''}>${esc(it.n)}</b>${it.kr?`<div class="kr">${esc(it.kr)}</div>`:''}</div></div>
+            <div style="margin-top:8px">${tags(it)}</div>
+            ${it.tip?`<div class="small">須知：${esc(it.tip)}</div>`:''}
+            <button class="mini" data-act="map" data-id="${it.id}">地圖與韓文</button><button class="mini" data-act="mv" data-id="${it.id}">移到別的時段</button><button class="mini" data-act="swap" data-id="${it.id}">換一個</button></div></div>`;
+        });
+        if(stops.length) h+=legHTML(legs[legs.length-1])+`<div class="row" style="min-height:44px"><div class="grow small">回${hotelPt().n}</div></div>`;
+        const used=usedIds(), areas=[...new Set(stops.map(x=>x.it.a).filter(a=>AREA[a]))];
+        const pool=P.filter(p=>areas.includes(p.a)&&!used.has(p.id)&&p.s==='S').slice(0,3).map(p=>p.n);
+        if(pool.length) h+=`<div class="row"><div class="grow"><div class="small">順路可去（不排時間）</div>${esc(pool.join('、'))}</div></div>`;
+        h+='</div>';
+      }
+      h+=`<div class="pair" style="margin:0 0 14px">${d>1?`<button class="pill" data-act="pday" data-d="${d-1}">‹ 前一天</button>`:''}${d<t.days?`<button class="pill" data-act="pday" data-d="${d+1}">後一天 ›</button>`:''}</div>
+        <button class="btn" data-act="chat" style="margin-top:0">跟 AI 討論怎麼改</button>`;
+      if(S.pool.length) h+=`<h2>你自己丟進來、現場再挑的</h2><div class="card">${S.pool.map(esc).join('、')}</div>`;
+      h+='<p class="small" style="padding:10px 6px 0">距離是照大概位置算的直線距離再加三成，時間是粗估。正式版會接地圖算實際路線。</p>';
+    }
+  }
+  if(S.tab==='cost'){
+    if(!t) h+=none;
+    else{
+      const c=cost(), col=['#FF9500','#34C759','#5856D6','#32ADE6','#8E8E93','#FF2D55'];
+      h+=`<div class="card"><div class="small">每人粗估</div><div style="font-size:26px;font-weight:700">${money(c.total*0.85)}–${money(c.total*1.15)}</div>
+        ${c.n>1?`<div class="small">${c.n===4?'三四個人':c.n+' 個人'}合計大約 ${money(c.total*c.n)}</div>`:''}
+        <div class="bar">${c.rows.map((r,i)=>`<span style="width:${(r[1]/c.total*100).toFixed(1)}%;background:${col[i]}"></span>`).join('')}</div>
+        ${c.rows.map((r,i)=>`<div class="sum"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col[i]};margin-right:8px"></span>${r[0]}<div class="small" style="margin-left:18px">${r[2]}</div></span><b>${money(r[1])}</b></div>`).join('')}
+        <div class="sum total"><span>合計（每人）</span><span>${money(c.total)}</span></div></div>
+      <div class="card"><b>機票</b><div style="display:flex;align-items:center;margin-top:10px"><span style="flex:1" class="small">自己填，會加進合計</span>
+        <button class="pill" style="flex:0 0 44px" data-act="fly" data-d="-1000">−</button><b style="min-width:104px;text-align:center">${money(t.flight||0)}</b><button class="pill" style="flex:0 0 44px" data-act="fly" data-d="1000">＋</button></div></div>
+      <p class="small" style="padding:0 6px">這些數字是原型裡先放的粗估，沒有核對過票價和匯率，只能看比例。住宿和吃喝的單價在設定頁改。購物不算在裡面。</p>`;
+    }
+  }
+  if(S.tab==='know'){
+    h+=`<div class="seg" style="margin:-6px 0 16px">${[['taboo','會惹毛當地人的事'],['diff','跟台灣不一樣']].map(([k,v])=>`<button data-act="sub" data-k="${k}" class="${S.subKnow===k?'on':''}">${v}</button>`).join('')}</div>`;
+    if(S.subKnow==='taboo'){
+      [3,2,1].forEach(lv=>{ h+=`<h2 style="margin-top:8px">${LV[lv][0]}</h2><div class="card flush">${TABOO.filter(r=>r[0]===lv).map(r=>`<div class="row"><div class="grow"><div>${esc(r[1])}</div><div class="small" style="margin-top:2px">${esc(r[2])}</div><div class="small" style="margin-top:6px">${badge(r[3],r[4])}來源：${esc(r[5])}</div></div></div>`).join('')}</div>`; });
+      h+='<p class="small" style="padding:0 6px">分級是照來源描述的後果排的：會被擋、被唸、被盤問的排最前面。</p>';
+    }else{
+      h+=`<div class="card flush">${DIFF.map(r=>`<div class="row"><div class="grow">${esc(r[0])}<div class="small" style="margin-top:6px">${badge(r[1],r[2])}來源：${esc(r[3])}</div></div></div>`).join('')}</div>`;
+    }
+    h+=`<p class="small" style="padding:0 6px">韓國。標「二手核對」的，是 ${V} 從旅遊媒體交叉對過，沒有直接讀官方頁。</p>`;
+  }
+  if(S.tab==='check'){
+    const done=CHECK.filter(r=>S.checks[r[0]]).length;
+    h+=`<div class="card"><b>${done}／${CHECK.length} 項好了</b><div class="bar"><span style="width:${done/CHECK.length*100}%;background:var(--leaf)"></span></div><div class="small">入境規定出發前一週請回官方再看一次。</div></div>
+      <div class="card flush">${CHECK.map(r=>`<button class="row" data-act="chk" data-k="${r[0]}"><span class="chk ${S.checks[r[0]]?'on':''}"></span><div class="grow">${esc(r[1])}<div class="small" style="margin-top:6px">${badge(r[2],r[3])}來源：${esc(r[4])}</div></div></button>`).join('')}</div>`;
+    if(t){const books=allItems().filter(x=>x.it.b); if(books.length) h+=`<h2>這趟要先訂的</h2><div class="card flush">${books.map(({it,s})=>`<button class="row" data-act="chk" data-k="b_${it.id}"><span class="chk ${S.checks['b_'+it.id]?'on':''}"></span><div class="grow">${esc(it.n)}<div class="small">第 ${s.day} 天 ${PART[s.part]}${it.tip?'・'+esc(it.tip):''}</div></div></button>`).join('')}</div>`;}
+  }
+  if(S.tab==='keep'){
+    const demo=S.seeds.some(s=>s.demo)||S.baskets.some(b=>b.demo);
+    h+=`<h2 style="margin-top:0">下次再來</h2><p class="small" style="padding:0 6px 8px">這趟排不進去、或你說先不要的點，會放在這裡，不會不見。下次去同一個國家，會先問你要不要排進去。</p>`;
+    h+=S.seeds.length?`<div class="card flush">${S.seeds.map(s=>`<div class="row"><span class="ic" style="background:var(--leaf)"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 21v-9M12 14c-5 0-7-3-7-7 5 0 7 3 7 7zM12 11c0-4 2-6 7-6 0 4-2 6-7 6z"/></svg></span><div class="grow">${esc(s.n)}${s.demo?' <span class="tag">示範</span>':''}<div class="small">${esc(s.a)}${s.why?'・'+esc(s.why):''}</div></div></div>`).join('')}</div>`:'<div class="card"><div class="note">空的。</div></div>';
+    h+=`<h2>去過的</h2><p class="small" style="padding:0 6px 8px">旅途中每去過一個點，按「拔起來」，它就收進這裡，連同你當下寫的那一句。一趟旅行一籃，回來後翻這裡就是這趟的故事。</p>`;
+    const cur=t?allItems().filter(x=>x.it.status==='pulled').map(x=>x.it):[];
+    const group=(title,items,dm)=>`<div class="card flush"><div class="row" style="min-height:48px"><div class="grow"><b>${esc(title)}</b>${dm?' <span class="tag">示範</span>':''}<div class="small">${items.length} 顆</div></div></div>${items.map(it=>`<div class="row">${icon(it)}<div class="grow">${esc(it.n)}${it.say?`<div class="small">「${esc(it.say)}」</div>`:''}</div>${svg(it.s,'ico')}</div>`).join('')}</div>`;
+    if(cur.length) h+=group('這一趟（首爾）',cur);
+    S.baskets.forEach(b=>h+=group(b.title,b.items,b.demo));
+    if(!cur.length&&!S.baskets.length) h+='<div class="card"><div class="note">空的。</div></div>';
+    if(demo) h+='<button class="link" data-act="cleardemo">清掉示範資料</button>';
+  }
+  o.innerHTML=h;
+}
+
+/* ========= 畫面：設定頁 ========= */
+function renderSet(){
+  const s=S.settings, fp=foodPct(), fc={street:'#FF9500',local:'#34C759',famous:'#FF2D55',fine:'#5856D6'};
+  const seg=(key,opts)=>`<div class="seg">${opts.map(([k,v])=>`<button data-act="set" data-key="${key}" data-k="${k}" class="${s[key]===k?'on':''}">${v}</button>`).join('')}</div>`;
+  const stepper=(act,val)=>`<button class="pill" style="flex:0 0 44px" data-act="${act}" data-d="-1">−</button><b style="min-width:104px;text-align:center">${money(val)}</b><button class="pill" style="flex:0 0 44px" data-act="${act}" data-d="1">＋</button>`;
+  $('set').innerHTML=`<h1>平常的我</h1><p class="subt">設一次就好，每趟都照這個排</p>
+   <div class="card"><b>住宿</b>${seg('stay',Object.entries(STAY).map(([k,v])=>[k,v[0]]))}
+     <div style="display:flex;align-items:center;margin-top:14px"><span style="flex:1">一晚預算</span>${stepper('stayb',s.stayBudget)}</div>
+     <p class="small" style="margin-top:14px">通常住哪一帶</p>${seg('base',Object.entries(HOTEL).map(([k,v])=>[k,v[2]]))}</div>
+   <div class="card"><b>吃</b><p class="small">四種各自選多常吃。晚餐會照下面那條的比例分</p>
+     ${Object.entries(FOOD).map(([k,v])=>`<div style="margin-top:14px"><div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:${fc[k]}"></span><b style="font-weight:600">${v[0]}</b></div><div class="small">${v[1]}</div>
+       <div class="seg">${FLV.map((l,i)=>`<button data-act="food" data-k="${k}" data-v="${i}" class="${(s.food[k]||0)===i?'on':''}">${l}</button>`).join('')}</div></div>`).join('')}
+     <div class="bar" style="margin-top:16px">${Object.keys(FOOD).map(k=>`<span style="width:${fp[k]}%;background:${fc[k]}"></span>`).join('')}</div>
+     <div class="small">${Object.keys(FOOD).filter(k=>fp[k]).map(k=>`${FOOD[k][0]} ${fp[k]}%`).join('・')}</div>
+     <div style="display:flex;align-items:center;margin-top:16px"><span style="flex:1">一天吃喝預算</span>${stepper('bud',s.budget)}</div>
+     <div style="display:flex;align-items:center;margin-top:10px"><span style="flex:1">一餐最多願意花</span>${stepper('meal',s.mealMax)}</div>
+     <p class="small" style="margin-top:14px">願意排隊多久</p>${seg('queue',[['no','不排'],['some','半小時內'],['any','值得就排']])}
+     <p class="small" style="margin-top:14px">不吃的</p><div style="margin-top:8px">${AVOID.map(a=>`<button class="lv ${s.avoid.includes(a)?'l2':''}" data-act="avoid" data-k="${a}">${a}</button>`).join('')}</div>
+     <p class="small">預算上限、排隊、不吃的，原型先記著並交給 AI；本機排程還不會照這三項篩。</p></div>
+   <div class="card"><b>喜歡做什麼</b><p class="small">點一下是喜歡，再點一下是最愛，再點取消</p><div style="margin-top:10px">${Object.entries(CAT).map(([k,v])=>`<button class="lv l${s.play[k]||0}" data-act="play" data-k="${k}">${v}${s.play[k]===2?' ♥':''}</button>`).join('')}</div></div>
+   <div class="card"><b>節奏</b>${seg('pace',[['slow','慢'],['mid','中'],['fast','趕']])}
+     <p class="small">${{slow:'一天 1 個大行程，下午留白',mid:'一天 2 個大行程，每三天一天全輕鬆',fast:'一天 2 個大行程，每格再加一個小的'}[s.pace]}。第一天和最後半天都排輕的。</p>
+     <p class="small" style="margin-top:14px">早上</p>${seg('wake',[['early','早起'],['normal','普通'],['late','睡到自然醒']])}
+     <p class="small">${s.wake==='late'?'上午不排大行程。':'上午可以排大行程。'}</p></div>
+   <div class="card"><b>怎麼移動</b>${seg('move',[['transit','地鐵公車'],['taxi','多搭計程車'],['walk','能走就走']])}
+     <p class="small">會影響行程裡每一段怎麼去，和交通費的估算。</p></div>
+   <h2>資料</h2><div class="card flush">
+     <button class="row" data-act="export"><span class="grow">複製備份</span><span class="val">›</span></button>
+     <button class="row" data-act="import"><span class="grow">貼上備份還原</span><span class="val">›</span></button>
+     <button class="row" data-act="reset" style="color:var(--red)"><span class="grow">全部清掉重來</span></button></div>
+   <p class="small" style="padding:0 6px">這是手感原型：第一版行程由本機規則排出來，景點都是候選，沒有核對過。資料只存在這支手機的瀏覽器裡。改設定後，到「跟 AI 討論」裡說「重排」才會套用。</p>`;
+}
+function render(){renderMain();renderOther();renderSet();save();}
+
+/* ========= 彈出卡、提示 ========= */
+function openSheet(html){stopMap();$('sheet').innerHTML='<div class="grab"></div>'+html;$('sheet').classList.add('on');$('back').classList.add('on');$('pages').classList.add('lock');$('sheet').scrollTop=0;}
+function closeSheet(){stopMap();$('sheet').classList.remove('on');$('back').classList.remove('on');$('pages').classList.remove('lock');}
+let tt; function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2000);}
+function grow(shuffle){
+  $('main').innerHTML='<div class="loading">正在排…</div>';
+  setTimeout(()=>{S.trip=generate(draft.ans,shuffle); S.planDay=1; S.chat=[]; undoSnap=null; allItems().forEach(x=>x.it._fx='pop'); render(); toast('排好了，整塊田都種滿了。');},650);
+}
+
+/* ========= 動作 ========= */
+let addDraft=null, pulling=null, mvDraft=null;
+const ACT={
+  ans(el){
+    const k=el.dataset.k, v=el.dataset.v;
+    if(k==='ok'){ if(v==='edit'){goPage(2);toast('調好之後滑回來。');return;} grow(false); return; }
+    draft.ans[k]=(k==='days'||k==='people')?+v:v; draft.i++; renderMain();
+    requestAnimationFrame(()=>{const p=$('pMain');p.scrollTo({top:p.scrollHeight,behavior:'smooth'});});
+  },
+  redo(){draft={i:0,ans:{}};renderMain();},
+  see(){S.tab='plan';render();goPage(0);},
+  chat(){openSheet(`<h3>跟 AI 討論行程</h3><div id="chatbox">${chatBody()}</div><button class="link" data-act="close">關掉，看改好的行程</button>`); const t=$('thread'); if(t) t.scrollTop=t.scrollHeight;},
+  send(){const i=$('msg'); if(!i) return; const v=i.value.trim(); if(!v||busy) return; askAI(v);},
+  chip(el){if(!busy) askAI(el.dataset.t);},
+  undo(){if(!undoSnap) return; const o=JSON.parse(undoSnap); S.trip=o.trip; S.seeds=o.seeds; undoSnap=null; S.chat.push({r:'sys',t:'復原了上一步。'}); render(); renderChat();},
+  newtrip(){openSheet(`<h3>整趟重來？</h3><div class="card"><div class="note">這份行程會不見，設定和收藏會留著。</div></div><button class="btn" data-act="newOk">重來</button><button class="link" data-act="close">取消</button>`);},
+  newOk(){S.trip=null;S.chat=[];draft={i:0,ans:{}};closeSheet();render();},
+  depart(){T().phase='trip';T().today=1;render();toast('定了。路上不用再比了。');},
+  replan(){T().phase='plan';render();},
+  slot(el){
+    const s=T().slots[+el.dataset.i];
+    openSheet(`<h3>第 ${s.day} 天 ${PART[s.part]}</h3>${s.items.map(it=>`<div class="card"><div style="display:flex;gap:12px;align-items:center">${icon(it)}<div><b>${esc(it.n)}</b>${it.kr?`<div class="kr">${esc(it.kr)}</div>`:''}<div class="small">${kind(it)}・${areaOf(it)}</div></div></div><div style="margin-top:10px">${tags(it)}</div>${it.tip?`<div class="small">須知：${esc(it.tip)}</div>`:''}
+      ${it.status==='kept'?`<div class="pair"><button class="pill" data-act="map" data-id="${it.id}">地圖</button><button class="pill" data-act="mv" data-id="${it.id}">移走</button><button class="pill" data-act="swap" data-id="${it.id}">換一個</button></div><button class="link" data-act="later" data-id="${it.id}">這次不去，放到下次再來</button>`:''}</div>`).join('')}${s.rest?'<div class="card"><b>留白</b><div class="small">這段不排東西</div></div>':''}${!s.items.length&&!s.rest?'<div class="card"><div class="note">空坑</div></div>':''}<button class="link" data-act="close">關掉</button>`);
+  },
+  later(el){const x=findItem(el.dataset.id); if(!x) return; seedOut(x.it,x.s); closeSheet(); render(); toast('放到「下次再來」了。');},
+  mv(el){
+    const x=findItem(el.dataset.id); if(!x) return; mvDraft={id:x.it.id,day:x.s.day,part:x.s.part}; ACT.mvShow();
+  },
+  mvShow(){
+    const x=findItem(mvDraft.id), t=T(); if(!x) return;
+    openSheet(`<h3>把「${esc(x.it.n)}」移到</h3><div class="scrollx">${Array.from({length:t.days},(_,i)=>`<button class="dayp ${mvDraft.day===i+1?'on':''}" data-act="mvd" data-d="${i+1}">第 ${i+1} 天</button>`).join('')}</div>
+      <div class="pair" style="margin-top:14px">${['am','pm','eve'].map(p=>{const ok=slotAt(mvDraft.day,p);return `<button class="pill ${mvDraft.part===p&&ok?'on':''}" ${ok?`data-act="mvp" data-p="${p}"`:'style="opacity:.35"'}>${PART[p]}${ok?'':'（在路上）'}</button>`;}).join('')}</div>
+      <p class="small" style="padding:10px 6px 0">第 ${mvDraft.day} 天現在有 ${bigCount(mvDraft.day)} 個大行程、${dayStops(mvDraft.day).length} 站。</p>
+      <button class="btn" data-act="mvOk">移過去</button><button class="link" data-act="close">取消</button>`);
+  },
+  mvd(el){mvDraft.day=+el.dataset.d; if(!slotAt(mvDraft.day,mvDraft.part)){const p=['am','pm','eve'].find(p=>slotAt(mvDraft.day,p)); if(p) mvDraft.part=p;} ACT.mvShow();},
+  mvp(el){mvDraft.part=el.dataset.p; ACT.mvShow();},
+  mvOk(){const err=moveItem(mvDraft.id,mvDraft.day,mvDraft.part); closeSheet(); if(err){toast(err);return;} S.planDay=mvDraft.day; render(); const w=warnings(); toast(w[0]||`移到第 ${mvDraft.day} 天${PART[mvDraft.part]}了。`);},
+  swapap(el){const err=swapParts(+el.dataset.d,'am','pm'); render(); toast(err||'上午和下午對調了。');},
+  pday(el){S.planDay=+el.dataset.d;render();$('pOther').scrollTop=0;},
+  daymap(el){openMap(+el.dataset.d);},
+  locate(){
+    if(!Lmap) return; if(!navigator.geolocation){toast('這支手機沒開放定位。');return;}
+    toast('找你在哪…');
+    let me=null;
+    watchId=navigator.geolocation.watchPosition(p=>{const ll=[p.coords.latitude,p.coords.longitude]; if(!Lmap) return; if(!me){me=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="mk me"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(Lmap).bindPopup('你在這裡'); Lmap.setView(ll,14);} else me.setLatLng(ll);},
+      ()=>toast('拿不到位置。到設定裡允許這個網頁用定位。'),{enableHighAccuracy:true,maximumAge:10000,timeout:15000});
+  },
+  fit(){if(Lmap&&Lmap._fitAll) Lmap._fitAll();},
+  swap(el){
+    const x=findItem(el.dataset.id); if(!x) return; const {it}=x;
+    if(it.swaps>=3){openSheet(`<h3>先停一下</h3><div class="card"><div class="note">這個坑已經換過三輪了。前面那幾個都合你的條件，挑一個就好。想要完全不同的，到「跟 AI 討論」裡直接說。</div></div><button class="btn" data-act="close">好</button>`);return;}
+    const used=usedIds(), w=weights(T().purpose), ar=AREA[it.a]?[it.a,...ADJ[it.a]]:Object.keys(AREA);
+    const alts=P.filter(p=>!used.has(p.id)&&ar.includes(p.a)&&p.s===it.s&&(it.c!=='eat'||p.c==='eat')).sort((a,b)=>w[b.c]-w[a.c]).slice(0,3);
+    if(!alts.length){toast('這一區沒有別的候選了。');return;}
+    openSheet(`<h3>把「${esc(it.n)}」換成？</h3><div class="card flush">${alts.map(p=>`<button class="row" data-act="swapTo" data-id="${p.id}" data-from="${it.id}">${icon(p)}<div class="grow">${esc(p.n)}<div class="small">${kind(p)}・${AREA[p.a]}${p.b?'・要先訂':''}${p.fee?'・約 '+money(p.fee):''}</div></div><span class="val">›</span></button>`).join('')}</div><button class="link" data-act="close">不換了</button>`);
+  },
+  swapTo(el){
+    const x=findItem(el.dataset.from), p=P.find(q=>q.id===el.dataset.id); if(!x||!p) return;
+    x.s.items[x.s.items.indexOf(x.it)]={...p,status:'kept',swaps:x.it.swaps+1,_fx:'pop'}; closeSheet(); render(); toast('換好了。');
+  },
+  map(el){
+    const x=findItem(el.dataset.id); if(!x) return; const it=x.it;
+    if(!it.kr){openSheet(`<h3>${esc(it.n)}</h3><div class="card"><div class="note">${it.mine?'這是你自己加的點，原型不知道它在哪。':'這一項原型只排到「哪一區、吃哪一種」，還沒有指定店家。'}正式版會由 AI 給店名、韓文地址和地圖連結。</div></div><button class="btn" data-act="close">好</button>`);return;}
+    const q=encodeURIComponent(it.kr);
+    openSheet(`<h3>${esc(it.n)}</h3><div class="card"><div class="small">韓文名稱（給司機或路人看）</div><div class="big">${esc(it.kr)}</div>
+      <div class="pair" style="margin-top:0"><button class="pill" data-act="copy" data-t="${esc(it.kr)}">複製韓文</button><button class="pill" data-act="show" data-t="${esc(it.kr)}">放大給司機看</button></div></div>
+      <div class="card flush">
+        <a class="row" href="https://map.naver.com/p/search/${q}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="grow">用 Naver 地圖找路<div class="small">韓國當地最常用，會顯示你的位置</div></span><span class="val">›</span></a>
+        <a class="row" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="grow">用 Google 地圖開</span><span class="val">›</span></a>
+        <a class="row" href="https://maps.apple.com/?q=${q}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><span class="grow">用 Apple 地圖開</span><span class="val">›</span></a></div>
+      <p class="small" style="padding:0 6px">原型只有韓文名稱，沒有門牌地址。正式版會從地圖資料帶出完整韓文地址。</p><button class="link" data-act="close">關掉</button>`);
+  },
+  copy(el){const t=el.dataset.t; try{navigator.clipboard.writeText(t).then(()=>toast('複製了：'+t),()=>toast('複製不了，長按上面的韓文。'));}catch(e){toast('複製不了，長按上面的韓文。');}},
+  show(el){openSheet(`<div class="card"><div class="big" style="font-size:54px;padding:60px 8px">${esc(el.dataset.t)}</div><div class="small" style="text-align:center">여기로 가 주세요（請到這裡）</div></div><button class="btn" data-act="close">好</button>`);},
+  add(){addDraft={};openSheet(`<h3>想去哪？</h3><input type="text" id="addName" placeholder="店名或地方" maxlength="30" autocomplete="off"><button class="btn" data-act="add2">下一步</button>`);setTimeout(()=>{const i=$('addName');i&&i.focus();},300);},
+  add2(){const v=($('addName').value||'').trim(); if(!v){toast('先打個名字。');return;} addDraft.n=v;
+    openSheet(`<h3>${esc(v)}</h3><div class="card"><p class="q">換一個類似的地方，可以嗎？</p></div><div class="opts"><button data-act="add3" data-k="1">可以</button><button data-act="add3" data-k="0">不行，就是要這個</button></div>`);},
+  add3(el){
+    if(el.dataset.k==='1'){S.pool.push(addDraft.n);closeSheet();render();toast('放進「順路可去」，現場想到再去。');return;}
+    openSheet(`<h3>${esc(addDraft.n)}</h3><div class="card"><p class="q">它有非去不可的時間嗎？</p><p class="small">例如訂位、定時票、只有某天開</p></div><div class="opts"><button data-act="add4" data-k="1">有</button><button data-act="add4" data-k="0">沒有</button></div>`);},
+  add4(el){
+    const t=T();
+    const slot=t.slots.filter(s=>!s.off&&s.part!=='eve'&&s.day>1&&s.day<t.days&&bigCount(s.day)<2).sort((x,y)=>x.items.length-y.items.length)[0];
+    const it={id:'m'+Date.now(),n:addDraft.n,kr:'',a:'',s:'L',c:'sight',b:el.dataset.k==='1'?1:0,mine:true,status:'kept',swaps:0,_fx:'pop'};
+    closeSheet();
+    if(slot){slot.items.push(it);slot.rest=false;S.planDay=slot.day;render();toast(`種在第 ${slot.day} 天${PART[slot.part]}${it.b?'，記得訂好時間':''}。`);}
+    else{S.seeds.unshift({n:it.n,a:'自己加的',why:'坑滿了'});render();toast('坑滿了，先放到下次再來。');}
+  },
+  day(el){T().today=+el.dataset.d;render();},
+  next(){T().today++;render();},
+  pull(){
+    const x=dayStops(T().today).map(x=>x.it).find(it=>it.status==='kept'); if(!x) return;
+    pulling=x; x._fx='pull'; renderMain();
+    setTimeout(()=>openSheet(`<h3>${esc(x.n)}</h3><div class="card"><p class="q">這裡，最想講的一件事？</p><p class="small">一句就好，不寫也可以</p></div><input type="text" id="say" maxlength="60" autocomplete="off" placeholder="例如：湯比想像中清"><button class="btn" data-act="pullOk">收進籃子</button>`),450);
+  },
+  pullOk(){if(!pulling) return; pulling.say=($('say').value||'').trim(); pulling.status='pulled'; pulling=null; closeSheet(); render(); toast(pick(PULL));},
+  skip(){const x=dayStops(T().today).find(x=>x.it.status==='kept'); if(x) seedOut(x.it,x.s,'旅途中說不去了'); render(); toast('好，放到下次再來。');},
+  tired(){
+    const x=dayStops(T().today).find(x=>x.it.status==='kept'&&x.it.s==='L'); if(x) seedOut(x.it,x.s,'那天太累');
+    render(); toast(x?'大的那個先放到下次再來，今天挑輕鬆的就好。':'今天本來就沒排大的，慢慢來。');
+  },
+  archive(){const t=T(); S.baskets.unshift({title:`首爾 ${t.days} 天`,items:allItems().filter(x=>x.it.status==='pulled').map(x=>({n:x.it.n,s:x.it.s,c:x.it.c,ic:x.it.ic,say:x.it.say}))}); S.trip=null; S.chat=[]; draft={i:0,ans:{}}; render();},
+  cleardemo(){S.seeds=S.seeds.filter(s=>!s.demo);S.baskets=S.baskets.filter(b=>!b.demo);render();},
+  tab(el){S.tab=el.dataset.k;render();$('pOther').scrollTop=0;},
+  sub(el){S.subKnow=el.dataset.k;render();},
+  chk(el){S.checks[el.dataset.k]=!S.checks[el.dataset.k];render();},
+  set(el){const k=el.dataset.key; S.settings[k]=el.dataset.k; if(k==='stay') S.settings.stayBudget=STAY[el.dataset.k][1]; render();},
+  food(el){S.settings.food[el.dataset.k]=+el.dataset.v;render();},
+  avoid(el){const a=S.settings.avoid,k=el.dataset.k,i=a.indexOf(k); if(i>=0) a.splice(i,1); else a.push(k); render();},
+  bud(el){S.settings.budget=Math.min(10000,Math.max(500,S.settings.budget+500*el.dataset.d));render();},
+  meal(el){S.settings.mealMax=Math.min(20000,Math.max(300,S.settings.mealMax+(S.settings.mealMax<2000?300:1000)*el.dataset.d));render();},
+  stayb(el){S.settings.stayBudget=Math.min(20000,Math.max(300,S.settings.stayBudget+(S.settings.stayBudget<1500?300:500)*el.dataset.d));render();},
+  fly(el){T().flight=Math.min(80000,Math.max(0,(T().flight||0)+ +el.dataset.d));render();},
+  play(el){const p=S.settings.play,k=el.dataset.k; p[k]=((p[k]||0)+1)%3; if(!p[k]) delete p[k]; render();},
+  export(){
+    const txt=JSON.stringify(S);
+    const show=()=>openSheet(`<h3>備份</h3><textarea readonly>${esc(txt)}</textarea><p class="small">長按全選後複製，貼到備忘錄存起來。</p><button class="btn" data-act="close">好</button>`);
+    try{navigator.clipboard.writeText(txt).then(()=>toast('備份已複製，貼到備忘錄存起來。'),show);}catch(e){show();}
+  },
+  import(){openSheet(`<h3>貼上備份</h3><textarea id="bkin" placeholder="把之前複製的備份貼在這裡"></textarea><button class="btn" data-act="importOk">還原</button><button class="link" data-act="close">取消</button>`);},
+  importOk(){try{const o=JSON.parse($('bkin').value); if(!o.settings) throw 0; S=Object.assign(blank(),o); S.settings=Object.assign(blank().settings,o.settings); closeSheet(); render(); toast('還原好了。');}catch(e){toast('這段不是備份，再貼一次。');}},
+  reset(){openSheet(`<h3>全部清掉？</h3><div class="card"><div class="note">行程、收藏、設定都會回到一開始的樣子。</div></div><button class="btn" style="background:var(--red)" data-act="resetOk">清掉</button><button class="link" data-act="close">取消</button>`);},
+  resetOk(){S=blank();draft={i:0,ans:{}};undoSnap=null;closeSheet();render();goPage(1);},
+  close(){if(pulling){delete pulling._fx;pulling=null;renderMain();} closeSheet();},
+};
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]'); if(el&&ACT[el.dataset.act]){ACT[el.dataset.act](el);return;}
+  const d=e.target.closest('[data-go]'); if(d) goPage(+d.dataset.go);
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='msg'&&!e.isComposing){e.preventDefault();ACT.send();} });
+$('back').addEventListener('click',()=>ACT.close());
+
+/* ========= 三頁左右滑 ========= */
+const pages=$('pages'); let pageI=1;
+function goPage(i,instant){pages.scrollTo({left:i*pages.clientWidth,behavior:instant?'auto':'smooth'});}
+function syncDots(){
+  const i=Math.round(pages.scrollLeft/pages.clientWidth);
+  if(i!==pageI){pageI=i; if(i===1&&!T()) renderMain();}
+  document.querySelectorAll('#dots button').forEach((b,k)=>b.classList.toggle('on',k===i));
+}
+pages.addEventListener('scroll',syncDots,{passive:true});
+window.addEventListener('resize',()=>goPage(pageI,true));
+render(); initAI(0);
+requestAnimationFrame(()=>{goPage(1,true);syncDots();});
+</script>
+</body>
+</html>
