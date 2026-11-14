@@ -3,9 +3,10 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import { AddSheet } from './AddSheet';
 import { ChatSheet } from './ChatSheet';
 import { MapSheet } from './MapSheet';
+import { MoreSheet } from './MoreSheet';
 import { StopSheet } from './StopSheet';
 
-export type SheetReq = { kind: 'stop'; id: string } | { kind: 'chat' } | { kind: 'map'; day: number } | { kind: 'add' };
+export type SheetReq = { kind: 'stop'; id: string } | { kind: 'chat' } | { kind: 'map'; day: number } | { kind: 'add' } | { kind: 'more'; day: number };
 
 const SheetCtx = createContext<{ open: (r: SheetReq) => void; close: () => void } | null>(null);
 
@@ -19,6 +20,7 @@ export function SheetHost({ children }: { children: ReactNode }) {
       {req?.kind === 'chat' ? <ChatSheet onClose={api.close} /> : null}
       {req?.kind === 'map' ? <MapSheet day={req.day} onClose={api.close} /> : null}
       {req?.kind === 'add' ? <AddSheet onClose={api.close} /> : null}
+      {req?.kind === 'more' ? <MoreSheet day={req.day} onClose={api.close} onAdd={() => setReq({ kind: 'add' })} /> : null}
     </SheetCtx.Provider>
   );
 }
