@@ -270,7 +270,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
             <View style={{ flex: 1, gap: T.space[1] }}>
               <DomyText variant="title2">這趟走完了</DomyText>
               <DomyText variant="body" tone="secondary">
-                這趟去了 {pulled} 個地方。在「旅行」可以把它做成地圖網頁，傳給沒去的人看。
+                這趟去了 {pulled} 個地方。有去過但沒按到的，點那一站可以補。在「旅行」可以把它做成地圖網頁，傳給沒去的人看。
               </DomyText>
             </View>
             <RadishBuddy action="bow" />

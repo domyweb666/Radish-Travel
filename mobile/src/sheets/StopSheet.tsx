@@ -17,8 +17,20 @@ import { openApple, openGoogle, openNaver } from './links';
 type Mode = 'main' | 'move' | 'swap' | 'show';
 
 export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { s, act } = useApp();
+  const { s, act, phase } = useApp();
   const [mode, setMode] = useState<Mode>('main');
+  // 出發之後每一站都可以標成去過：不照順序走、忘記按、回來才補，都從這裡
+  const started = phase?.kind === 'trip' || phase?.kind === 'done';
+  const setStatus = (status: 'kept' | 'pulled', msg: string) =>
+    act(
+      (d) => {
+        const x = d.trip ? findItem(d.trip, id) : undefined;
+        if (!x) return;
+        x.it.status = status;
+        return msg;
+      },
+      { undoable: true },
+    );
   const [copied, setCopied] = useState(false);
   const trip = s.trip;
   const found = trip ? findItem(trip, id) : undefined;
@@ -209,6 +221,7 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
 
       {it.status === 'kept' ? (
         <View style={{ gap: T.space[2] }}>
+          {started ? <DomyButton title="去過了，拔起來" fullWidth onPress={() => setStatus('pulled', `「${it.n}」拔起來了。往下可以寫一句、加照片。`)} /> : null}
           <DomyButton title="移到別的時段" variant="secondary" fullWidth onPress={() => setMode('move')} />
           <DomyButton title="換一個" variant="secondary" fullWidth onPress={() => setMode('swap')} />
           <DomyButton
@@ -228,7 +241,9 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
             }}
           />
         </View>
-      ) : null}
+      ) : (
+        <DomyButton title="按錯了，這站還沒去" variant="plain" fullWidth onPress={() => setStatus('kept', `「${it.n}」改回還沒去。寫的那一句和照片都還在。`)} />
+      )}
     </Sheet>
   );
 }
