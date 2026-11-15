@@ -232,7 +232,7 @@ const GUIDE = [
   '一次只看一天。要看別天，點上面這一排。',
 ];
 
-export function TripScreen({ goSettings }: { goSettings: () => void }) {
+export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goPrep: () => void }) {
   const { s, act, phase } = useApp();
   const sheets = useSheets();
   const clearance = useTabBarClearance();
@@ -255,6 +255,8 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
   const pulled = allItems(trip).filter((x) => x.it.status === 'pulled').length;
   // 第一趟排好之後帶一次，只帶一次。回來之後的畫面沒有這三塊，不帶
   const guide = !s.guideSeen && phase.kind !== 'done';
+  // 要先訂、還沒在「行前」打勾的站。全部勾完這一條就不見
+  const unbooked = phase.kind === 'done' ? [] : allItems(trip).filter((x) => x.it.b && x.it.status === 'kept' && !s.checks['b_' + x.it.id]);
 
   return (
     <Screen scroller={scroller} scrollY={scrollY} title={`首爾 ${trip.days} 天`} bottomInset={clearance}>
@@ -280,6 +282,13 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
       ) : null}
 
       {today ? <NextStop trip={trip} day={today} /> : null}
+
+      {unbooked.length ? (
+        <Banner
+          text={`${phase.kind === 'plan' && phase.daysToGo <= 7 ? `還有 ${phase.daysToGo} 天出發。` : ''}這趟有 ${unbooked.length} 站要先訂，還沒打勾：${unbooked.map((x) => x.it.n).join('、')}。`}
+          action={{ title: '看要先訂的', onPress: goPrep }}
+        />
+      ) : null}
 
       {s.settingsDirty ? (
         <Banner

@@ -57,7 +57,7 @@ function Shell() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {ready ? (
         <>
-          {tab === 'trip' && <TripScreen goSettings={() => setTab('me')} />}
+          {tab === 'trip' && <TripScreen goSettings={() => setTab('me')} goPrep={() => setTab('prep')} />}
           {tab === 'prep' && <PrepScreen goTrip={() => setTab('trip')} />}
           {tab === 'trips' && <TripsScreen goTrip={() => setTab('trip')} />}
           {tab === 'me' && <MeScreen />}
