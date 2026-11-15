@@ -7,7 +7,7 @@ import { dayStops, seedOut, slotAt, swapParts } from '../domain/plan';
 import { archiveTrip, shareText } from '../domain/tripActions';
 import { useApp } from '../store';
 
-export function MoreSheet({ day, onClose, onAdd }: { day: number; onClose: () => void; onAdd: () => void }) {
+export function MoreSheet({ day, onClose, onAdd, onSettings }: { day: number; onClose: () => void; onAdd: () => void; onSettings: () => void }) {
   const { s, act, phase } = useApp();
   const trip = s.trip;
   if (!trip) return null;
@@ -45,6 +45,7 @@ export function MoreSheet({ day, onClose, onAdd }: { day: number; onClose: () =>
         <DomySettingsRow label="自己加一站" onPress={onAdd} />
       </DomySection>
       <DomySection title="這趟">
+        <DomySettingsRow label="行程設定" value="日期、住哪、名稱、封面" onPress={onSettings} />
         <DomySettingsRow label="傳給旅伴看" onPress={() => void Share.share({ message: shareText(trip) }).catch(() => {})} />
         <DomySettingsRow
           label="這趟不排了，收起來"

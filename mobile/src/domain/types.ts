@@ -60,6 +60,8 @@ export interface TripDraft {
   city?: 'seoul'; // 第一版只有首爾
   base?: BaseKey; // 這趟住哪一帶。沒填就用「我」裡的
   stayName?: string; // 住宿的名字，使用者自己打的，沒查證
+  name?: string; // 使用者取的名字。沒取就叫「首爾幾天」
+  cover?: string; // 封面照片，記法跟站的照片一樣（只記檔名）
   start: string; // YYYY-MM-DD
   days: number;
   arrive: Part;
@@ -117,6 +119,7 @@ export interface BasketItem {
 export interface Basket {
   id: string;
   title: string;
+  cover?: string;
   items: BasketItem[];
   start?: string;
   days?: number;

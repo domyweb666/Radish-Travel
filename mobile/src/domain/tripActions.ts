@@ -4,7 +4,7 @@ import { addDays, fmtDay } from './dates';
 import { allItems, newId, planText } from './plan';
 import type { AppState, BasketItem, Trip } from './types';
 
-export const tripTitle = (t: Pick<Trip, 'days'>) => `首爾 ${t.days} 天`;
+export const tripTitle = (t: Pick<Trip, 'days' | 'name'>) => t.name?.trim() || `首爾 ${t.days} 天`;
 
 /** 這趟去過的站，照行程順序。收起來和做地圖網頁都用這一份 */
 export function visitedOf(t: Trip): BasketItem[] {
@@ -28,7 +28,7 @@ function clearCurrent(d: AppState, keepChecks = false) {
 export function archiveTrip(d: AppState): string | undefined {
   if (!d.trip) return undefined;
   const items = visitedOf(d.trip);
-  if (items.length) d.baskets.unshift({ id: newId('b'), title: `${tripTitle(d.trip)}・${fmtDay(d.trip.start)}出發`, items, start: d.trip.start, days: d.trip.days });
+  if (items.length) d.baskets.unshift({ id: newId('b'), title: `${tripTitle(d.trip)}・${fmtDay(d.trip.start)}出發`, cover: d.trip.cover, items, start: d.trip.start, days: d.trip.days });
   // 收起來可以復原，所以勾選先不動；排下一趟時才清
   clearCurrent(d, true);
   return items.length ? `這趟去過的 ${items.length} 站收進「去過的旅行」了。` : '這趟收起來了。';

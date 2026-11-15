@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { albumHtml, sketchSvg } from '../album/albumHtml';
 import { allItems, defaultSettings, generate } from '../src/domain/plan';
 import { remindOn, remindersOf, unbookedOf } from '../src/domain/remind';
-import { archiveTrip, basketItem, openShelved, shelveCurrent, visitedOf } from '../src/domain/tripActions';
+import { archiveTrip, basketItem, openShelved, shelveCurrent, tripTitle, visitedOf } from '../src/domain/tripActions';
 import type { AppState } from '../src/domain/types';
 
 const state = (): AppState => ({
@@ -130,4 +130,16 @@ test('提醒內容：只列還沒打勾的；全部勾完就沒有提醒；其�
   const e = state();
   shelveCurrent(e);
   assert.equal(remindersOf(e, '2026-11-16').length, 1);
+});
+
+test('取了名字的一趟：標題用名字；收起來之後名字和封面跟著走', () => {
+  const d = state();
+  assert.equal(tripTitle(d.trip!), '首爾 5 天');
+  d.trip!.name = '跟媽媽的首爾';
+  d.trip!.cover = 'c1.jpg';
+  assert.equal(tripTitle(d.trip!), '跟媽媽的首爾');
+  allItems(d.trip!)[0].it.status = 'pulled';
+  archiveTrip(d);
+  assert.ok(d.baskets[0].title.startsWith('跟媽媽的首爾'));
+  assert.equal(d.baskets[0].cover, 'c1.jpg');
 });

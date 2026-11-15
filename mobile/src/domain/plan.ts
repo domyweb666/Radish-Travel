@@ -370,7 +370,7 @@ export function leg(a: Pt, b: Pt, st: Settings): Leg | null {
 export const baseOf = (t: Pick<Trip, 'base'> | null | undefined, st: Settings) => t?.base ?? st.base;
 export const hotelPt = (st: Settings, t?: Pick<Trip, 'base'> | null) => HOTEL[baseOf(t, st)];
 /** 重排時要帶回去的那幾項 */
-export const draftOf = (t: Trip): TripDraft => ({ city: t.city, base: t.base, stayName: t.stayName, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
+export const draftOf = (t: Trip): TripDraft => ({ city: t.city, base: t.base, stayName: t.stayName, name: t.name, cover: t.cover, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
 
 /** 這一天每一段：住的地方 → 第 1 站 → … → 住的地方。長度是站數＋1 */
 export function dayLegs(t: Trip, st: Settings, day: number): Array<Leg | null> {

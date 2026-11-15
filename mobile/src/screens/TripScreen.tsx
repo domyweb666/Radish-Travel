@@ -14,7 +14,7 @@ import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
 import { unbookedOf } from '../domain/remind';
-import { archiveTrip } from '../domain/tripActions';
+import { archiveTrip, tripTitle } from '../domain/tripActions';
 import type { Size, Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
 import { useApp } from '../store';
@@ -271,12 +271,13 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
   const unbooked = phase.kind === 'done' ? [] : unbookedOf(trip, s.checks);
 
   return (
-    <Screen scroller={scroller} scrollY={scrollY} title={`首爾 ${trip.days} 天`} bottomInset={clearance}>
+    <Screen scroller={scroller} scrollY={scrollY} title={tripTitle(trip)} bottomInset={clearance}>
       <DomyText variant="subheadline" tone="secondary" style={{ marginTop: -T.space[4] }}>
         {fmtDay(trip.start)}–{fmtDay(end)}
         {phase.kind === 'plan' ? `・還有 ${phase.daysToGo} 天出發` : phase.kind === 'trip' ? `・今天是第 ${phase.day} 天` : '・已經回來了'}
         {`\n住${HOTEL[baseOf(trip, s.settings)].n}一帶${trip.stayName ? '・' + trip.stayName : ''}`}
       </DomyText>
+      <DomyButton title="改日期、住哪、名稱" variant="plain" size="compact" style={{ alignSelf: 'flex-start', marginTop: -T.space[3] }} onPress={() => sheets.open({ kind: 'settings' })} />
 
       {phase.kind === 'done' ? (
         <Card>
