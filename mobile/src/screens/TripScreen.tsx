@@ -110,13 +110,23 @@ function DayCard({ trip, day, inTrip, firstRef }: { trip: Trip; day: number; inT
   const sheets = useSheets();
   const slots = trip.slots.filter((x) => x.day === day);
   const stops = dayStops(trip, day);
-  const total = dayLegs(trip, s.settings, day).reduce((n, l) => n + (l ? l.min : 0), 0);
+  const legs = dayLegs(trip, s.settings, day);
+  const total = legs.reduce((n, l) => n + (l ? l.min : 0), 0);
+  // 站與站之間那一行：怎麼去、大概多久。第一站前面那段是從住的地方出發
+  const legRow = (i: number, lead = '') => (
+    <DomyText key={`leg${i}`} variant="footnote" tone="secondary" style={{ paddingVertical: T.space[2] }}>
+      {lead}
+      {legs[i] ? `${legs[i].mode}・${legs[i].min} 分鐘（估）` : '這一段距離不明，到時候查地圖'}
+    </DomyText>
+  );
   const off = slots.filter((x) => x.off).map((x) => PART[x.part]);
   const rows: React.ReactNode[] = [];
   if (off.length) rows.push(<TextRow key="off" title={`${off.join('、')}在路上`} note="這段時間不排東西" />);
   slots.forEach((sl) => {
     if (sl.off) return;
     sl.items.forEach((it) => {
+      const at = stops.findIndex((x) => x.it.id === it.id);
+      if (at >= 0) rows.push(legRow(at, at === 0 ? '從住的地方出發・' : ''));
       const row = <StopRow key={it.id} it={it} slot={sl} showRadish={inTrip} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />;
       rows.push(
         it.id === stops[0]?.it.id ? (
@@ -130,6 +140,7 @@ function DayCard({ trip, day, inTrip, firstRef }: { trip: Trip; day: number; inT
     });
     if (!sl.items.length) rows.push(<TextRow key={sl.part} title={`${PART[sl.part]}・留白`} note="這段故意不排" />);
   });
+  if (stops.length) rows.push(legRow(stops.length, '回住的地方・'));
   return (
     <View style={{ gap: T.space[3] }}>
       <DomySection footer={stops.length ? `${stops.length} 站・路上大約 ${total} 分鐘（估）。點一站看韓文名稱、花費、怎麼去，也可以移走或換掉。` : undefined}>{rows}</DomySection>
