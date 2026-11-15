@@ -1,18 +1,18 @@
 // 「這趟」分頁。沒有行程時是開一趟；有行程時上面一排是每一天的分頁，一次只看一天。
 // 旅途中最上面多一張「下一站」。不常用的動作收在「更多」。
-import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { DomyButton, DomyScreen, DomySection, DomyText, T, useDomy, useTabBarClearance } from '@domy/design';
 import { BUDDY_SIZE, RadishBuddy, useBuddyBurst } from '../components/buddy/RadishBuddy';
 import { CatIcon } from '../components/icons';
+import { PullMoment } from '../components/PullMoment';
 import { Radish } from '../components/Radish';
 import { Banner, Card, Tag, TagRow, TextRow } from '../components/ui';
 import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
 import { archiveTrip } from '../domain/tripActions';
-import type { Slot, Stop, Trip } from '../domain/types';
+import type { Size, Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
 import { useApp } from '../store';
 import { StartTrip } from './StartTrip';
@@ -128,10 +128,24 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
   const sheets = useSheets();
   // 蘿蔔人平常站著，按「拔起來」之後歡呼一下
   const [mood, play] = useBuddyBurst('idle');
+  // 剛拔起來的那一站。有值的時候整個畫面是拔蘿蔔的那一下
+  const [pulled, setPulled] = useState<{ name: string; size: Size; line: string } | null>(null);
+  const moment = pulled ? (
+    <PullMoment
+      name={pulled.name}
+      size={pulled.size}
+      line={pulled.line}
+      onDone={() => {
+        setPulled(null);
+        play('cheer', 2.2);
+      }}
+    />
+  ) : null;
   const left = dayStops(trip, day).filter((x) => x.it.status === 'kept');
   if (!left.length) {
     return (
       <Card>
+        {moment}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3] }}>
           <View style={{ flex: 1, gap: T.space[1] }}>
             <DomyText variant="title2">今天的都拔完了</DomyText>
@@ -147,6 +161,7 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
   const { it, s: slot } = left[0];
   return (
     <Card>
+      {moment}
       <DomyText variant="footnote" tone="secondary">
         下一站・{PART[slot.part]}・{areaOf(it)}
       </DomyText>
@@ -173,13 +188,13 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
         fullWidth
         haptic={false}
         onPress={() => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          play('cheer', 2.2);
+          const line = PULL_LINES[Math.floor(Math.random() * PULL_LINES.length)];
+          setPulled({ name: it.n, size: it.s, line });
           act(
             (d) => {
               const x = d.trip ? allItems(d.trip).find((y) => y.it.id === it.id) : undefined;
               if (x) x.it.status = 'pulled';
-              return PULL_LINES[Math.floor(Math.random() * PULL_LINES.length)];
+              return `「${it.n}」拔起來了。點那一站可以寫一句、加照片。`;
             },
             { undoable: true },
           );
@@ -244,12 +259,12 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
             <View style={{ flex: 1, gap: T.space[1] }}>
               <DomyText variant="title2">這一籃收好了</DomyText>
               <DomyText variant="body" tone="secondary">
-                這趟拔了 {pulled} 顆。回來一週內，挑一顆講給沒去的人聽。
+                這趟去了 {pulled} 個地方。在「旅行」可以把它做成地圖網頁，傳給沒去的人看。
               </DomyText>
             </View>
             <RadishBuddy action="bow" />
           </View>
-          <DomyButton title="收進蘿蔔籃，開新的一趟" fullWidth onPress={() => act((d) => archiveTrip(d), { undoable: true })} />
+          <DomyButton title="收起來，開新的一趟" fullWidth onPress={() => act((d) => archiveTrip(d), { undoable: true })} />
         </Card>
       ) : null}
 

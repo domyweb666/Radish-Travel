@@ -13,6 +13,7 @@ const NOTICE_MS = 8000; // domy-ignore: 提示停留時間，不是動畫
 export const blankState = (): AppState => ({
   settings: defaultSettings(),
   trip: null,
+  shelf: [],
   seeds: [],
   pool: [],
   checks: {},

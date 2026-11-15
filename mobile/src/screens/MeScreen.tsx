@@ -94,7 +94,7 @@ export function MeScreen() {
         <DomySettingsRow label="一天吃喝" value={money(st.budget)} onPress={() => setEditing('budget')} />
       </DomySection>
 
-      <DomySection title="資料" footer="行程、蘿蔔籃、設定都只存在這支手機裡，沒有網路也看得到。換手機前先複製備份。">
+      <DomySection title="資料" footer="行程、去過的旅行、照片、設定都只存在這支手機裡，沒有網路也看得到。換手機前先複製備份；備份裡沒有照片，照片要另外留。">
         <DomySettingsRow
           label="複製備份"
           onPress={() => {
@@ -262,7 +262,7 @@ export function MeScreen() {
       </Sheet>
 
       <Sheet visible={editing === 'reset'} title="全部清掉？" onClose={close}>
-        <DomyText variant="body">行程、蘿蔔籃、下次再來、設定都會回到一開始的樣子，救不回來。想留著的話，先回上一頁按「複製備份」。</DomyText>
+        <DomyText variant="body">所有的旅行、下次再來、設定都會回到一開始的樣子，救不回來。想留著的話，先回上一頁按「複製備份」。</DomyText>
         <DomyButton
           title="清掉"
           variant="destructive"

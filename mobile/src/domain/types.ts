@@ -102,16 +102,33 @@ export interface Seed {
 }
 
 export interface BasketItem {
+  id?: string; // 還在行程裡的那一站的代號。收起來之後就只是紀錄
   n: string;
   s: Size;
   c: Cat;
   ic?: IconKey;
   say?: string;
+  kr?: string;
+  lat?: number | null;
+  lng?: number | null;
+  day?: number; // 第幾天去的
+  photos?: string[];
 }
 export interface Basket {
   id: string;
   title: string;
   items: BasketItem[];
+  start?: string;
+  days?: number;
+}
+
+/** 排好了、先放在一邊的一趟。行程、對話、要先訂的勾選都跟著它 */
+export interface Shelved {
+  id: string;
+  trip: Trip;
+  chat: ChatMsg[];
+  checks: Record<string, boolean>;
+  debugDay: number | null;
 }
 
 export interface ChatMsg {
@@ -122,7 +139,8 @@ export interface ChatMsg {
 
 export interface AppState {
   settings: Settings;
-  trip: Trip | null;
+  trip: Trip | null; // 現在打開的這一趟
+  shelf: Shelved[]; // 其他排好的
   seeds: Seed[];
   pool: string[]; // 順路可去
   checks: Record<string, boolean>;
