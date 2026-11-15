@@ -54,6 +54,11 @@ export function openShelved(d: AppState, id: string): string | undefined {
   return `切到「${tripTitle(x.trip)}・${fmtDay(x.trip.start)}出發」了。`;
 }
 
+/** 已經收起來的旅行裡的某一站。補一句、加照片時用 */
+export function basketItem(d: AppState, basketId: string, index: number): BasketItem | undefined {
+  return d.baskets.find((b) => b.id === basketId)?.items[index];
+}
+
 export function shareText(trip: Trip): string {
   const end = addDays(trip.start, trip.days - 1);
   const body = planText(trip, false, (d) => fmtDay(addDays(trip.start, d - 1)));

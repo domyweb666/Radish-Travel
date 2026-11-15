@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { albumHtml, sketchSvg } from '../album/albumHtml';
 import { allItems, defaultSettings, generate } from '../src/domain/plan';
-import { archiveTrip, openShelved, shelveCurrent, visitedOf } from '../src/domain/tripActions';
+import { archiveTrip, basketItem, openShelved, shelveCurrent, visitedOf } from '../src/domain/tripActions';
 import type { AppState } from '../src/domain/types';
 
 const state = (): AppState => ({
@@ -16,6 +16,7 @@ const state = (): AppState => ({
   baskets: [],
   settingsDirty: false,
   aiConsent: false,
+  guideSeen: false,
   debugDay: 2,
 });
 
@@ -57,6 +58,23 @@ test('收起來：去過的站帶著位置、第幾天、那一句和照片進�
   assert.deepEqual(b.items[0].photos, ['p1.jpg']);
   assert.equal(b.items[0].day, first.s.day);
   assert.equal(typeof b.items[0].lat, 'number');
+});
+
+test('收起來之後還可以補一句、加照片，別站不受影響', () => {
+  const d = state();
+  const stops = allItems(d.trip!).slice(0, 2);
+  stops.forEach((x) => (x.it.status = 'pulled'));
+  stops[0].it.say = '原本那句';
+  archiveTrip(d);
+  const id = d.baskets[0].id;
+  const second = basketItem(d, id, 1)!;
+  second.say = '後來補的';
+  second.photos = ['p1.jpg'];
+  assert.equal(d.baskets[0].items[1].say, '後來補的');
+  assert.deepEqual(d.baskets[0].items[1].photos, ['p1.jpg']);
+  assert.equal(d.baskets[0].items[0].say, '原本那句');
+  assert.equal(basketItem(d, id, 99), undefined);
+  assert.equal(basketItem(d, '沒有這趟', 0), undefined);
 });
 
 test('地圖網頁：使用者打的字不會變成網頁的程式', () => {

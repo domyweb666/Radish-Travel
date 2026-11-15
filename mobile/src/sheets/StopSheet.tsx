@@ -2,25 +2,23 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { DomyButton, DomyListRow, DomySection, DomySettingsRow, DomyText, DomyTextField, T } from '@domy/design';
+import { DomyButton, DomyListRow, DomySection, DomySettingsRow, DomyText, T } from '@domy/design';
 import { CatIcon, kindName } from '../components/icons';
-import { PhotoStrip } from '../components/PhotoStrip';
 import { Sheet } from '../components/Sheet';
 import { Card, Chip, ChipRow, Label, Tag, TagRow } from '../components/ui';
+import { VisitNote } from '../components/VisitNote';
 import { AREA, PART } from '../data/seoul';
 import { fmtDay, addDays } from '../domain/dates';
 import { PARTS, alternatives, areaOf, bigCount, dayStops, findItem, money, moveItem, replaceWith, seedOut, slotAt, warnings } from '../domain/plan';
 import type { Part } from '../domain/types';
-import { PHOTO_MAX, pickPhoto, removePhotoFile } from '../io/photos';
 import { useApp } from '../store';
 import { openApple, openGoogle, openNaver } from './links';
 
 type Mode = 'main' | 'move' | 'swap' | 'show';
 
 export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { s, act, say } = useApp();
+  const { s, act } = useApp();
   const [mode, setMode] = useState<Mode>('main');
-  const [adding, setAdding] = useState(false);
   const [copied, setCopied] = useState(false);
   const trip = s.trip;
   const found = trip ? findItem(trip, id) : undefined;
@@ -66,7 +64,7 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
           })}
         </ChipRow>
         <DomyText variant="footnote" tone="secondary">
-          第 {to.day} 天現在有 {bigCount(trip, to.day)} 個大站、{dayStops(trip, to.day).length} 站。
+          第 {to.day} 天現在有 {bigCount(trip, to.day)} 個主要景點、共 {dayStops(trip, to.day).length} 站。
         </DomyText>
         <DomyButton
           title="移過去"
@@ -159,59 +157,22 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
       </Card>
 
       {it.status === 'pulled' ? (
-        <DomyTextField
-          label="這裡最想講的一件事"
-          helper="一句就好，不寫也可以。會收在「旅行」裡這一趟的去過的。"
-          placeholder="例如：湯比想像中清"
-          maxLength={60}
-          defaultValue={it.say ?? ''}
-          onEndEditing={(e) => {
-            const say = e.nativeEvent.text.trim();
+        <VisitNote
+          say={it.say}
+          photos={it.photos ?? []}
+          onSay={(say) =>
             act((d) => {
               const x = d.trip ? findItem(d.trip, id) : undefined;
               if (x) x.it.say = say;
-            });
-          }}
+            })
+          }
+          onPhotos={(next) =>
+            act((d) => {
+              const x = d.trip ? findItem(d.trip, id) : undefined;
+              if (x) x.it.photos = next;
+            })
+          }
         />
-      ) : null}
-
-      {it.status === 'pulled' ? (
-        <Card>
-          <Label>照片</Label>
-          <PhotoStrip
-            refs={it.photos ?? []}
-            onRemove={(ref) => {
-              act((d) => {
-                const x = d.trip ? findItem(d.trip, id) : undefined;
-                if (x) x.it.photos = (x.it.photos ?? []).filter((p) => p !== ref);
-              });
-              removePhotoFile(ref);
-            }}
-          />
-          <DomyButton
-            title={adding ? '處理中…' : (it.photos?.length ?? 0) >= PHOTO_MAX ? `最多 ${PHOTO_MAX} 張` : '從相簿加一張'}
-            variant="secondary"
-            size="compact"
-            style={{ alignSelf: 'flex-start' }}
-            disabled={adding || (it.photos?.length ?? 0) >= PHOTO_MAX}
-            onPress={() => {
-              setAdding(true);
-              pickPhoto()
-                .then((ref) => {
-                  if (!ref) return;
-                  act((d) => {
-                    const x = d.trip ? findItem(d.trip, id) : undefined;
-                    if (x) x.it.photos = [...(x.it.photos ?? []), ref];
-                  });
-                })
-                .catch(() => say('這張照片加不進來，換一張試試。'))
-                .finally(() => setAdding(false));
-            }}
-          />
-          <DomyText variant="footnote" tone="secondary">
-            照片會縮小後存在這支手機裡，沒網路也看得到。不會上傳到任何地方。
-          </DomyText>
-        </Card>
       ) : null}
 
       {it.kr ? (
