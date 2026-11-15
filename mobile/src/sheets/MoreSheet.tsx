@@ -34,7 +34,7 @@ export function MoreSheet({ day, onClose, onAdd }: { day: number; onClose: () =>
                 (d) => {
                   if (!d.trip) return;
                   seedOut(d.trip, d.seeds, big.it.id, '那天想排輕一點');
-                  return `今天的大站「${big.it.n}」先放到下次再來。`;
+                  return `今天的主要景點「${big.it.n}」先放到下次再來。`;
                 },
                 { undoable: true },
               );

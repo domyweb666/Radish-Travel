@@ -66,7 +66,7 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
           })}
         </ChipRow>
         <DomyText variant="footnote" tone="secondary">
-          第 {to.day} 天現在有 {bigCount(trip, to.day)} 個大站、{dayStops(trip, to.day).length} 站。
+          第 {to.day} 天現在有 {bigCount(trip, to.day)} 個主要景點、共 {dayStops(trip, to.day).length} 站。
         </DomyText>
         <DomyButton
           title="移過去"
