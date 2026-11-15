@@ -16,9 +16,9 @@ const H = T.size.heroRing * 1.25;
 // domy-ignore: 這一段動畫自己的節奏，只在這裡用
 const MS = { fade: 160, tug: 95, settle: 220, text: 200, hold: 1100, out: 220 };
 // domy-ignore: 蘿蔔放大的倍數與拔出來那一下的大小，只在這裡用
-const SIZE = { radish: 5, pop: 1.28, rest: 1.08, scrim: 0.97, mark: 0.4 };
+const SIZE = { radish: 6.5, pop: 1.25, rest: 1.06, scrim: 1, mark: 0.4 };
 /** 埋著的時候往下沉多少、拔出來之後往上到哪 */
-const BURIED = H * 0.34;
+const BURIED = H * 0.28;
 const OUT = -H * 0.2;
 /** 土屑：往哪邊飛、飛多高、多大 */
 const CRUMBS: Array<[number, number, number]> = [[-70, 60, 7], [-38, 92, 5], [-8, 70, 4], [30, 96, 6], [66, 58, 5], [50, 30, 4], [-56, 26, 4]];
@@ -84,7 +84,7 @@ export function PullMoment({ name, size, line, onDone }: { name: string; size: S
       <Pressable accessibilityRole="button" accessibilityLabel={`${name}，${line}點一下關掉`} onPress={close} style={{ flex: 1 }}>
         <Animated.View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: c.canvas, opacity: Animated.multiply(fade, SIZE.scrim) }} />
         <Animated.View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: T.space[5], padding: T.space[6], opacity: fade }}>
-          <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
+          <View style={{ width: W, height: H, alignItems: 'center', justifyContent: 'flex-end' }}>
             <Animated.View style={{ position: 'absolute', bottom: H * 0.3, transform: [{ translateY: y }, { rotate }, { scale }] }}>
               <Radish size={size} scale={SIZE.radish} />
             </Animated.View>

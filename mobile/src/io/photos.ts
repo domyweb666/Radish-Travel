@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 
 const DIR = 'photos';
 const MAX_EDGE = 1280;
-const JPEG_QUALITY = 0.72;
+const JPEG_QUALITY = 0.6;
 /** 一站最多幾張 */
 export const PHOTO_MAX = 6;
 

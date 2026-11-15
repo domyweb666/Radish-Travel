@@ -1,7 +1,8 @@
 // 開一趟：一句一句問，點選項。先問去哪、哪天、幾天、幾點到、幾點走、幾個人、住哪。
 // 第一趟多問四題偏好（存進「我」），第二趟起照「平常的你」。
-import { useState } from 'react';
-import { View } from 'react-native';
+// 每答一題畫面自己往下捲到新的那一題；鍵盤出來時輸入框會被往上推，不會被蓋住。
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { ScrollView, View } from 'react-native';
 import { DomyButton, DomyScreen, DomyText, DomyTextField, T, useDomy, useTabBarClearance } from '@domy/design';
 import { Calendar } from '../components/Calendar';
 import { Chip, ChipRow } from '../components/ui';
@@ -77,6 +78,7 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
   const clearance = useTabBarClearance();
   const [a, setA] = useState<Answers>({});
   const [stayText, setStayText] = useState('');
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const first = !s.settings.tuned;
   const set = (patch: Answers) => setA((p) => ({ ...p, ...patch }));
 
@@ -185,8 +187,12 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
             helper="先記著，還不會用它算路線。路線照上一題選的那一帶估。"
             placeholder="例如：明洞某某飯店"
             maxLength={40}
-            value={stayText}
+            defaultValue={stayText}
             onChangeText={setStayText}
+            returnKeyType="done"
+            onSubmitEditing={() => {
+              if (stayText.trim()) set({ stayName: stayText.trim(), stayDone: true });
+            }}
           />
           <View style={{ flexDirection: 'row', gap: T.space[2] }}>
             <DomyButton title="記下來" variant="secondary" size="compact" disabled={!stayText.trim()} onPress={() => set({ stayName: stayText.trim(), stayDone: true })} />
@@ -255,9 +261,22 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
   const shown = at < 0 ? steps : steps.slice(0, at + 1);
   const done = at < 0;
 
+  // 新的一題長出來之後捲到最下面，不然它會躲在分頁列後面
+  useEffect(() => {
+    const t = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), T.motion.pressDuration);
+    return () => clearTimeout(t);
+  }, [shown.length, done]);
+
   return (
-    <DomyScreen title="蘿蔔旅行" bottomInset={clearance}>
-      <View style={{ gap: T.space[3] }}>
+    <DomyScreen title="蘿蔔旅行" scroll={false} bottomInset={0}>
+      <ScrollView
+        ref={scroller}
+        style={{ flex: 1 }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ gap: T.space[3], paddingBottom: clearance }}
+      >
         <DomyText variant="subheadline" tone="secondary">
           回答幾題，我把整趟排好。排完想改，用講的就可以。
         </DomyText>
@@ -290,7 +309,7 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
             }}
           />
         ) : null}
-      </View>
+      </ScrollView>
     </DomyScreen>
   );
 }
