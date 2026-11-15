@@ -1,11 +1,13 @@
 // 蘿蔔旅行：四個分頁（這趟／行前／旅行／我），用 Domy Design 的懸浮分頁列。
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DomyTabBar, DomyThemeProvider, useDomy } from '@domy/design';
 import { TabMe, TabPrep, TabTrip, TabTrips } from './src/components/icons';
 import { NoticeBar } from './src/components/NoticeBar';
+import { remindersOf } from './src/domain/remind';
+import { syncReminders } from './src/io/reminders';
 import { MeScreen } from './src/screens/MeScreen';
 import { PrepScreen } from './src/screens/PrepScreen';
 import { TripScreen } from './src/screens/TripScreen';
@@ -38,7 +40,12 @@ export default function App() {
 
 function Shell() {
   const { c, scheme } = useDomy();
-  const { ready } = useApp();
+  const { ready, s, today } = useApp();
+  // 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空
+  const reminders = JSON.stringify(s.remind ? remindersOf(s, today) : []);
+  useEffect(() => {
+    if (ready) void syncReminders(JSON.parse(reminders));
+  }, [ready, reminders]);
   const [tab, setTab] = useState<TabKey>('trip');
   const index = TABS.findIndex((t) => t.key === tab);
 

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { albumHtml, sketchSvg } from '../album/albumHtml';
 import { allItems, defaultSettings, generate } from '../src/domain/plan';
+import { remindOn, remindersOf, unbookedOf } from '../src/domain/remind';
 import { archiveTrip, basketItem, openShelved, shelveCurrent, visitedOf } from '../src/domain/tripActions';
 import type { AppState } from '../src/domain/types';
 
@@ -17,6 +18,7 @@ const state = (): AppState => ({
   settingsDirty: false,
   aiConsent: false,
   guideSeen: false,
+  remind: false,
   debugDay: 2,
 });
 
@@ -104,4 +106,28 @@ test('路線圖：有位置的站各一個圓點，沒位置的不畫；一站�
   assert.ok(!svg.includes('NaN'));
   assert.ok(!sketchSvg([{ n: 'a', lat: 37.58, lng: 126.98, photos: [] }]).includes('NaN'));
   assert.equal(sketchSvg([{ n: 'b', photos: [] }]), '');
+});
+
+test('提醒日：出發前七天；不到七天就明天；明天出發或已經出發就不提醒', () => {
+  assert.equal(remindOn('2026-12-01', '2026-11-16'), '2026-11-24');
+  assert.equal(remindOn('2026-12-01', '2026-11-27'), '2026-11-28');
+  assert.equal(remindOn('2026-12-01', '2026-11-30'), null);
+  assert.equal(remindOn('2026-12-01', '2026-12-02'), null);
+});
+
+test('提醒內容：只列還沒打勾的；全部勾完就沒有提醒；其他排好的那幾趟也算', () => {
+  const d = state();
+  const need = unbookedOf(d.trip!, d.checks);
+  assert.ok(need.length > 0);
+  const [r] = remindersOf(d, '2026-11-16');
+  assert.equal(r.on, '2026-11-24');
+  assert.ok(r.body.includes(`${need.length} 站`));
+  assert.ok(r.body.includes(need[0].n));
+  d.checks['b_' + need[0].id] = true;
+  assert.ok(!remindersOf(d, '2026-11-16')[0]?.body.includes(need[0].n) || need.length === 1);
+  need.forEach((x) => (d.checks['b_' + x.id] = true));
+  assert.equal(remindersOf(d, '2026-11-16').length, 0);
+  const e = state();
+  shelveCurrent(e);
+  assert.equal(remindersOf(e, '2026-11-16').length, 1);
 });

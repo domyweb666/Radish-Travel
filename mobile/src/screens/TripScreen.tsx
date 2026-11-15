@@ -13,6 +13,7 @@ import { Banner, Card, Tag, TagRow, TextRow } from '../components/ui';
 import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
+import { unbookedOf } from '../domain/remind';
 import { archiveTrip } from '../domain/tripActions';
 import type { Size, Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
@@ -256,7 +257,7 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
   // 第一趟排好之後帶一次，只帶一次。回來之後的畫面沒有這三塊，不帶
   const guide = !s.guideSeen && phase.kind !== 'done';
   // 要先訂、還沒在「行前」打勾的站。全部勾完這一條就不見
-  const unbooked = phase.kind === 'done' ? [] : allItems(trip).filter((x) => x.it.b && x.it.status === 'kept' && !s.checks['b_' + x.it.id]);
+  const unbooked = phase.kind === 'done' ? [] : unbookedOf(trip, s.checks);
 
   return (
     <Screen scroller={scroller} scrollY={scrollY} title={`首爾 ${trip.days} 天`} bottomInset={clearance}>
@@ -285,7 +286,7 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
 
       {unbooked.length ? (
         <Banner
-          text={`${phase.kind === 'plan' && phase.daysToGo <= 7 ? `還有 ${phase.daysToGo} 天出發。` : ''}這趟有 ${unbooked.length} 站要先訂，還沒打勾：${unbooked.map((x) => x.it.n).join('、')}。`}
+          text={`${phase.kind === 'plan' && phase.daysToGo <= 7 ? `還有 ${phase.daysToGo} 天出發。` : ''}這趟有 ${unbooked.length} 站要先訂，還沒打勾：${unbooked.map((x) => x.n).join('、')}。`}
           action={{ title: '看要先訂的', onPress: goPrep }}
         />
       ) : null}

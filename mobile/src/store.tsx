@@ -22,6 +22,7 @@ export const blankState = (): AppState => ({
   settingsDirty: false,
   aiConsent: false,
   guideSeen: false,
+  remind: false,
   debugDay: null,
 });
 

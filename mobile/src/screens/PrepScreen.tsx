@@ -9,6 +9,8 @@ import { Banner, Card, CheckRow, Segmented, TextRow } from '../components/ui';
 import { CHECKLIST, DIFF, DISHES, EATS, GIFTS, GIFT_RULES, PART, TABOO, TABOO_LEVEL, type Fact, type Pick } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, cost, costRange, money } from '../domain/plan';
+import { remindOn, unbookedOf } from '../domain/remind';
+import { askReminders } from '../io/reminders';
 import { useApp } from '../store';
 
 type Tab = 'todo' | 'know' | 'eat' | 'cost';
@@ -37,9 +39,12 @@ function Sources({ title, facts, onClose }: { title: string; facts: Fact[]; onCl
 }
 
 function Todo() {
-  const { s, act, phase } = useApp();
+  const { s, act, phase, say, today } = useApp();
   const [src, setSrc] = useState(false);
   const trip = s.trip;
+  // 提醒：還有沒訂的、而且還來得及提醒，才給這顆按鈕
+  const left = trip ? unbookedOf(trip, s.checks).length : 0;
+  const on = trip ? remindOn(trip.start, today) : null;
   const toggle = (k: string) => act((d) => void (d.checks[k] = !d.checks[k]));
   const books = trip ? allItems(trip).filter((x) => x.it.b) : [];
   const done = CHECKLIST.filter((r) => s.checks[r.id]).length;
@@ -62,6 +67,27 @@ function Todo() {
             />
           ))}
         </DomySection>
+      ) : null}
+      {on && left ? (
+        s.remind ? (
+          <>
+            <DomyText variant="footnote" tone="secondary">
+              {fmtDay(on)}早上 9 點會通知你還有哪幾站沒訂。在那之前全部勾完就不通知。
+            </DomyText>
+            <DomyButton title="不用提醒了" variant="plain" fullWidth onPress={() => act((d) => void (d.remind = false))} />
+          </>
+        ) : (
+          <DomyButton
+            title={`${fmtDay(on)}提醒我還沒訂的`}
+            variant="secondary"
+            fullWidth
+            onPress={async () => {
+              const r = await askReminders();
+              if (r === 'ok') act((d) => ((d.remind = true), `好，${fmtDay(on)}早上 9 點提醒你。`));
+              else say(r === 'denied' ? '通知沒有開。到 iPhone 的「設定」打開蘿蔔旅行的通知，再回來按一次。' : '網頁版沒有通知，要在手機上用。');
+            }}
+          />
+        )
       ) : null}
       <DomySection title={`行前檢查表　${done}／${CHECKLIST.length}`}>
         {CHECKLIST.map((r) => (
