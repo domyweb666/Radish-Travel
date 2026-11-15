@@ -1,18 +1,18 @@
 // 「這趟」分頁。沒有行程時是開一趟；有行程時上面一排是每一天的分頁，一次只看一天。
 // 旅途中最上面多一張「下一站」。不常用的動作收在「更多」。
-import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { DomyButton, DomyScreen, DomySection, DomyText, T, useDomy, useTabBarClearance } from '@domy/design';
 import { BUDDY_SIZE, RadishBuddy, useBuddyBurst } from '../components/buddy/RadishBuddy';
 import { CatIcon } from '../components/icons';
+import { PullMoment } from '../components/PullMoment';
 import { Radish } from '../components/Radish';
 import { Banner, Card, Tag, TagRow, TextRow } from '../components/ui';
-import { PART, PULL_LINES } from '../data/seoul';
+import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
-import { allItems, areaOf, dayLegs, dayStops, generate, seedOut } from '../domain/plan';
+import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
 import { archiveTrip } from '../domain/tripActions';
-import type { Slot, Stop, Trip } from '../domain/types';
+import type { Size, Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
 import { useApp } from '../store';
 import { StartTrip } from './StartTrip';
@@ -59,7 +59,8 @@ function DayTabs({ trip, value, today, onChange }: { trip: Trip; value: number; 
   );
 }
 
-function StopRow({ it, slot, onPress }: { it: Stop; slot: Slot; onPress: () => void }) {
+/** showRadish：旅途中才放蘿蔔，代表「這一站還沒拔」。出發前只是行程表，不放 */
+function StopRow({ it, slot, onPress, showRadish }: { it: Stop; slot: Slot; onPress: () => void; showRadish: boolean }) {
   const { c } = useDomy();
   const pulled = it.status === 'pulled';
   return (
@@ -95,12 +96,12 @@ function StopRow({ it, slot, onPress }: { it: Stop; slot: Slot; onPress: () => v
           </TagRow>
         ) : null}
       </View>
-      <Radish size={it.s} faded={pulled} />
+      {showRadish || pulled ? <Radish size={it.s} faded={pulled} /> : null}
     </Pressable>
   );
 }
 
-function DayCard({ trip, day }: { trip: Trip; day: number }) {
+function DayCard({ trip, day, inTrip }: { trip: Trip; day: number; inTrip: boolean }) {
   const { s } = useApp();
   const sheets = useSheets();
   const slots = trip.slots.filter((x) => x.day === day);
@@ -111,12 +112,12 @@ function DayCard({ trip, day }: { trip: Trip; day: number }) {
   if (off.length) rows.push(<TextRow key="off" title={`${off.join('、')}在路上`} note="這段時間不排東西" />);
   slots.forEach((sl) => {
     if (sl.off) return;
-    sl.items.forEach((it) => rows.push(<StopRow key={it.id} it={it} slot={sl} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />));
+    sl.items.forEach((it) => rows.push(<StopRow key={it.id} it={it} slot={sl} showRadish={inTrip} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />));
     if (!sl.items.length) rows.push(<TextRow key={sl.part} title={`${PART[sl.part]}・留白`} note="這段故意不排" />);
   });
   return (
     <View style={{ gap: T.space[3] }}>
-      <DomySection footer={stops.length ? `${stops.length} 站・路上大約 ${total} 分鐘（估）。點一站看韓文名稱、怎麼去，也可以移走或換掉。` : undefined}>{rows}</DomySection>
+      <DomySection footer={stops.length ? `${stops.length} 站・路上大約 ${total} 分鐘（估）。點一站看韓文名稱、花費、怎麼去，也可以移走或換掉。` : undefined}>{rows}</DomySection>
       {stops.length ? <DomyButton title="看這天的地圖" variant="secondary" fullWidth onPress={() => sheets.open({ kind: 'map', day })} /> : null}
     </View>
   );
@@ -127,10 +128,24 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
   const sheets = useSheets();
   // 蘿蔔人平常站著，按「拔起來」之後歡呼一下
   const [mood, play] = useBuddyBurst('idle');
+  // 剛拔起來的那一站。有值的時候整個畫面是拔蘿蔔的那一下
+  const [pulled, setPulled] = useState<{ name: string; size: Size; line: string } | null>(null);
+  const moment = pulled ? (
+    <PullMoment
+      name={pulled.name}
+      size={pulled.size}
+      line={pulled.line}
+      onDone={() => {
+        setPulled(null);
+        play('cheer', 2.2);
+      }}
+    />
+  ) : null;
   const left = dayStops(trip, day).filter((x) => x.it.status === 'kept');
   if (!left.length) {
     return (
       <Card>
+        {moment}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3] }}>
           <View style={{ flex: 1, gap: T.space[1] }}>
             <DomyText variant="title2">今天的都拔完了</DomyText>
@@ -146,6 +161,7 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
   const { it, s: slot } = left[0];
   return (
     <Card>
+      {moment}
       <DomyText variant="footnote" tone="secondary">
         下一站・{PART[slot.part]}・{areaOf(it)}
       </DomyText>
@@ -172,13 +188,13 @@ function NextStop({ trip, day }: { trip: Trip; day: number }) {
         fullWidth
         haptic={false}
         onPress={() => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-          play('cheer', 2.2);
+          const line = PULL_LINES[Math.floor(Math.random() * PULL_LINES.length)];
+          setPulled({ name: it.n, size: it.s, line });
           act(
             (d) => {
               const x = d.trip ? allItems(d.trip).find((y) => y.it.id === it.id) : undefined;
               if (x) x.it.status = 'pulled';
-              return PULL_LINES[Math.floor(Math.random() * PULL_LINES.length)];
+              return `「${it.n}」拔起來了。點那一站可以寫一句、加照片。`;
             },
             { undoable: true },
           );
@@ -232,6 +248,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
         <DomyText variant="subheadline" tone="secondary" style={{ flex: 1 }}>
           {fmtDay(trip.start)}–{fmtDay(end)}
           {phase.kind === 'plan' ? `・還有 ${phase.daysToGo} 天出發` : phase.kind === 'trip' ? `・今天是第 ${phase.day} 天` : '・已經回來了'}
+          {`\n住${HOTEL[baseOf(trip, s.settings)].n}一帶${trip.stayName ? '・' + trip.stayName : ''}`}
         </DomyText>
         {phase.kind === 'plan' ? <RadishBuddy action={greet} /> : null}
       </View>
@@ -242,12 +259,12 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
             <View style={{ flex: 1, gap: T.space[1] }}>
               <DomyText variant="title2">這一籃收好了</DomyText>
               <DomyText variant="body" tone="secondary">
-                這趟拔了 {pulled} 顆。回來一週內，挑一顆講給沒去的人聽。
+                這趟去了 {pulled} 個地方。在「旅行」可以把它做成地圖網頁，傳給沒去的人看。
               </DomyText>
             </View>
             <RadishBuddy action="bow" />
           </View>
-          <DomyButton title="收進蘿蔔籃，開新的一趟" fullWidth onPress={() => act((d) => archiveTrip(d), { undoable: true })} />
+          <DomyButton title="收起來，開新的一趟" fullWidth onPress={() => act((d) => archiveTrip(d), { undoable: true })} />
         </Card>
       ) : null}
 
@@ -262,8 +279,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
               act(
                 (d) => {
                   if (!d.trip) return;
-                  const { purpose, start, days: n, arrive, leave, people, flight } = d.trip;
-                  d.trip = { ...generate({ purpose, start, days: n, arrive, leave, people }, d.settings), flight };
+                  d.trip = { ...generate(draftOf(d.trip), d.settings), flight: d.trip.flight };
                   d.settingsDirty = false;
                   return '照新的設定重排了。手動改過的地方也一起重排了。';
                 },
@@ -275,7 +291,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
 
       <View style={{ gap: T.space[3] }}>
         <DayTabs trip={trip} value={shown} today={today} onChange={setDay} />
-        <DayCard trip={trip} day={shown} />
+        <DayCard trip={trip} day={shown} inTrip={phase.kind === 'trip'} />
       </View>
 
       {phase.kind !== 'done' ? (

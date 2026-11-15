@@ -43,6 +43,7 @@ export interface Stop {
   swaps: number;
   why: string; // 為什麼排這一站
   say?: string; // 那一句
+  photos?: string[]; // 去過之後加的照片，存在手機裡的檔案位置
   mine?: boolean; // 自己加的
   ai?: boolean; // AI 加的
 }
@@ -56,7 +57,9 @@ export interface Slot {
 }
 
 export interface TripDraft {
-  purpose: Purpose;
+  city?: 'seoul'; // 第一版只有首爾
+  base?: BaseKey; // 這趟住哪一帶。沒填就用「我」裡的
+  stayName?: string; // 住宿的名字，使用者自己打的，沒查證
   start: string; // YYYY-MM-DD
   days: number;
   arrive: Part;
@@ -80,6 +83,9 @@ export interface Settings {
   mealMax: number; // 0 是不限
   budget: number; // 一天吃喝
   play: Partial<Record<Cat, 1 | 2>>;
+  purposes: Purpose[]; // 旅行回來希望怎樣，可以好幾個，空的是都可以
+  tags: string[]; // 更細的興趣，先記著，接上 AI 才會用
+  wish: string; // 其他想做的，使用者自己打的
   pace: Pace;
   wake: 'early' | 'normal' | 'late';
   move: 'transit' | 'taxi' | 'walk';
@@ -96,16 +102,33 @@ export interface Seed {
 }
 
 export interface BasketItem {
+  id?: string; // 還在行程裡的那一站的代號。收起來之後就只是紀錄
   n: string;
   s: Size;
   c: Cat;
   ic?: IconKey;
   say?: string;
+  kr?: string;
+  lat?: number | null;
+  lng?: number | null;
+  day?: number; // 第幾天去的
+  photos?: string[];
 }
 export interface Basket {
   id: string;
   title: string;
   items: BasketItem[];
+  start?: string;
+  days?: number;
+}
+
+/** 排好了、先放在一邊的一趟。行程、對話、要先訂的勾選都跟著它 */
+export interface Shelved {
+  id: string;
+  trip: Trip;
+  chat: ChatMsg[];
+  checks: Record<string, boolean>;
+  debugDay: number | null;
 }
 
 export interface ChatMsg {
@@ -116,7 +139,8 @@ export interface ChatMsg {
 
 export interface AppState {
   settings: Settings;
-  trip: Trip | null;
+  trip: Trip | null; // 現在打開的這一趟
+  shelf: Shelved[]; // 其他排好的
   seeds: Seed[];
   pool: string[]; // 順路可去
   checks: Record<string, boolean>;

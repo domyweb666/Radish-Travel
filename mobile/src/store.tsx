@@ -13,6 +13,7 @@ const NOTICE_MS = 8000; // domy-ignore: 提示停留時間，不是動畫
 export const blankState = (): AppState => ({
   settings: defaultSettings(),
   trip: null,
+  shelf: [],
   seeds: [],
   pool: [],
   checks: {},
@@ -31,7 +32,11 @@ export function hydrate(raw: string | null): AppState {
     const o = JSON.parse(raw) as Partial<AppState>;
     if (!o || typeof o !== 'object' || !o.settings) return blankState();
     const b = blankState();
-    return { ...b, ...o, settings: { ...b.settings, ...o.settings } };
+    const st = { ...b.settings, ...o.settings };
+    // 舊資料：「這趟想怎樣」原本記在行程上、只能選一個，現在搬到設定、可以好幾個
+    const old = (o.trip as { purpose?: Settings['purposes'][number] } | null | undefined)?.purpose;
+    if (old && !o.settings.purposes) st.purposes = [old];
+    return { ...b, ...o, settings: st };
   } catch {
     return blankState();
   }

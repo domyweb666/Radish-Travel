@@ -1,15 +1,15 @@
-// 蘿蔔旅行：四個分頁（這趟／行前／蘿蔔籃／我），用 Domy Design 的懸浮分頁列。
+// 蘿蔔旅行：四個分頁（這趟／行前／旅行／我），用 Domy Design 的懸浮分頁列。
 import { useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DomyTabBar, DomyThemeProvider, useDomy } from '@domy/design';
-import { TabBasket, TabMe, TabPrep, TabTrip } from './src/components/icons';
+import { TabMe, TabPrep, TabTrip, TabTrips } from './src/components/icons';
 import { NoticeBar } from './src/components/NoticeBar';
-import { BasketScreen } from './src/screens/BasketScreen';
 import { MeScreen } from './src/screens/MeScreen';
 import { PrepScreen } from './src/screens/PrepScreen';
 import { TripScreen } from './src/screens/TripScreen';
+import { TripsScreen } from './src/screens/TripsScreen';
 import { SheetHost } from './src/sheets/host';
 import { AppProvider, useApp } from './src/store';
 import { radishTheme } from './src/theme';
@@ -17,7 +17,7 @@ import { radishTheme } from './src/theme';
 const TABS = [
   { key: 'trip', title: '這趟', Icon: TabTrip },
   { key: 'prep', title: '行前', Icon: TabPrep },
-  { key: 'basket', title: '蘿蔔籃', Icon: TabBasket },
+  { key: 'trips', title: '旅行', Icon: TabTrips },
   { key: 'me', title: '我', Icon: TabMe },
 ] as const;
 type TabKey = (typeof TABS)[number]['key'];
@@ -59,7 +59,7 @@ function Shell() {
         <>
           {tab === 'trip' && <TripScreen goSettings={() => setTab('me')} />}
           {tab === 'prep' && <PrepScreen goTrip={() => setTab('trip')} />}
-          {tab === 'basket' && <BasketScreen goTrip={() => setTab('trip')} />}
+          {tab === 'trips' && <TripsScreen goTrip={() => setTab('trip')} />}
           {tab === 'me' && <MeScreen />}
           <NoticeBar />
           <DomyTabBar state={state} descriptors={descriptors} navigation={navigation} />

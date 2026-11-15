@@ -2,7 +2,7 @@
 // 1. 有設定 EXPO_PUBLIC_AI_ENDPOINT → 把提示詞送到自己的後端（後端再轉給 AI），拿回 {reply, ops}
 // 2. 沒設定 → 本機只聽得懂幾種固定說法
 // 兩條路最後都走 applyOps，所以改動清單和復原是同一套。
-import { AREA, CAT, PART, PLACES, PURPOSE } from '../data/seoul';
+import { AREA, CAT, PART, PLACES } from '../data/seoul';
 import {
   allItems,
   areaOf,
@@ -178,7 +178,7 @@ export function aiPrompt(msg: string, t: Trip, st: Settings, chat: ChatMsg[]): s
 - 要加新的地方時，優先從候選清單挑（用它的 id）。清單裡沒有適合的，才自己提一個真實存在的首爾地點，給中文名、韓文名、類別、大小、大概經緯度。
 - 使用者只是問問題、沒有要改行程時，ops 給空陣列。
 
-使用者的習慣：${settingsSummary(st)}。這趟的目的：${PURPOSE[t.purpose]}，${t.people || 1} 人，${t.start} 出發。
+使用者的習慣：${settingsSummary(st)}。這趟 ${t.people || 1} 人，${t.start} 出發。
 
 目前行程（方括號裡是 id）：
 ${planText(t, true)}

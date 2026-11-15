@@ -4,20 +4,23 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { DomyButton, DomyListRow, DomySection, DomySettingsRow, DomyText, DomyTextField, T } from '@domy/design';
 import { CatIcon, kindName } from '../components/icons';
+import { PhotoStrip } from '../components/PhotoStrip';
 import { Sheet } from '../components/Sheet';
 import { Card, Chip, ChipRow, Label, Tag, TagRow } from '../components/ui';
 import { AREA, PART } from '../data/seoul';
 import { fmtDay, addDays } from '../domain/dates';
 import { PARTS, alternatives, areaOf, bigCount, dayStops, findItem, money, moveItem, replaceWith, seedOut, slotAt, warnings } from '../domain/plan';
 import type { Part } from '../domain/types';
+import { PHOTO_MAX, pickPhoto, removePhotoFile } from '../io/photos';
 import { useApp } from '../store';
 import { openApple, openGoogle, openNaver } from './links';
 
 type Mode = 'main' | 'move' | 'swap' | 'show';
 
 export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) {
-  const { s, act } = useApp();
+  const { s, act, say } = useApp();
   const [mode, setMode] = useState<Mode>('main');
+  const [adding, setAdding] = useState(false);
   const [copied, setCopied] = useState(false);
   const trip = s.trip;
   const found = trip ? findItem(trip, id) : undefined;
@@ -131,9 +134,8 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
             第 {slot.day} 天{PART[slot.part]}・{areaOf(it)}・{kindName(it)}
           </DomyText>
           <TagRow>
-            <Tag label={it.s === 'L' ? '大站' : '小站'} />
+            <Tag label={it.s === 'L' ? '主要景點' : '順路小地方'} />
             {it.b ? <Tag label="要先訂" tone="accent" /> : null}
-            {it.fee ? <Tag label={`約 ${money(it.fee)}`} /> : null}
             {it.ai ? <Tag label="AI 加的・未核對" tone="warn" /> : null}
             {it.mine ? <Tag label="自己加的" /> : null}
             {it.status === 'pulled' ? <Tag label="去過了" tone="accent" /> : null}
@@ -146,17 +148,20 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
         <DomyText variant="body">{it.why}</DomyText>
       </Card>
 
-      {it.tip ? (
-        <Card>
-          <Label>須知</Label>
-          <DomyText variant="body">{it.tip}。</DomyText>
-        </Card>
-      ) : null}
+      <Card>
+        <Label>每人大概花多少</Label>
+        <DomyText variant="body">{it.fee ? `約 ${money(it.fee)}（粗估，沒核對過）` : '這一站還沒有花費資料。'}</DomyText>
+        <Label>須知</Label>
+        <DomyText variant="body">{it.tip ? `${it.tip}。` : '這一站還沒有須知。'}</DomyText>
+        <DomyText variant="footnote" tone="secondary">
+          照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。
+        </DomyText>
+      </Card>
 
       {it.status === 'pulled' ? (
         <DomyTextField
           label="這裡最想講的一件事"
-          helper="一句就好，不寫也可以。會收在蘿蔔籃裡。"
+          helper="一句就好，不寫也可以。會收在「旅行」裡這一趟的去過的。"
           placeholder="例如：湯比想像中清"
           maxLength={60}
           defaultValue={it.say ?? ''}
@@ -168,6 +173,45 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
             });
           }}
         />
+      ) : null}
+
+      {it.status === 'pulled' ? (
+        <Card>
+          <Label>照片</Label>
+          <PhotoStrip
+            refs={it.photos ?? []}
+            onRemove={(ref) => {
+              act((d) => {
+                const x = d.trip ? findItem(d.trip, id) : undefined;
+                if (x) x.it.photos = (x.it.photos ?? []).filter((p) => p !== ref);
+              });
+              removePhotoFile(ref);
+            }}
+          />
+          <DomyButton
+            title={adding ? '處理中…' : (it.photos?.length ?? 0) >= PHOTO_MAX ? `最多 ${PHOTO_MAX} 張` : '從相簿加一張'}
+            variant="secondary"
+            size="compact"
+            style={{ alignSelf: 'flex-start' }}
+            disabled={adding || (it.photos?.length ?? 0) >= PHOTO_MAX}
+            onPress={() => {
+              setAdding(true);
+              pickPhoto()
+                .then((ref) => {
+                  if (!ref) return;
+                  act((d) => {
+                    const x = d.trip ? findItem(d.trip, id) : undefined;
+                    if (x) x.it.photos = [...(x.it.photos ?? []), ref];
+                  });
+                })
+                .catch(() => say('這張照片加不進來，換一張試試。'))
+                .finally(() => setAdding(false));
+            }}
+          />
+          <DomyText variant="footnote" tone="secondary">
+            照片會縮小後存在這支手機裡，沒網路也看得到。不會上傳到任何地方。
+          </DomyText>
+        </Card>
       ) : null}
 
       {it.kr ? (

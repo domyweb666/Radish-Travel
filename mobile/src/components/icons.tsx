@@ -18,6 +18,7 @@ function Line({ d, color, size = TAB }: { d: string; color: string; size?: numbe
 export const TabTrip = ({ color }: { color: string }) => <Line color={color} d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6" />;
 export const TabPrep = ({ color }: { color: string }) => <Line color={color} d="M9 6h11M9 12h11M9 18h11M4 6l1 1 1.5-2M4 12l1 1 1.5-2M4 18l1 1 1.5-2" />;
 export const TabBasket = ({ color }: { color: string }) => <Line color={color} d="M4 10h16l-1.5 9h-13zM8 10l3-6M16 10l-3-6M9 14v2M12 14v2M15 14v2" />;
+export const TabTrips = ({ color }: { color: string }) => <Line color={color} d="M4 8h16v11H4zM9 8V5h6v3M4 13h16" />;
 export const TabMe = ({ color }: { color: string }) => <Line color={color} d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0" />;
 export const IconSend = ({ color }: { color: string }) => <Line color={color} d="M12 19V5M5 12l7-7 7 7" />;
 export const IconSprout = ({ color }: { color: string }) => <Line color={color} d="M12 21v-9M12 14c-5 0-7-3-7-7 5 0 7 3 7 7zM12 11c0-4 2-6 7-6 0 4-2 6-7 6z" />;

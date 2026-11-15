@@ -8,7 +8,7 @@ import {
 } from '../src/domain/plan';
 import type { Seed, TripDraft } from '../src/domain/types';
 
-const draft = (over: Partial<TripDraft> = {}): TripDraft => ({ purpose: 'eat', start: '2026-12-04', days: 5, arrive: 'pm', leave: 'pm', people: 2, ...over });
+const draft = (over: Partial<TripDraft> = {}): TripDraft => ({ start: '2026-12-04', days: 5, arrive: 'pm', leave: 'pm', people: 2, ...over });
 
 test('排出來的行程守住機制規則', () => {
   for (const days of [3, 4, 5, 7, 10, 14]) {
