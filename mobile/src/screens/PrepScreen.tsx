@@ -5,12 +5,12 @@ import { DomyButton, DomyEmptyState, DomyScreen, DomySection, DomyText, DomyText
 import { TabTrip } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { Banner, Card, CheckRow, Segmented, TextRow } from '../components/ui';
-import { CHECKLIST, DIFF, PART, TABOO, TABOO_LEVEL, type Fact } from '../data/seoul';
+import { CHECKLIST, DIFF, DISHES, EATS, GIFTS, GIFT_RULES, PART, TABOO, TABOO_LEVEL, type Fact, type Pick } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, cost, costRange, money } from '../domain/plan';
 import { useApp } from '../store';
 
-type Tab = 'todo' | 'know' | 'cost';
+type Tab = 'todo' | 'know' | 'eat' | 'cost';
 
 /** 列上只放短的：二手核對・11/14，或是未核對 */
 const factShort = (f: Fact) => {
@@ -95,6 +95,33 @@ function Know() {
   );
 }
 
+function PickList({ title, items, footer }: { title: string; items: Pick[]; footer?: string }) {
+  return (
+    <DomySection title={title} footer={footer}>
+      {items.map((p) => (
+        <TextRow key={p.n} title={p.kr ? `${p.n}　${p.kr}` : p.n} note={p.note} />
+      ))}
+    </DomySection>
+  );
+}
+
+/** 吃與買：必吃、特色料理、伴手禮。全部還沒核對，畫面上要講清楚 */
+function EatBuy() {
+  return (
+    <>
+      <Banner text="這一頁是先整理的清單，還沒逐條核對，也還沒附來源。店家、價格、哪裡買，去之前自己查一下。" />
+      <PickList title="到首爾多半會吃的" items={EATS} />
+      <PickList title="比較特別、敢吃再試的" items={DISHES} />
+      <PickList title="伴手禮" items={GIFTS} />
+      <DomySection title="帶回台灣之前" footer="入境規定會改，出發前請看農業部動植物防疫檢疫署和財政部關務署的官方頁。">
+        {GIFT_RULES.map((r) => (
+          <TextRow key={r} title={r} note="未核對" />
+        ))}
+      </DomySection>
+    </>
+  );
+}
+
 function Cost() {
   const { s, act } = useApp();
   const trip = s.trip;
@@ -143,11 +170,13 @@ export function PrepScreen({ goTrip }: { goTrip: () => void }) {
         options={[
           ['todo', '要做的'],
           ['know', '須知'],
+          ['eat', '吃與買'],
           ['cost', '花費'],
         ]}
       />
       {tab === 'todo' ? <Todo /> : null}
       {tab === 'know' ? <Know /> : null}
+      {tab === 'eat' ? <EatBuy /> : null}
       {tab === 'cost' ? (
         s.trip ? (
           <Cost />

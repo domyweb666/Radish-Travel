@@ -1,14 +1,15 @@
-// 開一趟：一句一句問，點選項。第一趟多問三題偏好，第二趟起照「平常的你」。
+// 開一趟：一句一句問，點選項。先問去哪、哪天、幾天、幾點到、幾點走、幾個人、住哪。
+// 第一趟多問四題偏好（存進「我」），第二趟起照「平常的你」。
 import { useState } from 'react';
 import { View } from 'react-native';
-import { DomyButton, DomyScreen, DomyText, T, useDomy, useTabBarClearance } from '@domy/design';
-import { BUDDY_SIZE, RadishBuddy } from '../components/buddy/RadishBuddy';
+import { DomyButton, DomyScreen, DomyText, DomyTextField, T, useDomy, useTabBarClearance } from '@domy/design';
 import { Calendar } from '../components/Calendar';
 import { Chip, ChipRow } from '../components/ui';
-import { CAT, PURPOSE } from '../data/seoul';
+import { CAT, HOTEL, PURPOSE } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
+import { PACES, PACE_TEXT } from '../domain/labels';
 import { generate, settingsSummary } from '../domain/plan';
-import type { Cat, FoodKind, Pace, Part, Purpose, Settings, TripDraft } from '../domain/types';
+import type { BaseKey, Cat, FoodKind, Pace, Part, Purpose, Settings, TripDraft } from '../domain/types';
 import { useApp } from '../store';
 
 type Lean = 'street' | 'local' | 'famous' | 'mix';
@@ -18,13 +19,19 @@ const LEAN: Record<Lean, { label: string; food: Record<FoodKind, number> }> = {
   famous: { label: '排隊名店也想吃', food: { street: 1, local: 2, famous: 3, fine: 1 } },
   mix: { label: '都來一點', food: { street: 2, local: 2, famous: 2, fine: 1 } },
 };
-const PACE: Record<Pace, string> = { slow: '慢慢來，一天一個重點', mid: '中等，一天兩個重點', fast: '趕一點，能排就排' };
 const DAYS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14];
 const ARRIVE: Array<[Part, string]> = [['am', '中午前'], ['pm', '下午'], ['eve', '晚上']];
 const LEAVE: Array<[Part, string]> = [['am', '上午'], ['pm', '下午'], ['eve', '晚上']];
 const PEOPLE: Array<[number, string]> = [[1, '我一個人'], [2, '兩個人'], [4, '三四個人']];
+const BASES = Object.keys(HOTEL) as BaseKey[];
 
 interface Answers extends Partial<TripDraft> {
+  /** 住哪一帶答了沒。選「還沒決定」時 base 是空的 */
+  baseDone?: boolean;
+  /** 住宿名字那題答了沒 */
+  stayDone?: boolean;
+  purposes?: Purpose[];
+  purposesDone?: boolean;
   pace?: Pace;
   lean?: Lean;
   likes?: Cat[];
@@ -50,23 +57,39 @@ function Me({ children }: { children: string }) {
   );
 }
 
+/** 可以選好幾個的一題：點了會亮，按「選好了」才往下 */
+function MultiPick<K extends string>({ options, value, onChange, onDone }: { options: Array<[K, string]>; value: K[]; onChange: (v: K[]) => void; onDone: () => void }) {
+  return (
+    <View style={{ gap: T.space[3] }}>
+      <ChipRow>
+        {options.map(([k, label]) => {
+          const on = value.includes(k);
+          return <Chip key={k} label={label} selected={on} onPress={() => onChange(on ? value.filter((x) => x !== k) : [...value, k])} />;
+        })}
+      </ChipRow>
+      <DomyButton title="選好了" variant="secondary" size="compact" style={{ alignSelf: 'flex-start' }} onPress={onDone} />
+    </View>
+  );
+}
+
 export function StartTrip({ goSettings }: { goSettings: () => void }) {
   const { s, act, today } = useApp();
   const clearance = useTabBarClearance();
   const [a, setA] = useState<Answers>({});
+  const [stayText, setStayText] = useState('');
   const first = !s.settings.tuned;
   const set = (patch: Answers) => setA((p) => ({ ...p, ...patch }));
 
   const go = () => {
-    const { purpose, start, days, arrive, leave, people } = a;
-    if (!purpose || !start || !days || !arrive || !leave || !people) return;
+    const { city, start, days, arrive, leave, people, base, stayName } = a;
+    if (!city || !start || !days || !arrive || !leave || !people) return;
     act((d) => {
       if (first) {
         const play: Settings['play'] = {};
         (a.likes ?? []).forEach((k) => (play[k] = 1));
-        d.settings = { ...d.settings, pace: a.pace ?? 'mid', food: LEAN[a.lean ?? 'local'].food, play, tuned: true };
+        d.settings = { ...d.settings, purposes: a.purposes ?? [], pace: a.pace ?? 'mid', food: LEAN[a.lean ?? 'local'].food, play, tuned: true };
       }
-      d.trip = generate({ purpose, start, days, arrive, leave, people }, d.settings);
+      d.trip = generate({ city, start, days, arrive, leave, people, base, stayName }, d.settings);
       d.chat = [];
       d.checks = Object.fromEntries(Object.entries(d.checks).filter(([k]) => !k.startsWith('b_')));
       d.settingsDirty = false;
@@ -78,14 +101,17 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
   // 一題一題往下長：前一題答了，下一題才出現
   const steps: Array<{ q: string; answered: string | null; options: React.ReactNode }> = [
     {
-      q: '要去首爾對吧。這趟回來，你希望怎樣？',
-      answered: a.purpose ? PURPOSE[a.purpose] : null,
+      q: '這趟要去哪？',
+      answered: a.city ? '首爾' : null,
       options: (
-        <ChipRow>
-          {(Object.keys(PURPOSE) as Purpose[]).map((k) => (
-            <Chip key={k} label={PURPOSE[k]} onPress={() => set({ purpose: k })} />
-          ))}
-        </ChipRow>
+        <View style={{ gap: T.space[2] }}>
+          <ChipRow>
+            <Chip label="首爾" onPress={() => set({ city: 'seoul' })} />
+          </ChipRow>
+          <DomyText variant="footnote" tone="secondary">
+            現在只有首爾，其他城市之後開放。
+          </DomyText>
+        </View>
       ),
     },
     {
@@ -137,16 +163,65 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
         </ChipRow>
       ),
     },
+    {
+      q: '住哪一帶？每天的路線會從住的地方出發、再回來。',
+      answered: a.baseDone ? (a.base ? HOTEL[a.base].n : `還沒決定，先當作住${HOTEL[s.settings.base].n}`) : null,
+      options: (
+        <ChipRow>
+          {BASES.map((k) => (
+            <Chip key={k} label={HOTEL[k].n} onPress={() => set({ base: k, baseDone: true })} />
+          ))}
+          <Chip label="還沒決定" onPress={() => set({ base: undefined, baseDone: true, stayDone: true })} />
+        </ChipRow>
+      ),
+    },
+    {
+      q: '住的地方叫什麼？有訂的話打上來，我記在這趟裡。',
+      answered: a.stayDone ? (a.stayName ? a.stayName : '先不填') : null,
+      options: (
+        <View style={{ gap: T.space[2] }}>
+          <DomyTextField
+            label="住宿名稱"
+            helper="先記著，還不會用它算路線。路線照上一題選的那一帶估。"
+            placeholder="例如：明洞某某飯店"
+            maxLength={40}
+            value={stayText}
+            onChangeText={setStayText}
+          />
+          <View style={{ flexDirection: 'row', gap: T.space[2] }}>
+            <DomyButton title="記下來" variant="secondary" size="compact" disabled={!stayText.trim()} onPress={() => set({ stayName: stayText.trim(), stayDone: true })} />
+            <DomyButton title="先不填" variant="plain" size="compact" onPress={() => set({ stayName: undefined, stayDone: true })} />
+          </View>
+        </View>
+      ),
+    },
   ];
   if (first) {
     steps.push(
       {
-        q: '第一次排，多問三題。你旅行的節奏？',
-        answered: a.pace ? PACE[a.pace] : null,
+        q: '第一次排，多問四題，之後在「我」都可以改。旅行回來，你希望怎樣？可以選好幾個。',
+        answered: a.purposesDone ? (a.purposes?.length ? a.purposes.map((k) => PURPOSE[k]).join('、') : '都可以') : null,
+        options: (
+          <MultiPick<Purpose>
+            options={(Object.keys(PURPOSE) as Purpose[]).map((k) => [k, PURPOSE[k]])}
+            value={a.purposes ?? []}
+            onChange={(v) => set({ purposes: v })}
+            onDone={() => set({ purposesDone: true })}
+          />
+        ),
+      },
+      {
+        q: '一天想排多滿？',
+        answered: a.pace ? `${PACE_TEXT[a.pace].name}：${PACE_TEXT[a.pace].note}` : null,
         options: (
           <View style={{ gap: T.space[2] }}>
-            {(Object.keys(PACE) as Pace[]).map((k) => (
-              <Chip key={k} label={PACE[k]} onPress={() => set({ pace: k })} />
+            {PACES.map((k) => (
+              <View key={k} style={{ gap: T.space[1] }}>
+                <Chip label={`${PACE_TEXT[k].name}：${PACE_TEXT[k].note}`} onPress={() => set({ pace: k })} />
+                <DomyText variant="footnote" tone="secondary" style={{ paddingHorizontal: T.space[2] }}>
+                  例如：{PACE_TEXT[k].example}
+                </DomyText>
+              </View>
             ))}
           </View>
         ),
@@ -166,15 +241,12 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
         q: '喜歡做什麼？可以選好幾個，沒有特別喜歡的直接按「選好了」。',
         answered: a.likesDone ? (a.likes?.length ? a.likes.map((k) => CAT[k]).join('、') : '都可以') : null,
         options: (
-          <View style={{ gap: T.space[3] }}>
-            <ChipRow>
-              {(Object.keys(CAT) as Cat[]).map((k) => {
-                const on = !!a.likes?.includes(k);
-                return <Chip key={k} label={CAT[k]} selected={on} onPress={() => set({ likes: on ? a.likes!.filter((x) => x !== k) : [...(a.likes ?? []), k] })} />;
-              })}
-            </ChipRow>
-            <DomyButton title="選好了" variant="secondary" size="compact" style={{ alignSelf: 'flex-start' }} onPress={() => set({ likesDone: true })} />
-          </View>
+          <MultiPick<Cat>
+            options={(Object.keys(CAT) as Cat[]).map((k) => [k, CAT[k]])}
+            value={a.likes ?? []}
+            onChange={(v) => set({ likes: v })}
+            onDone={() => set({ likesDone: true })}
+          />
         ),
       },
     );
@@ -186,10 +258,6 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
   return (
     <DomyScreen title="蘿蔔旅行" bottomInset={clearance}>
       <View style={{ gap: T.space[3] }}>
-        {/* 還沒答第一題時揮手打招呼，開始答了就安靜站著 */}
-        <View style={{ alignItems: 'center' }}>
-          <RadishBuddy action={a.purpose ? 'idle' : 'wave'} size={BUDDY_SIZE.hero} />
-        </View>
         <DomyText variant="subheadline" tone="secondary">
           回答幾題，我把整趟排好。排完想改，用講的就可以。
         </DomyText>
@@ -210,7 +278,18 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
             {!first ? <DomyButton title="我先去改設定" variant="plain" fullWidth onPress={goSettings} /> : null}
           </View>
         ) : null}
-        {a.purpose ? <DomyButton title="從頭回答" variant="plain" size="compact" style={{ alignSelf: 'center' }} onPress={() => setA({})} /> : null}
+        {a.city ? (
+          <DomyButton
+            title="從頭回答"
+            variant="plain"
+            size="compact"
+            style={{ alignSelf: 'center' }}
+            onPress={() => {
+              setA({});
+              setStayText('');
+            }}
+          />
+        ) : null}
       </View>
     </DomyScreen>
   );

@@ -131,9 +131,8 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
             第 {slot.day} 天{PART[slot.part]}・{areaOf(it)}・{kindName(it)}
           </DomyText>
           <TagRow>
-            <Tag label={it.s === 'L' ? '大站' : '小站'} />
+            <Tag label={it.s === 'L' ? '主要景點' : '順路小地方'} />
             {it.b ? <Tag label="要先訂" tone="accent" /> : null}
-            {it.fee ? <Tag label={`約 ${money(it.fee)}`} /> : null}
             {it.ai ? <Tag label="AI 加的・未核對" tone="warn" /> : null}
             {it.mine ? <Tag label="自己加的" /> : null}
             {it.status === 'pulled' ? <Tag label="去過了" tone="accent" /> : null}
@@ -146,12 +145,15 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
         <DomyText variant="body">{it.why}</DomyText>
       </Card>
 
-      {it.tip ? (
-        <Card>
-          <Label>須知</Label>
-          <DomyText variant="body">{it.tip}。</DomyText>
-        </Card>
-      ) : null}
+      <Card>
+        <Label>每人大概花多少</Label>
+        <DomyText variant="body">{it.fee ? `約 ${money(it.fee)}（粗估，沒核對過）` : '這一站還沒有花費資料。'}</DomyText>
+        <Label>須知</Label>
+        <DomyText variant="body">{it.tip ? `${it.tip}。` : '這一站還沒有須知。'}</DomyText>
+        <DomyText variant="footnote" tone="secondary">
+          照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。
+        </DomyText>
+      </Card>
 
       {it.status === 'pulled' ? (
         <DomyTextField

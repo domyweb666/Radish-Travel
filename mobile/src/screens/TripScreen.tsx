@@ -8,9 +8,9 @@ import { BUDDY_SIZE, RadishBuddy, useBuddyBurst } from '../components/buddy/Radi
 import { CatIcon } from '../components/icons';
 import { Radish } from '../components/Radish';
 import { Banner, Card, Tag, TagRow, TextRow } from '../components/ui';
-import { PART, PULL_LINES } from '../data/seoul';
+import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
-import { allItems, areaOf, dayLegs, dayStops, generate, seedOut } from '../domain/plan';
+import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
 import { archiveTrip } from '../domain/tripActions';
 import type { Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
@@ -59,7 +59,8 @@ function DayTabs({ trip, value, today, onChange }: { trip: Trip; value: number; 
   );
 }
 
-function StopRow({ it, slot, onPress }: { it: Stop; slot: Slot; onPress: () => void }) {
+/** showRadish：旅途中才放蘿蔔，代表「這一站還沒拔」。出發前只是行程表，不放 */
+function StopRow({ it, slot, onPress, showRadish }: { it: Stop; slot: Slot; onPress: () => void; showRadish: boolean }) {
   const { c } = useDomy();
   const pulled = it.status === 'pulled';
   return (
@@ -95,12 +96,12 @@ function StopRow({ it, slot, onPress }: { it: Stop; slot: Slot; onPress: () => v
           </TagRow>
         ) : null}
       </View>
-      <Radish size={it.s} faded={pulled} />
+      {showRadish || pulled ? <Radish size={it.s} faded={pulled} /> : null}
     </Pressable>
   );
 }
 
-function DayCard({ trip, day }: { trip: Trip; day: number }) {
+function DayCard({ trip, day, inTrip }: { trip: Trip; day: number; inTrip: boolean }) {
   const { s } = useApp();
   const sheets = useSheets();
   const slots = trip.slots.filter((x) => x.day === day);
@@ -111,12 +112,12 @@ function DayCard({ trip, day }: { trip: Trip; day: number }) {
   if (off.length) rows.push(<TextRow key="off" title={`${off.join('、')}在路上`} note="這段時間不排東西" />);
   slots.forEach((sl) => {
     if (sl.off) return;
-    sl.items.forEach((it) => rows.push(<StopRow key={it.id} it={it} slot={sl} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />));
+    sl.items.forEach((it) => rows.push(<StopRow key={it.id} it={it} slot={sl} showRadish={inTrip} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />));
     if (!sl.items.length) rows.push(<TextRow key={sl.part} title={`${PART[sl.part]}・留白`} note="這段故意不排" />);
   });
   return (
     <View style={{ gap: T.space[3] }}>
-      <DomySection footer={stops.length ? `${stops.length} 站・路上大約 ${total} 分鐘（估）。點一站看韓文名稱、怎麼去，也可以移走或換掉。` : undefined}>{rows}</DomySection>
+      <DomySection footer={stops.length ? `${stops.length} 站・路上大約 ${total} 分鐘（估）。點一站看韓文名稱、花費、怎麼去，也可以移走或換掉。` : undefined}>{rows}</DomySection>
       {stops.length ? <DomyButton title="看這天的地圖" variant="secondary" fullWidth onPress={() => sheets.open({ kind: 'map', day })} /> : null}
     </View>
   );
@@ -232,6 +233,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
         <DomyText variant="subheadline" tone="secondary" style={{ flex: 1 }}>
           {fmtDay(trip.start)}–{fmtDay(end)}
           {phase.kind === 'plan' ? `・還有 ${phase.daysToGo} 天出發` : phase.kind === 'trip' ? `・今天是第 ${phase.day} 天` : '・已經回來了'}
+          {`\n住${HOTEL[baseOf(trip, s.settings)].n}一帶${trip.stayName ? '・' + trip.stayName : ''}`}
         </DomyText>
         {phase.kind === 'plan' ? <RadishBuddy action={greet} /> : null}
       </View>
@@ -262,8 +264,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
               act(
                 (d) => {
                   if (!d.trip) return;
-                  const { purpose, start, days: n, arrive, leave, people, flight } = d.trip;
-                  d.trip = { ...generate({ purpose, start, days: n, arrive, leave, people }, d.settings), flight };
+                  d.trip = { ...generate(draftOf(d.trip), d.settings), flight: d.trip.flight };
                   d.settingsDirty = false;
                   return '照新的設定重排了。手動改過的地方也一起重排了。';
                 },
@@ -275,7 +276,7 @@ export function TripScreen({ goSettings }: { goSettings: () => void }) {
 
       <View style={{ gap: T.space[3] }}>
         <DayTabs trip={trip} value={shown} today={today} onChange={setDay} />
-        <DayCard trip={trip} day={shown} />
+        <DayCard trip={trip} day={shown} inTrip={phase.kind === 'trip'} />
       </View>
 
       {phase.kind !== 'done' ? (

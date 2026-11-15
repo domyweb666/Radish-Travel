@@ -10,7 +10,7 @@ import { DayMap, type MapPoint } from './DayMap';
 export function MapSheet({ day, onClose }: { day: number; onClose: () => void }) {
   const { s } = useApp();
   if (!s.trip) return null;
-  const h = hotelPt(s.settings);
+  const h = hotelPt(s.settings, s.trip);
   const stops = dayStops(s.trip, day).map((x) => x.it);
   const legs = dayLegs(s.trip, s.settings, day);
   const points: MapPoint[] = [
