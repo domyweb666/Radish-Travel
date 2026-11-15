@@ -107,6 +107,18 @@ export function MeScreen() {
         <DomySettingsRow label="全部清掉重來" destructive onPress={() => setEditing('reset')} />
       </DomySection>
 
+      {s.trip && s.guideSeen ? (
+        <DomySection>
+          <DomySettingsRow
+            label="再看一次操作說明"
+            onPress={() => {
+              act((d) => void (d.guideSeen = false));
+              say('回到「這趟」就會再帶一次。');
+            }}
+          />
+        </DomySection>
+      ) : null}
+
       {s.trip ? (
         <DomySection title="測試用" footer="正式版會照日期自動進入旅途中。這裡讓你出發前先看旅途中的樣子。">
           <DomySettingsRow

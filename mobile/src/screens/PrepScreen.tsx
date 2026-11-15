@@ -1,8 +1,9 @@
 // 「行前」分頁：要做的（要先訂、檢查表）、須知、花費。出發前看的東西都在這裡。
 // 每一條只留一行短的核對狀態；完整的來源收在「看每一條的來源」。
 import { useState } from 'react';
-import { DomyButton, DomyEmptyState, DomyScreen, DomySection, DomyText, DomyTextField, useTabBarClearance } from '@domy/design';
+import { DomyButton, DomyEmptyState, DomySection, DomyText, DomyTextField, useTabBarClearance } from '@domy/design';
 import { TabTrip } from '../components/icons';
+import { Screen } from '../components/Screen';
 import { Sheet } from '../components/Sheet';
 import { Banner, Card, CheckRow, Segmented, TextRow } from '../components/ui';
 import { CHECKLIST, DIFF, DISHES, EATS, GIFTS, GIFT_RULES, PART, TABOO, TABOO_LEVEL, type Fact, type Pick } from '../data/seoul';
@@ -163,7 +164,7 @@ export function PrepScreen({ goTrip }: { goTrip: () => void }) {
   const clearance = useTabBarClearance();
   const [tab, setTab] = useState<Tab>('todo');
   return (
-    <DomyScreen title="行前" bottomInset={clearance}>
+    <Screen title="行前" bottomInset={clearance}>
       <Segmented<Tab>
         value={tab}
         onChange={setTab}
@@ -184,6 +185,6 @@ export function PrepScreen({ goTrip }: { goTrip: () => void }) {
           <DomyEmptyState icon={(color) => <TabTrip color={color} />} title="還沒有行程" body="排好一趟之後，這裡會有每人大概要花多少。" action={{ title: '去排一趟', onPress: goTrip }} />
         )
       ) : null}
-    </DomyScreen>
+    </Screen>
   );
 }

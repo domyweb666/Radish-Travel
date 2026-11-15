@@ -148,6 +148,7 @@ export interface AppState {
   baskets: Basket[];
   settingsDirty: boolean; // 設定改過、還沒套到這趟
   aiConsent: boolean;
+  guideSeen: boolean; // 「這趟」的操作說明看過了嗎
   debugDay: number | null; // 測試用：假裝今天是第幾天
 }
 
