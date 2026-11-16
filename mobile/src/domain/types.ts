@@ -69,9 +69,19 @@ export interface TripDraft {
   people: number;
 }
 
+/** 使用者自己記的一筆花費，金額是韓元 */
+export interface Spend {
+  id: string;
+  krw: number;
+  note?: string; // 花在哪，使用者自己打的
+  day?: number; // 旅途中記的才有：第幾天
+}
+
 export interface Trip extends TripDraft {
   slots: Slot[];
   flight: number;
+  spend?: Spend[]; // 實際花的，一筆一筆記
+  rate?: number; // 1000 韓元換多少台幣。使用者自己填的，app 不抓匯率
 }
 
 export type Pace = 'slow' | 'mid' | 'fast';

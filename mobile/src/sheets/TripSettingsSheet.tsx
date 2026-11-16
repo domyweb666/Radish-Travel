@@ -7,6 +7,7 @@ import { Sheet } from '../components/Sheet';
 import { TripForm, formOf, missingOf, type TripFormValue } from '../components/TripForm';
 import { Banner } from '../components/ui';
 import { allItems, draftOf, generate } from '../domain/plan';
+import { ownOf } from '../domain/spend';
 import { useApp } from '../store';
 
 export function TripSettingsSheet({ onClose }: { onClose: () => void }) {
@@ -28,7 +29,7 @@ export function TripSettingsSheet({ onClose }: { onClose: () => void }) {
         if (!d.trip) return;
         const patch = { start, days, arrive, leave, people, base: form.base, stayName: form.stayName.trim() || undefined, name: form.name.trim() || undefined, cover: form.cover };
         if (regen) {
-          d.trip = { ...generate({ ...draftOf(d.trip), ...patch }, d.settings), flight: d.trip.flight };
+          d.trip = { ...generate({ ...draftOf(d.trip), ...patch }, d.settings), ...ownOf(d.trip) };
           d.settingsDirty = false;
           return '行程設定改了，整趟重排了。手動改過的地方也一起重排了。';
         }

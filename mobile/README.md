@@ -62,7 +62,7 @@ npm run bundle:check
 | `src/domain/labels.ts` | 「我」和「開一趟」共用的選項文字 |
 | `src/io/photos.ts` | 挑照片、縮小、存進 app 的資料夾 |
 | `album/albumHtml.ts` | 把一趟去過的站做成有地圖的網頁檔。不是 app 畫面，所以在 `src` 外 |
-| `src/screens/` | 這趟、行前、旅行、我 |
+| `src/screens/` | 行前、這趟、旅行、我 |
 | `src/sheets/` | 單站的卡、用講的改、地圖、自己加一站、一趟去過的 |
 | `src/components/` | 本地小元件，全部用 `@domy/design` 的代號組的 |
 

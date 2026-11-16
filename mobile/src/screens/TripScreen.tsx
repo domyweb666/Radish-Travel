@@ -14,6 +14,7 @@ import { HOTEL, PART, PULL_LINES } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
 import { allItems, areaOf, baseOf, dayLegs, dayStops, draftOf, generate, seedOut } from '../domain/plan';
 import { unbookedOf } from '../domain/remind';
+import { ownOf } from '../domain/spend';
 import { archiveTrip, tripTitle } from '../domain/tripActions';
 import type { Size, Slot, Stop, Trip } from '../domain/types';
 import { useSheets } from '../sheets/host';
@@ -62,8 +63,8 @@ function DayTabs({ trip, value, today, onChange }: { trip: Trip; value: number; 
   );
 }
 
-/** showRadish：旅途中才放蘿蔔，代表「這一站還沒拔」。出發前只是行程表，不放 */
-function StopRow({ it, slot, onPress, showRadish }: { it: Stop; slot: Slot; onPress: () => void; showRadish: boolean }) {
+/** 去過的站，名稱劃掉、變淡。列上不放蘿蔔 */
+function StopRow({ it, slot, onPress }: { it: Stop; slot: Slot; onPress: () => void }) {
   const { c } = useDomy();
   const pulled = it.status === 'pulled';
   return (
@@ -99,13 +100,12 @@ function StopRow({ it, slot, onPress, showRadish }: { it: Stop; slot: Slot; onPr
           </TagRow>
         ) : null}
       </View>
-      {showRadish || pulled ? <Radish size={it.s} faded={pulled} /> : null}
     </Pressable>
   );
 }
 
 /** firstRef：掛在這天第一站上，操作說明要照亮它 */
-function DayCard({ trip, day, inTrip, firstRef }: { trip: Trip; day: number; inTrip: boolean; firstRef: RefObject<SpotTarget | null> }) {
+function DayCard({ trip, day, firstRef }: { trip: Trip; day: number; firstRef: RefObject<SpotTarget | null> }) {
   const { s } = useApp();
   const sheets = useSheets();
   const slots = trip.slots.filter((x) => x.day === day);
@@ -127,7 +127,7 @@ function DayCard({ trip, day, inTrip, firstRef }: { trip: Trip; day: number; inT
     sl.items.forEach((it) => {
       const at = stops.findIndex((x) => x.it.id === it.id);
       if (at >= 0) rows.push(legRow(at, at === 0 ? '從住的地方出發・' : ''));
-      const row = <StopRow key={it.id} it={it} slot={sl} showRadish={inTrip} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />;
+      const row = <StopRow key={it.id} it={it} slot={sl} onPress={() => sheets.open({ kind: 'stop', id: it.id })} />;
       rows.push(
         it.id === stops[0]?.it.id ? (
           <View key={it.id} ref={firstRef} collapsable={false}>
@@ -244,7 +244,7 @@ const GUIDE = [
   '一次只看一天。要看別天，點上面這一排。',
 ];
 
-export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goPrep: () => void }) {
+export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goPrep: (stage: 'before' | 'cost') => void }) {
   const { s, act, phase } = useApp();
   const sheets = useSheets();
   const clearance = useTabBarClearance();
@@ -295,11 +295,12 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
       ) : null}
 
       {today ? <NextStop trip={trip} day={today} /> : null}
+      {today ? <DomyButton title="換算、記一筆花費" variant="secondary" fullWidth onPress={() => goPrep('cost')} /> : null}
 
       {unbooked.length ? (
         <Banner
           text={`${phase.kind === 'plan' && phase.daysToGo <= 7 ? `還有 ${phase.daysToGo} 天出發。` : ''}這趟有 ${unbooked.length} 站要先訂，還沒打勾：${unbooked.map((x) => x.n).join('、')}。`}
-          action={{ title: '看要先訂的', onPress: goPrep }}
+          action={{ title: '看要先訂的', onPress: () => goPrep('before') }}
         />
       ) : null}
 
@@ -312,7 +313,7 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
               act(
                 (d) => {
                   if (!d.trip) return;
-                  d.trip = { ...generate(draftOf(d.trip), d.settings), flight: d.trip.flight };
+                  d.trip = { ...generate(draftOf(d.trip), d.settings), ...ownOf(d.trip) };
                   d.settingsDirty = false;
                   return '照新的設定重排了。手動改過的地方也一起重排了。';
                 },
@@ -326,7 +327,7 @@ export function TripScreen({ goSettings, goPrep }: { goSettings: () => void; goP
         <View ref={tabs} collapsable={false}>
           <DayTabs trip={trip} value={shown} today={today} onChange={setDay} />
         </View>
-        <DayCard trip={trip} day={shown} inTrip={phase.kind === 'trip'} firstRef={firstStop} />
+        <DayCard trip={trip} day={shown} firstRef={firstStop} />
       </View>
 
       {phase.kind !== 'done' ? (
