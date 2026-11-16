@@ -1,5 +1,5 @@
 // 一趟「去過的」：每一天去了哪、寫的那一句、照片。可以做成一頁有地圖的網頁檔傳給朋友。
-// 現在這趟的站點一下會打開那一站（可以補一句、加照片）；已經收起來的旅行只能看。
+// 現在這趟的站點一下會打開那一站；已經收起來的旅行點一下在這張卡裡直接補。兩邊都可以補一句、加照片。
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
@@ -8,8 +8,9 @@ import { albumHtml, type AlbumStop } from '../../album/albumHtml';
 import { CatIcon, TabTrips } from '../components/icons';
 import { PhotoStrip } from '../components/PhotoStrip';
 import { Sheet } from '../components/Sheet';
+import { VisitNote } from '../components/VisitNote';
 import { addDays, fmtDay } from '../domain/dates';
-import { tripTitle, visitedOf } from '../domain/tripActions';
+import { basketItem, tripTitle, visitedOf } from '../domain/tripActions';
 import type { BasketItem } from '../domain/types';
 import { photoDataUri, writeTemp } from '../io/photos';
 import { useApp } from '../store';
@@ -17,8 +18,10 @@ import { useApp } from '../store';
 export type AlbumSource = { from: 'current' } | { from: 'basket'; id: string };
 
 export function AlbumSheet({ source, onClose, onOpenStop }: { source: AlbumSource; onClose: () => void; onOpenStop: (id: string) => void }) {
-  const { s, say } = useApp();
+  const { s, act, say } = useApp();
   const [busy, setBusy] = useState(false);
+  // 已經收起來的旅行：正在補哪一站（第幾個）
+  const [edit, setEdit] = useState<number | null>(null);
 
   const basket = source.from === 'basket' ? s.baskets.find((b) => b.id === source.id) : undefined;
   const trip = source.from === 'current' ? s.trip : null;
@@ -58,6 +61,25 @@ export function AlbumSheet({ source, onClose, onOpenStop }: { source: AlbumSourc
     setBusy(false);
   };
 
+  const editing = basket && edit != null ? basket.items[edit] : undefined;
+  if (basket && editing && edit != null) {
+    const patch = (fn: (x: BasketItem) => void) =>
+      act((d) => {
+        const x = basketItem(d, basket.id, edit);
+        if (x) fn(x);
+      });
+    return (
+      <Sheet visible title={editing.n} onClose={() => setEdit(null)}>
+        <DomyText variant="subheadline" tone="secondary">
+          {title}
+          {editing.day ? `・第 ${editing.day} 天${dateOf(editing.day) ? ' ' + dateOf(editing.day) : ''}` : ''}
+        </DomyText>
+        <VisitNote say={editing.say} photos={editing.photos ?? []} onSay={(text) => patch((x) => void (x.say = text))} onPhotos={(next) => patch((x) => void (x.photos = next))} />
+        <DomyButton title="好了" fullWidth onPress={() => setEdit(null)} />
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet visible title={title || '去過的'} onClose={onClose}>
       {items.length ? (
@@ -68,13 +90,14 @@ export function AlbumSheet({ source, onClose, onOpenStop }: { source: AlbumSourc
           {groups.map((g) => (
             <DomySection key={g} title={g ? `第 ${g} 天${dateOf(g) ? '　' + dateOf(g) : ''}` : undefined}>
               {items
-                .filter((it) => (it.day ?? 0) === g)
-                .map((it, i) => (
+                .map((it, i) => ({ it, i }))
+                .filter(({ it }) => (it.day ?? 0) === g)
+                .map(({ it, i }) => (
                   <Pressable
                     key={`${it.n}${i}`}
-                    accessibilityRole={it.id && trip ? 'button' : undefined}
-                    disabled={!it.id || !trip}
-                    onPress={() => it.id && onOpenStop(it.id)}
+                    accessibilityRole="button"
+                    accessibilityHint="寫一句、加照片"
+                    onPress={() => (basket ? setEdit(i) : it.id && onOpenStop(it.id))}
                     style={{ paddingVertical: T.space[3], gap: T.space[2] }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: T.space[3] }}>
@@ -82,7 +105,7 @@ export function AlbumSheet({ source, onClose, onOpenStop }: { source: AlbumSourc
                       <View style={{ flex: 1, gap: T.space[1] / 2 }}>
                         <DomyText variant="headline">{it.n}</DomyText>
                         <DomyText variant="subheadline" tone="secondary">
-                          {it.say ? `「${it.say}」` : trip ? '點一下可以寫一句、加照片' : '沒有寫'}
+                          {it.say ? `「${it.say}」` : '點一下可以寫一句、加照片'}
                         </DomyText>
                       </View>
                     </View>

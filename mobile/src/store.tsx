@@ -21,6 +21,8 @@ export const blankState = (): AppState => ({
   baskets: [],
   settingsDirty: false,
   aiConsent: false,
+  guideSeen: false,
+  remind: false,
   debugDay: null,
 });
 

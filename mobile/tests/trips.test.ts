@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { albumHtml, sketchSvg } from '../album/albumHtml';
 import { allItems, defaultSettings, generate } from '../src/domain/plan';
-import { archiveTrip, openShelved, shelveCurrent, visitedOf } from '../src/domain/tripActions';
+import { remindOn, remindersOf, unbookedOf } from '../src/domain/remind';
+import { archiveTrip, basketItem, openShelved, shelveCurrent, tripTitle, visitedOf } from '../src/domain/tripActions';
 import type { AppState } from '../src/domain/types';
 
 const state = (): AppState => ({
@@ -16,6 +17,8 @@ const state = (): AppState => ({
   baskets: [],
   settingsDirty: false,
   aiConsent: false,
+  guideSeen: false,
+  remind: false,
   debugDay: 2,
 });
 
@@ -59,6 +62,23 @@ test('收起來：去過的站帶著位置、第幾天、那一句和照片進�
   assert.equal(typeof b.items[0].lat, 'number');
 });
 
+test('收起來之後還可以補一句、加照片，別站不受影響', () => {
+  const d = state();
+  const stops = allItems(d.trip!).slice(0, 2);
+  stops.forEach((x) => (x.it.status = 'pulled'));
+  stops[0].it.say = '原本那句';
+  archiveTrip(d);
+  const id = d.baskets[0].id;
+  const second = basketItem(d, id, 1)!;
+  second.say = '後來補的';
+  second.photos = ['p1.jpg'];
+  assert.equal(d.baskets[0].items[1].say, '後來補的');
+  assert.deepEqual(d.baskets[0].items[1].photos, ['p1.jpg']);
+  assert.equal(d.baskets[0].items[0].say, '原本那句');
+  assert.equal(basketItem(d, id, 99), undefined);
+  assert.equal(basketItem(d, '沒有這趟', 0), undefined);
+});
+
 test('地圖網頁：使用者打的字不會變成網頁的程式', () => {
   const html = albumHtml({
     title: '首爾 <5> 天',
@@ -86,4 +106,40 @@ test('路線圖：有位置的站各一個圓點，沒位置的不畫；一站�
   assert.ok(!svg.includes('NaN'));
   assert.ok(!sketchSvg([{ n: 'a', lat: 37.58, lng: 126.98, photos: [] }]).includes('NaN'));
   assert.equal(sketchSvg([{ n: 'b', photos: [] }]), '');
+});
+
+test('提醒日：出發前七天；不到七天就明天；明天出發或已經出發就不提醒', () => {
+  assert.equal(remindOn('2026-12-01', '2026-11-16'), '2026-11-24');
+  assert.equal(remindOn('2026-12-01', '2026-11-27'), '2026-11-28');
+  assert.equal(remindOn('2026-12-01', '2026-11-30'), null);
+  assert.equal(remindOn('2026-12-01', '2026-12-02'), null);
+});
+
+test('提醒內容：只列還沒打勾的；全部勾完就沒有提醒；其他排好的那幾趟也算', () => {
+  const d = state();
+  const need = unbookedOf(d.trip!, d.checks);
+  assert.ok(need.length > 0);
+  const [r] = remindersOf(d, '2026-11-16');
+  assert.equal(r.on, '2026-11-24');
+  assert.ok(r.body.includes(`${need.length} 站`));
+  assert.ok(r.body.includes(need[0].n));
+  d.checks['b_' + need[0].id] = true;
+  assert.ok(!remindersOf(d, '2026-11-16')[0]?.body.includes(need[0].n) || need.length === 1);
+  need.forEach((x) => (d.checks['b_' + x.id] = true));
+  assert.equal(remindersOf(d, '2026-11-16').length, 0);
+  const e = state();
+  shelveCurrent(e);
+  assert.equal(remindersOf(e, '2026-11-16').length, 1);
+});
+
+test('取了名字的一趟：標題用名字；收起來之後名字和封面跟著走', () => {
+  const d = state();
+  assert.equal(tripTitle(d.trip!), '首爾 5 天');
+  d.trip!.name = '跟媽媽的首爾';
+  d.trip!.cover = 'c1.jpg';
+  assert.equal(tripTitle(d.trip!), '跟媽媽的首爾');
+  allItems(d.trip!)[0].it.status = 'pulled';
+  archiveTrip(d);
+  assert.ok(d.baskets[0].title.startsWith('跟媽媽的首爾'));
+  assert.equal(d.baskets[0].cover, 'c1.jpg');
 });

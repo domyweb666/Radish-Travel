@@ -20,7 +20,8 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
-      "expo-sharing"
+      "expo-sharing",
+      "expo-notifications"
     ]
   }
 }

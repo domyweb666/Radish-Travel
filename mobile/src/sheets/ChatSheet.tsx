@@ -8,6 +8,7 @@ import { Sheet } from '../components/Sheet';
 import { Card, Chip } from '../components/ui';
 import { AI_HINTS, LOCAL_HINTS, aiPrompt, aiReady, applyOps, askRemote, hasAiPlace, localBrain, type BrainOut } from '../domain/chat';
 import { draftOf, generate, warnings } from '../domain/plan';
+import { ownOf } from '../domain/spend';
 import type { ChatMsg } from '../domain/types';
 import { useApp } from '../store';
 
@@ -97,7 +98,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
         if (failed) d.chat.push({ r: 'sys', t: 'AI 這次沒回好，先用內建的簡單指令。' });
         const changes: string[] = [];
         if (out.regen) {
-          d.trip = { ...generate(draftOf(d.trip), d.settings, true), flight: d.trip.flight };
+          d.trip = { ...generate(draftOf(d.trip), d.settings, true), ...ownOf(d.trip) };
           d.settingsDirty = false;
           changes.push('整趟照現在的設定重排了');
         }

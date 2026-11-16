@@ -195,7 +195,7 @@ export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () =>
         add((big ? take([a], 'L', null, pref) : null) ?? take([a], 'S', dayOK, pref) ?? take(near(a), 'S', dayOK, pref));
         if (pace === 'fast' || ((!items[0] || items[0].s === 'S') && pace !== 'slow')) {
           const first = items[0];
-          const sameArea = () => (first ? `跟「${first.n}」同一帶，順路` : '這一帶順路的小站');
+          const sameArea = () => (first ? `跟「${first.n}」同一帶，順路` : '這一帶順路的小地方');
           add(take([a], 'S', dayOK, sameArea) ?? take(near(a), 'S', dayOK, sameArea));
         }
         if (pace === 'slow' && part === 'pm') rest = true;
@@ -221,7 +221,7 @@ export function warnings(t: Trip): string[] {
   const w: string[] = [];
   for (let d = 1; d <= t.days; d++) {
     const n = bigCount(t, d);
-    if (n > 2) w.push(`第 ${d} 天現在有 ${n} 個大站，會很累。`);
+    if (n > 2) w.push(`第 ${d} 天現在有 ${n} 個主要景點，會很累。`);
   }
   return w;
 }
@@ -370,7 +370,7 @@ export function leg(a: Pt, b: Pt, st: Settings): Leg | null {
 export const baseOf = (t: Pick<Trip, 'base'> | null | undefined, st: Settings) => t?.base ?? st.base;
 export const hotelPt = (st: Settings, t?: Pick<Trip, 'base'> | null) => HOTEL[baseOf(t, st)];
 /** 重排時要帶回去的那幾項 */
-export const draftOf = (t: Trip): TripDraft => ({ city: t.city, base: t.base, stayName: t.stayName, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
+export const draftOf = (t: Trip): TripDraft => ({ city: t.city, base: t.base, stayName: t.stayName, name: t.name, cover: t.cover, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
 
 /** 這一天每一段：住的地方 → 第 1 站 → … → 住的地方。長度是站數＋1 */
 export function dayLegs(t: Trip, st: Settings, day: number): Array<Leg | null> {

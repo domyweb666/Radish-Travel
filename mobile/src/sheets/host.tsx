@@ -6,8 +6,9 @@ import { ChatSheet } from './ChatSheet';
 import { MapSheet } from './MapSheet';
 import { MoreSheet } from './MoreSheet';
 import { StopSheet } from './StopSheet';
+import { TripSettingsSheet } from './TripSettingsSheet';
 
-export type SheetReq = { kind: 'stop'; id: string } | { kind: 'chat' } | { kind: 'map'; day: number } | { kind: 'add' } | { kind: 'more'; day: number } | { kind: 'album'; source: AlbumSource };
+export type SheetReq = { kind: 'stop'; id: string } | { kind: 'chat' } | { kind: 'map'; day: number } | { kind: 'add' } | { kind: 'settings' } | { kind: 'more'; day: number } | { kind: 'album'; source: AlbumSource };
 
 const SheetCtx = createContext<{ open: (r: SheetReq) => void; close: () => void } | null>(null);
 
@@ -21,8 +22,9 @@ export function SheetHost({ children }: { children: ReactNode }) {
       {req?.kind === 'chat' ? <ChatSheet onClose={api.close} /> : null}
       {req?.kind === 'map' ? <MapSheet day={req.day} onClose={api.close} /> : null}
       {req?.kind === 'album' ? <AlbumSheet source={req.source} onClose={api.close} onOpenStop={(id) => setReq({ kind: 'stop', id })} /> : null}
+      {req?.kind === 'settings' ? <TripSettingsSheet onClose={api.close} /> : null}
       {req?.kind === 'add' ? <AddSheet onClose={api.close} /> : null}
-      {req?.kind === 'more' ? <MoreSheet day={req.day} onClose={api.close} onAdd={() => setReq({ kind: 'add' })} /> : null}
+      {req?.kind === 'more' ? <MoreSheet day={req.day} onClose={api.close} onAdd={() => setReq({ kind: 'add' })} onSettings={() => setReq({ kind: 'settings' })} /> : null}
     </SheetCtx.Provider>
   );
 }

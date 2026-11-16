@@ -882,9 +882,11 @@ export const DIFF: Fact[] = [
   }
 ];
 
-export const CHECKLIST: Array<Fact & { id: string }> = [
+// group：todo 是出發前要辦的事，pack 是要放進行李的。id 不要改，使用者打的勾是照 id 存的。
+export const CHECKLIST: Array<Fact & { id: string; group: 'todo' | 'pack' }> = [
   {
     "id": "c1",
+    "group": "todo",
     "text": "每次入境都要填電子入境卡 e-Arrival Card：抵達前 72 小時內線上填，免費。官網 e-arrivalcard.go.kr",
     "status": "二手核對",
     "checked": "2026-11-14",
@@ -892,6 +894,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c2",
+    "group": "todo",
     "text": "K-ETA：台灣護照暫免申請到 2026-12-31。2027 年以後出發，要回官方 k-eta.go.kr 看有沒有延長",
     "status": "二手核對",
     "checked": "2026-11-14",
@@ -899,6 +902,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c3",
+    "group": "todo",
     "text": "護照效期和免簽天數：以韓國官方與外交部領事事務局為準",
     "status": "未核對",
     "checked": "",
@@ -906,6 +910,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c4",
+    "group": "pack",
     "text": "轉接頭（C／F 型）",
     "status": "二手核對",
     "checked": "2026-11-14",
@@ -913,6 +918,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c5",
+    "group": "todo",
     "text": "eSIM 或網卡",
     "status": "未核對",
     "checked": "",
@@ -920,6 +926,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c6",
+    "group": "todo",
     "text": "旅遊險",
     "status": "未核對",
     "checked": "",
@@ -927,6 +934,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c7",
+    "group": "todo",
     "text": "換錢：先帶少量韓元付第一天的交通，其餘到市區換錢所換（明洞一帶很多，要帶護照），大筆的刷卡。機場匯率通常比較差",
     "status": "二手核對",
     "checked": "2026-11-14",
@@ -934,6 +942,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c8",
+    "group": "todo",
     "text": "交通卡",
     "status": "未核對",
     "checked": "",
@@ -941,6 +950,7 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c9",
+    "group": "pack",
     "text": "行動電源、暖暖包要隨身帶，不能託運",
     "status": "二手核對",
     "checked": "2026-11-14",
@@ -948,10 +958,79 @@ export const CHECKLIST: Array<Fact & { id: string }> = [
   },
   {
     "id": "c10",
+    "group": "todo",
     "text": "在手機裝好 Naver 地圖：韓國當地找路、查大眾運輸多半用它",
     "status": "未核對",
     "checked": "",
     "source": "—"
+  },
+  {
+    "id": "c11",
+    "group": "todo",
+    "text": "訂房和機票的確認信存一份在手機裡，沒網路也打得開",
+    "status": "未核對",
+    "checked": "",
+    "source": "—"
+  },
+  {
+    "id": "c12",
+    "group": "pack",
+    "text": "常用藥：感冒藥、腸胃藥、自己固定吃的藥。處方藥留著原包裝",
+    "status": "未核對",
+    "checked": "",
+    "source": "—"
+  },
+  {
+    "id": "c13",
+    "group": "pack",
+    "text": "出發前一週看首爾的天氣再決定衣服。冬天室外很冷、室內暖氣強，帶好穿脫的",
+    "status": "未核對",
+    "checked": "",
+    "source": "—"
+  }
+];
+
+/** 不能帶進韓國的 */
+export const NO_BRING: Fact[] = [
+  {
+    "text": "肉類製品不能帶進韓國：肉乾、肉鬆、香腸、含肉塊的泡麵都算。沒申報被查到會罰錢，報導裡有人帶泡麵被罰 500 萬韓元，最重到 1000 萬",
+    "status": "二手核對",
+    "checked": "2026-11-16",
+    "source": "Creatrip、亞洲經濟 2026-02，未直接讀韓國檢疫機關的官方頁"
+  },
+  {
+    "text": "新鮮水果、蔬菜、種子也不要帶",
+    "status": "來源較舊",
+    "checked": "2026-11-16",
+    "source": "Funliday 2024"
+  }
+];
+
+/** 在當地出事時打的電話 */
+export const SOS: Fact[] = [
+  {
+    "text": "報案打 112（警察）",
+    "status": "二手核對",
+    "checked": "2026-11-16",
+    "source": "HaniSeoul、梨花女大國際處"
+  },
+  {
+    "text": "火災、叫救護車打 119",
+    "status": "二手核對",
+    "checked": "2026-11-16",
+    "source": "HaniSeoul、梨花女大國際處"
+  },
+  {
+    "text": "旅遊諮詢打 1330：韓國觀光公社的熱線，有中文，24 小時。它不是緊急電話，有生命危險直接打 112 或 119",
+    "status": "二手核對",
+    "checked": "2026-11-16",
+    "source": "HaniSeoul"
+  },
+  {
+    "text": "觀光警察 02-700-6277，可以講中文",
+    "status": "二手核對",
+    "checked": "2026-11-16",
+    "source": "駐韓國台北代表部（看的是搜尋摘要，沒有直接開那一頁）"
   }
 ];
 
@@ -1000,4 +1079,6 @@ export const GIFT_RULES = [
   '新鮮水果、種子、活的植物不能帶。',
   '酒類和菸有免稅額度，超過要報稅。',
   '液體超過 100 毫升不能手提上機，醬料、酒、柚子茶要托運。',
+  '行動電源、備用鋰電池不能放託運行李，要手提。',
+  '要退稅的東西先別拆封，退稅時可能要給海關看。護照帶在身上。',
 ];

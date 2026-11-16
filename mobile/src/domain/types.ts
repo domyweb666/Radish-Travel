@@ -60,6 +60,8 @@ export interface TripDraft {
   city?: 'seoul'; // 第一版只有首爾
   base?: BaseKey; // 這趟住哪一帶。沒填就用「我」裡的
   stayName?: string; // 住宿的名字，使用者自己打的，沒查證
+  name?: string; // 使用者取的名字。沒取就叫「首爾幾天」
+  cover?: string; // 封面照片，記法跟站的照片一樣（只記檔名）
   start: string; // YYYY-MM-DD
   days: number;
   arrive: Part;
@@ -67,9 +69,19 @@ export interface TripDraft {
   people: number;
 }
 
+/** 使用者自己記的一筆花費，金額是韓元 */
+export interface Spend {
+  id: string;
+  krw: number;
+  note?: string; // 花在哪，使用者自己打的
+  day?: number; // 旅途中記的才有：第幾天
+}
+
 export interface Trip extends TripDraft {
   slots: Slot[];
   flight: number;
+  spend?: Spend[]; // 實際花的，一筆一筆記
+  rate?: number; // 1000 韓元換多少台幣。使用者自己填的，app 不抓匯率
 }
 
 export type Pace = 'slow' | 'mid' | 'fast';
@@ -117,6 +129,7 @@ export interface BasketItem {
 export interface Basket {
   id: string;
   title: string;
+  cover?: string;
   items: BasketItem[];
   start?: string;
   days?: number;
@@ -148,6 +161,8 @@ export interface AppState {
   baskets: Basket[];
   settingsDirty: boolean; // 設定改過、還沒套到這趟
   aiConsent: boolean;
+  guideSeen: boolean; // 「這趟」的操作說明看過了嗎
+  remind: boolean; // 出發前提醒還沒訂的站（本機通知）
   debugDay: number | null; // 測試用：假裝今天是第幾天
 }
 

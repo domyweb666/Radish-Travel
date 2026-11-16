@@ -1,13 +1,15 @@
-// 蘿蔔旅行：四個分頁（這趟／行前／旅行／我），用 Domy Design 的懸浮分頁列。
-import { useState } from 'react';
+// 蘿蔔旅行：四個分頁（行前／這趟／旅行／我），用 Domy Design 的懸浮分頁列。打開時先停在「這趟」。
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { DomyTabBar, DomyThemeProvider, useDomy } from '@domy/design';
 import { TabMe, TabPrep, TabTrip, TabTrips } from './src/components/icons';
 import { NoticeBar } from './src/components/NoticeBar';
+import { remindersOf } from './src/domain/remind';
+import { syncReminders } from './src/io/reminders';
 import { MeScreen } from './src/screens/MeScreen';
-import { PrepScreen } from './src/screens/PrepScreen';
+import { PrepScreen, type PrepStage } from './src/screens/PrepScreen';
 import { TripScreen } from './src/screens/TripScreen';
 import { TripsScreen } from './src/screens/TripsScreen';
 import { SheetHost } from './src/sheets/host';
@@ -15,8 +17,8 @@ import { AppProvider, useApp } from './src/store';
 import { radishTheme } from './src/theme';
 
 const TABS = [
-  { key: 'trip', title: '這趟', Icon: TabTrip },
   { key: 'prep', title: '行前', Icon: TabPrep },
+  { key: 'trip', title: '這趟', Icon: TabTrip },
   { key: 'trips', title: '旅行', Icon: TabTrips },
   { key: 'me', title: '我', Icon: TabMe },
 ] as const;
@@ -38,9 +40,16 @@ export default function App() {
 
 function Shell() {
   const { c, scheme } = useDomy();
-  const { ready } = useApp();
+  const { ready, s, today } = useApp();
+  // 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空
+  const reminders = JSON.stringify(s.remind ? remindersOf(s, today) : []);
+  useEffect(() => {
+    if (ready) void syncReminders(JSON.parse(reminders));
+  }, [ready, reminders]);
   const [tab, setTab] = useState<TabKey>('trip');
   const index = TABS.findIndex((t) => t.key === tab);
+  // 從「這趟」的提醒跳到「行前」時，指定要開哪一段。自己點分頁列就照旅程走到哪決定
+  const [prepOpen, setPrepOpen] = useState<PrepStage | undefined>(undefined);
 
   // 沒用導覽套件，照 DomyTabBar 要的形狀自己給
   const state = { index, routes: TABS.map((t) => ({ key: t.key, name: t.key })) };
@@ -49,7 +58,10 @@ function Shell() {
   );
   const navigation = {
     emit: () => ({ defaultPrevented: false }),
-    navigate: (name: string) => setTab(name as TabKey),
+    navigate: (name: string) => {
+      setPrepOpen(undefined);
+      setTab(name as TabKey);
+    },
   };
 
   return (
@@ -57,8 +69,8 @@ function Shell() {
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {ready ? (
         <>
-          {tab === 'trip' && <TripScreen goSettings={() => setTab('me')} />}
-          {tab === 'prep' && <PrepScreen goTrip={() => setTab('trip')} />}
+          {tab === 'trip' && <TripScreen goSettings={() => setTab('me')} goPrep={(stage) => (setPrepOpen(stage), setTab('prep'))} />}
+          {tab === 'prep' && <PrepScreen open={prepOpen} goTrip={() => setTab('trip')} />}
           {tab === 'trips' && <TripsScreen goTrip={() => setTab('trip')} />}
           {tab === 'me' && <MeScreen />}
           <NoticeBar />
