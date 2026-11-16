@@ -201,8 +201,8 @@ ops 可用的動作：
 }
 
 /** 送到自己的後端。後端要回 {reply, ops}，或是 {text: "…含 JSON 的文字…"} */
-export async function askRemote(prompt: string): Promise<BrainOut> {
-  const res = await fetch(AI_ENDPOINT, {
+export async function askRemote(prompt: string, endpoint: string = AI_ENDPOINT): Promise<BrainOut> {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt }),

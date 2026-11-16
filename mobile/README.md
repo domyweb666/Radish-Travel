@@ -70,6 +70,8 @@ npm run bundle:check
 
 `src/domain/chat.ts` 會讀環境變數 `EXPO_PUBLIC_AI_ENDPOINT`。有設的話，「用講的改行程」會把提示詞 POST 到那個網址（`{ "prompt": "..." }`），後端要回 `{ "reply": "...", "ops": [...] }`。沒設就用本機指令。
 
+測試階段還沒有後端和金鑰，可以先接這台電腦的 claude cli：在 `mobile/.env.local` 寫 `EXPO_PUBLIC_AI_ENDPOINT=/__ai`，重開 `npm run ios`。開發伺服器收到請求後跑 `claude -p`（`dev/ai-cli.js`，不給工具、預設用 sonnet，要換模型設 `RADISH_AI_MODEL`），手機走同一條 tunnel 連回來。電腦要先登入過 Claude Code，而且 Expo 開著才有用。`.env.local` 不進 git。
+
 金鑰放後端，不放 app。這條路寫好了但還沒有後端可以測。
 
 ## 還沒做、還沒驗

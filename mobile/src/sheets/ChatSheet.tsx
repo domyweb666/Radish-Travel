@@ -9,6 +9,7 @@ import { Card, Chip } from '../components/ui';
 import { AI_HINTS, LOCAL_HINTS, aiPrompt, aiReady, applyOps, askRemote, hasAiPlace, localBrain, type BrainOut } from '../domain/chat';
 import { draftOf, generate, warnings } from '../domain/plan';
 import { ownOf } from '../domain/spend';
+import { aiEndpoint } from '../io/aiEndpoint';
 import type { ChatMsg } from '../domain/types';
 import { useApp } from '../store';
 
@@ -83,7 +84,7 @@ export function ChatSheet({ onClose }: { onClose: () => void }) {
     let failed = false;
     if (remote) {
       try {
-        out = await askRemote(aiPrompt(msg, s.trip, s.settings, s.chat));
+        out = await askRemote(aiPrompt(msg, s.trip, s.settings, s.chat), aiEndpoint());
       } catch {
         failed = true;
         out = localBrain(msg, s.trip);
