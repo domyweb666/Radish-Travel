@@ -47,7 +47,7 @@ struct PrepCost: View {
         let label: String = "每人粗估" + (trip.flight != 0 ? "" : "（不含機票）")
         return Card {
             DomyText(label, .footnote, tone: .secondary)
-            DomyText(costRange(trip, store.s.settings), .title1)
+            DomyText(costRange(trip, store.s.settings), .title1, numeric: true)
         }
     }
 
@@ -57,7 +57,7 @@ struct PrepCost: View {
         return DomySection(footer: "都是粗估，沒有核對過票價和匯率，只能看比例。購物不算在裡面。住宿和一天吃喝的預算在「我」改。") {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, r in
                 TextRow(r.name, note: prepNote(r.note)) {
-                    DomyText(money(r.amount), .headline)
+                    DomyText(money(r.amount), .headline, numeric: true)
                 }
             }
         }
@@ -177,6 +177,7 @@ struct PrepSpent: View {
     }
 
     private func addOne() {
+        Haptic.notify(.success)
         let amount: Double = parseKrw(krw)
         let memo: String = note
         let day: Int? = tripDay
@@ -260,6 +261,7 @@ struct PrepSpent: View {
     }
 
     private func removeOne(_ id: String) {
+        Haptic.impact(.light)
         store.act(undoable: true) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }
             guard let gone = removeSpend(&trip, id) else { return nil }

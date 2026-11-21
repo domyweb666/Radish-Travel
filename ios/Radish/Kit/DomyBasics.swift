@@ -46,6 +46,8 @@ struct DomyText: View {
     var lines: Int?
     var align: TextAlignment = .leading
     var color: Color?
+    /// 這段字是會變的數字（金額、計數）：換值時每一位數滾過去，不是直接跳
+    var numeric: Bool = false
 
     init(
         _ text: String,
@@ -54,7 +56,8 @@ struct DomyText: View {
         weight: Font.Weight? = nil,
         lines: Int? = nil,
         align: TextAlignment = .leading,
-        color: Color? = nil
+        color: Color? = nil,
+        numeric: Bool = false
     ) {
         self.text = text
         self.variant = variant
@@ -63,10 +66,12 @@ struct DomyText: View {
         self.lines = lines
         self.align = align
         self.color = color
+        self.numeric = numeric
     }
 
     var body: some View {
         Text(text)
+            .contentTransition(numeric ? .numericText() : .identity)
             .font(variant.style.font.weight(weight ?? variant.style.weight))
             .lineSpacing(variant.style.lineSpacing)
             .foregroundStyle(color ?? tone.color)
@@ -106,7 +111,7 @@ struct PressStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed && !reduceMotion ? T.Motion.pressScale : 1)
             .opacity(configuration.isPressed && reduceMotion ? T.Motion.pressedOpacity : 1)
-            .animation(.easeOut(duration: T.Motion.pressDuration), value: configuration.isPressed)
+            .animation(Motion.press, value: configuration.isPressed)
     }
 }
 
@@ -184,7 +189,7 @@ struct DomyButton: View {
         let height: CGFloat = size == .compact ? T.Size.buttonCompact : T.Size.button
         let style: DomyTypeStyle = size == .compact ? T.TypeScale.callout : T.TypeScale.headline
         Button {
-            if haptic ?? (variant == .primary) { Haptic.select() }
+            if haptic ?? false { Haptic.select() }
             action()
         } label: {
             Text(title)

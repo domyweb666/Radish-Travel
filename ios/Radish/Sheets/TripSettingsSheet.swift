@@ -37,6 +37,7 @@ struct TripSettingsSheet: View {
     }
 
     private func save(_ form: TripFormValue, _ regen: Bool) {
+        Haptic.notify(.success)
         guard let start = form.start, !start.isEmpty,
             let days = form.days, days != 0,
             let arrive = form.arrive,

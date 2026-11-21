@@ -77,7 +77,7 @@ struct Spotlight: View {
         }
         .opacity(shown ? 1 : 0)
         .onAppear {
-            withAnimation(.easeInOut(duration: T.Motion.transition)) {
+            withAnimation(Motion.transition) {
                 shown = true
             }
         }
@@ -96,7 +96,7 @@ struct Spotlight: View {
     private func finish() {
         if leaving { return }
         leaving = true
-        withAnimation(.easeInOut(duration: T.Motion.transition)) {
+        withAnimation(Motion.transition) {
             shown = false
         }
         let done: () -> Void = onDone

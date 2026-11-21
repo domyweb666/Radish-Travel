@@ -43,8 +43,9 @@ bash ios/tools/watch-check.sh
 1. 畫面只能用 `T`（尺寸、圓角、間距、字級）和 `C`（顏色），不准寫色碼和數字。CI 會跑 `node ios/tools/check-hardcoded.mjs` 擋。真的只用一次的數值，在那一行寫 `// domy-ignore: 原因`。
 2. 所有字用 `DomyText`，按鈕用 `DomyButton`，分組用 `DomySection`。缺元件先在 `Radish/Kit/LocalKit.swift` 用代號組一個。
 3. 會改行程的動作一律 `store.act(undoable: true)`。
-4. `RadishCore` 只准 `import Foundation`。
-5. 首爾資料改了，在 `mobile/` 跑 `node --import tsx ../ios/tools/export-seoul.ts` 重新轉一次。
+4. 動畫曲線和震動照 `Radish/Kit/Motion.swift` 那張動作代號表，不准自己寫 `.easeInOut(duration:)`。原則在 `手感指南.md`。會變的數字用 `DomyText(..., numeric: true)`。
+5. `RadishCore` 只准 `import Foundation`。
+6. 首爾資料改了，在 `mobile/` 跑 `node --import tsx ../ios/tools/export-seoul.ts` 重新轉一次。
 
 搬的時候講好的寫法在 `PORTING.md`（規則）和 `UI-PORTING.md`（畫面，有 React Native 對 SwiftUI 的對照表）。
 

@@ -92,7 +92,7 @@ final class AppStore {
         noticeTask?.cancel()
         noticeId += 1
         let id = noticeId
-        withAnimation(.easeInOut(duration: T.Motion.transition)) {
+        withAnimation(Motion.transition) {
             notice = Notice(id: id, text: text, canUndo: undoable)
         }
         noticeTask = Task { [weak self] in
@@ -104,7 +104,7 @@ final class AppStore {
 
     private func clearNotice(_ id: Int) {
         guard notice?.id == id else { return }
-        withAnimation(.easeInOut(duration: T.Motion.transition)) {
+        withAnimation(Motion.transition) {
             notice = nil
         }
     }
@@ -125,7 +125,10 @@ final class AppStore {
             }
             canUndo = true
         }
-        s = draft
+        // 資料變了要看得出哪裡動了：列表增減、數字換值都用同一條曲線
+        withAnimation(Motion.change) {
+            s = draft
+        }
         save()
         if let message, !message.isEmpty {
             show(message, undoable)
@@ -161,7 +164,9 @@ final class AppStore {
         next.baskets = snap.baskets
         next.settingsDirty = snap.settingsDirty
         next.settings.learned = snap.learned
-        s = next
+        withAnimation(Motion.change) {
+            s = next
+        }
         save()
         show("復原了上一步。", false)
     }

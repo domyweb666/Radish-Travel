@@ -187,7 +187,7 @@ struct DayMap: View {
     @MainActor
     private func fit() {
         let next: MapCameraPosition = dayMapCamera(points)
-        withAnimation(.easeInOut(duration: T.Motion.transition)) {
+        withAnimation(Motion.transition) {
             position = next
         }
     }
@@ -199,7 +199,7 @@ struct DayMap: View {
         let region: MKCoordinateRegion = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
             span: MKCoordinateSpan(latitudeDelta: MAP_ME_SPAN, longitudeDelta: MAP_ME_SPAN))
-        withAnimation(.easeInOut(duration: T.Motion.transition)) {
+        withAnimation(Motion.transition) {
             position = MapCameraPosition.region(region)
         }
     }

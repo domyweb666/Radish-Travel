@@ -18,7 +18,7 @@ struct DomySection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s2) {
             if let title {
-                DomyText(title, .title3)
+                DomyText(title, .title3, numeric: true)
                     .padding(.horizontal, T.Space.s1)
                     .accessibilityAddTraits(.isHeader)
             }

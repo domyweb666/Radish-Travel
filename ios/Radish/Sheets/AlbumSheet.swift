@@ -33,24 +33,33 @@ private struct AlbumRow: View {
 
     var body: some View {
         let say: String = it.say ?? ""
-        VStack(alignment: .leading, spacing: T.Space.s2) {
-            HStack(spacing: T.Space.s3) {
-                CatIcon(it)
-                VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
-                    DomyText(it.n, .headline)
-                    DomyText(say.isEmpty ? "點一下可以寫一句、加照片" : "「\(say)」", .subheadline, tone: .secondary)
+        let photos: [String] = it.photos ?? []
+        // 上半（圖示與字）是一顆按鈕，按下整列變灰；照片條放在按鈕外面，才能左右滑
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: onTap) {
+                HStack(spacing: T.Space.s3) {
+                    CatIcon(it)
+                    VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
+                        DomyText(it.n, .headline)
+                        DomyText(
+                            say.isEmpty ? "點一下可以寫一句、加照片" : "「\(say)」", .subheadline, tone: .secondary)
+                    }
+                    .fillLeading()
                 }
-                .fillLeading()
+                .padding(.vertical, T.Space.s3)
+                .padding(.horizontal, T.Space.s4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            PhotoStrip(refs: it.photos ?? [])
+            .buttonStyle(RowPressStyle())
+            .padding(.horizontal, -T.Space.s4)
+            .accessibilityHint("寫一句、加照片")
+            if !photos.isEmpty {
+                PhotoStrip(refs: photos)
+                    .padding(.bottom, T.Space.s3)
+            }
         }
-        .padding(.vertical, T.Space.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap() }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint("寫一句、加照片")
     }
 }
 

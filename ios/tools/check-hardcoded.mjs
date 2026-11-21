@@ -7,7 +7,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'Radish');
-const SKIP = new Set(['DomyTokens.swift', 'Theme.swift', 'RadishBuddy.swift', 'RadishShape.swift']);
+const SKIP = new Set(['DomyTokens.swift', 'Theme.swift', 'RadishBuddy.swift', 'RadishShape.swift', 'PullMoment.swift']);
 
 const RULES = [
   [/0x[0-9A-Fa-f]{6}\b/, '色碼'],
@@ -20,6 +20,7 @@ const RULES = [
   [/\.padding\(\s*(\.\w+\s*,\s*)?[1-9]\d*(\.\d+)?\s*\)/, '間距（改用 T.Space）'],
   [/\.frame\([^)]*\b(width|height|minWidth|minHeight|maxWidth|maxHeight)\s*:\s*[1-9]\d*(\.\d+)?\s*[,)]/, '尺寸（改用 T.Size）'],
   [/lineWidth\s*:\s*\d/, '線寬（改用 T.Size.hairline）'],
+  [/\.(easeInOut|easeOut|easeIn|linear)\s*\(/, '動畫曲線（改用 Motion 的代號，見 Kit/Motion.swift）'],
 ];
 
 function walk(dir) {

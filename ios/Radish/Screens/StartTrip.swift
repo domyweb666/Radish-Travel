@@ -94,6 +94,7 @@ struct StartTrip: View {
     }
 
     private func go() {
+        Haptic.notify(.success)
         guard let start = form.start, !start.isEmpty,
             let days = form.days, days != 0,
             let arrive = form.arrive,

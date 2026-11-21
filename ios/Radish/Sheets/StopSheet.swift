@@ -81,6 +81,7 @@ struct StopSheet: View {
 
     /// 拿掉這一站。choice 有給的話，順便記成「以後都不排」；兩件事算同一步，可以一起復原
     private func drop(_ name: String, _ choice: LearnChoice?) {
+        Haptic.impact(.light)
         let stopId: String = id
         store.act(undoable: true) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }

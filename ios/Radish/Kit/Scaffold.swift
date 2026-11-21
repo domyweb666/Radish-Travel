@@ -37,7 +37,7 @@ struct Screen<Content: View>: View {
             .background(C.canvas.ignoresSafeArea())
             .onChange(of: scrollTo) { _, target in
                 guard let target else { return }
-                withAnimation(.easeInOut(duration: T.Motion.transition)) {
+                withAnimation(Motion.transition) {
                     proxy.scrollTo(target, anchor: .center)
                 }
             }

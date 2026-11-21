@@ -138,7 +138,7 @@ struct ChatSheet: View {
     private func toEnd(_ proxy: ScrollViewProxy) {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(T.Motion.pressDuration))
-            withAnimation(.easeOut(duration: T.Motion.transition)) {
+            withAnimation(Motion.transition) {
                 proxy.scrollTo(CHAT_END, anchor: .bottom)
             }
         }
@@ -242,6 +242,7 @@ struct ChatSheet: View {
     /// 把回來的動作套到行程上，對話裡記下改了什麼、哪幾步沒做成。有改到行程才留復原
     @MainActor
     private func apply(_ out: BrainOut, _ failed: Bool) {
+        if failed { Haptic.notify(.error) }
         let regen: Bool = out.regen == true
         let willChange: Bool = regen || !out.ops.isEmpty
         store.act(undoable: willChange) { (d: inout AppState) -> String? in
