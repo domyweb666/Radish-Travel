@@ -293,7 +293,7 @@ struct TextRow<Right: View>: View {
         HStack(spacing: T.Space.s3) {
             VStack(alignment: .leading, spacing: T.Space.s1) {
                 DomyText(title, .body)
-                if let note {
+                if let note, !note.isEmpty {
                     DomyText(note, .footnote, tone: .secondary)
                 }
             }

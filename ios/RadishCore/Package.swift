@@ -11,13 +11,12 @@ let package = Package(
     targets: [
         .target(
             name: "RadishCore",
-            resources: [.process("Resources")],
-            swiftSettings: [.swiftLanguageVersion(.v5)]
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "RadishCoreTests",
-            dependencies: ["RadishCore"],
-            swiftSettings: [.swiftLanguageVersion(.v5)]
+            dependencies: ["RadishCore"]
         ),
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )

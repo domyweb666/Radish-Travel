@@ -26,7 +26,6 @@ targets:
       - path: Radish
       # 規則引擎直接編進 app，跟 app 同一個模組（Package.swift 只給 Linux 上的 swift test 用）
       - path: RadishCore/Sources/RadishCore
-        group: RadishCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.domyweb.radish

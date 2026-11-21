@@ -29,7 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: swift test
-        run: swift test --package-path ios/RadishCore 2>&1 | tee core-test.log
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path ios/RadishCore 2>&1 | tee core-test.log
       - name: 留下測試紀錄
         if: always()
         uses: actions/upload-artifact@v4

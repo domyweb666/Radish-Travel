@@ -1,0 +1,7 @@
+# 這些檔在 macOS／Linux 的 CI 上跑，換行一律 LF（Windows 的 CRLF 會讓 shell 腳本壞掉）
+*.sh text eol=lf
+*.swift text eol=lf
+*.yml text eol=lf
+*.mjs text eol=lf
+ios/**/*.json text eol=lf
+ios/**/*.md text eol=lf

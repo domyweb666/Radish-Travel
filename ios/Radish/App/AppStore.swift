@@ -24,7 +24,7 @@ private struct Snapshot {
 @MainActor
 @Observable
 final class AppStore {
-    static let fileName = "radish-travel-v1.json"
+    nonisolated static let fileName = "radish-travel-v1.json"
     private static let undoMax = 20
     private static let noticeSeconds: Double = 8  // 提示停留時間，不是動畫
 
@@ -44,7 +44,7 @@ final class AppStore {
         self.fileURL = fileURL
     }
 
-    static func defaultURL() -> URL {
+    nonisolated static func defaultURL() -> URL {
         let base: URL =
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
