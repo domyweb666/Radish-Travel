@@ -8,7 +8,7 @@ name: iOS check
 
 on:
   push:
-    branches: ["swiftui", "work/**"]
+    branches: ["swiftui", "work/**", "overnight-**"]
     paths:
       - "ios/**"
       - ".github/workflows/ios-check.yml"
