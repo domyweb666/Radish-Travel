@@ -15,7 +15,16 @@ case "${ASC_KEY_P8_BASE64:-}" in
     ;;
   -----BEGIN*)
     FORM="原文"
-    printf '%s\n' "$ASC_KEY_P8_BASE64" > "$OUT"
+    # 2026-11-22 踩到：貼進 GitHub 時換行不見了（或變成空白），整把金鑰擠成一行，openssl 不認。
+    # 所以不管原本有沒有換行，都把頭尾標記拿掉、空白全去掉，再照每行 64 個字重排。
+    BODY="$(printf '%s' "$ASC_KEY_P8_BASE64" \
+      | sed -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' \
+      | tr -d ' \r\n\t')"
+    {
+      echo "-----BEGIN PRIVATE KEY-----"
+      printf '%s\n' "$BODY" | fold -w 64
+      echo "-----END PRIVATE KEY-----"
+    } > "$OUT"
     ;;
   *)
     FORM="base64"
