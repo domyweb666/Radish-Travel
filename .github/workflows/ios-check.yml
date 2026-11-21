@@ -1,0 +1,169 @@
+# SwiftUI 版的檢查線。這台開發機是 Windows，沒有 Swift 編譯器，編不編得過全靠這裡。
+# 兩關：
+#   1. 規則引擎測試（Linux，快）：ios/RadishCore 的 swift test
+#   2. 編譯＋UI 測試截圖（macOS）：XcodeGen 產生專案 → 模擬器編譯 → XCUITest 走流程，每個畫面截一張
+# 不碰任何 secrets、不簽章、不上傳 TestFlight。
+# 截圖在這次執行的 artifact「radish-ui-screenshots」，模擬器版在「radish-sim-app」。
+name: iOS check
+
+on:
+  push:
+    branches: ["swiftui", "work/**"]
+    paths:
+      - "ios/**"
+      - ".github/workflows/ios-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: 規則引擎測試（Linux）
+    runs-on: ubuntu-latest
+    container: swift:6.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        run: swift test --package-path ios/RadishCore 2>&1 | tee core-test.log
+      - name: 留下測試紀錄
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radish-core-log
+          path: core-test.log
+          if-no-files-found: warn
+          retention-days: 7
+
+  ui-check:
+    name: 編譯與模擬器截圖（macOS）
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 選 Xcode 26
+        run: |
+          XCODE_APP="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+
+      - name: 畫面裡不准寫死色碼
+        run: node ios/tools/check-hardcoded.mjs
+
+      - name: 產生 Xcode 專案
+        working-directory: ios
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen generate
+
+      # 用 UDID 指定模擬器：挑最新 iOS runtime 裡的一台 iPhone 最穩。
+      - name: 挑一台 iPhone 模擬器
+        id: sim
+        run: |
+          xcrun simctl list -j devices available > "$RUNNER_TEMP/sims.json"
+          python3 - "$RUNNER_TEMP/sims.json" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, re, sys
+          devices = json.load(open(sys.argv[1]))["devices"]
+          best = None
+          for runtime, devs in devices.items():
+              m = re.search(r"iOS-(\d+)-(\d+)", runtime)
+              if not m:
+                  continue
+              ver = (int(m.group(1)), int(m.group(2)))
+              for d in devs:
+                  name = d["name"]
+                  if not d.get("isAvailable") or not name.startswith("iPhone"):
+                      continue
+                  n = re.search(r"iPhone (\d+)", name)
+                  plain = re.fullmatch(r"iPhone \d+", name) is not None
+                  key = (ver, plain, int(n.group(1)) if n else 0, name)
+                  if best is None or key > best[0]:
+                      best = (key, d["udid"], name, runtime)
+          if best is None:
+              sys.exit("no available iPhone simulator")
+          print(f"udid={best[1]}")
+          print(f"name={best[2]}")
+          print(f"runtime={best[3]}")
+          PY
+          grep -E '^(udid|name|runtime)=' "$GITHUB_OUTPUT"
+
+      - name: 開模擬器
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          # 硬體鍵盤接著的話軟體鍵盤不會出來，XCTest 打字會失敗
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
+
+      - name: 編譯並跑 UI 測試
+        working-directory: ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+          # xcodebuild 會把 TEST_RUNNER_ 前綴拿掉再傳給測試程序
+          TEST_RUNNER_RADISH_SCREENSHOT_DIR: ${{ github.workspace }}/ios/screenshots
+        run: |
+          set -o pipefail
+          mkdir -p screenshots
+          xcodebuild test \
+            -project Radish.xcodeproj \
+            -scheme Radish \
+            -destination "id=$UDID" \
+            -derivedDataPath "$PWD/DerivedData" \
+            -resultBundlePath "$PWD/UITests.xcresult" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            2>&1 | tee build-uitest.log \
+            | grep -E --line-buffered "error:|warning:|Test Case|Test Suite|Executed|TEST |BUILD |XCTAssert|failed" || true
+          grep -q "TEST SUCCEEDED" build-uitest.log
+
+      # 模擬器版留一份，之後可以上傳 Limrun 雲端模擬器親手走流程。UI 測試紅了也留，只要編得出來就有。
+      - name: 包模擬器版
+        id: simzip
+        if: always()
+        working-directory: ios
+        run: |
+          APP="DerivedData/Build/Products/Debug-iphonesimulator/Radish.app"
+          if [ -d "$APP" ]; then
+            (cd "$(dirname "$APP")" && zip -qry "$RUNNER_TEMP/radish-sim.zip" Radish.app)
+            ls -l "$RUNNER_TEMP/radish-sim.zip"
+            echo "made=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "沒有編出 Radish.app，這一輪沒有模擬器版"
+          fi
+
+      - name: 留下模擬器版
+        if: always() && steps.simzip.outputs.made == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: radish-sim-app
+          path: ${{ runner.temp }}/radish-sim.zip
+          retention-days: 7
+
+      - name: 留下截圖
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radish-ui-screenshots
+          path: ios/screenshots
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: 留下編譯與測試紀錄
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radish-ui-log
+          path: ios/build-uitest.log
+          if-no-files-found: warn
+          retention-days: 7

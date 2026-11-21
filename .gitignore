@@ -1,0 +1,13 @@
+
+# iOS（SwiftUI 版）：Xcode 專案由 ios/project.yml 產生，不進 git
+ios/Radish.xcodeproj/
+ios/Radish/Info.plist
+ios/DerivedData/
+ios/build/
+ios/screenshots/
+ios/*.xcresult
+ios/*.log
+ios/RadishCore/.build/
+ios/RadishCore/.swiftpm/
+ios/**/xcuserdata/
+.DS_Store

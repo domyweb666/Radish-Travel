@@ -1,0 +1,80 @@
+# XcodeGen 的專案定義。Xcode 專案檔不進 git，CI 每次用這份產生：
+#   brew install xcodegen && cd ios && xcodegen generate
+# 加 Swift 檔不用動這裡，資料夾裡的檔會自動收進去。
+name: Radish
+options:
+  bundleIdPrefix: org.domyweb
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: zh-Hant
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+
+targets:
+  Radish:
+    type: application
+    platform: iOS
+    sources:
+      - path: Radish
+      # 規則引擎直接編進 app，跟 app 同一個模組（Package.swift 只給 Linux 上的 swift test 用）
+      - path: RadishCore/Sources/RadishCore
+        group: RadishCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.domyweb.radish
+        PRODUCT_NAME: Radish
+        # 模組名字不能叫 Radish：畫面裡有一個叫 Radish 的 View（蘿蔔），同名會擋到限定名
+        PRODUCT_MODULE_NAME: RadishTravel
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        RADISH_AI_ENDPOINT: ""
+    info:
+      path: Radish/Info.plist
+      properties:
+        CFBundleDisplayName: 蘿蔔旅行
+        CFBundleDevelopmentRegion: zh-Hant
+        CFBundleLocalizations: [zh-Hant]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiresFullScreen: true
+        ITSAppUsesNonExemptEncryption: false
+        LSApplicationQueriesSchemes: [nmap]
+        NSLocationWhenInUseUsageDescription: 打開地圖按「我在哪」的時候，用來在地圖上標出你的位置。
+        # 「用講的改行程」的 AI 後端網址。空的就只用本機指令
+        RadishAIEndpoint: $(RADISH_AI_ENDPOINT)
+
+  RadishUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: RadishUITests
+    dependencies:
+      - target: Radish
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.domyweb.radish.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: Radish
+
+schemes:
+  Radish:
+    build:
+      targets:
+        Radish: all
+        RadishUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RadishUITests
