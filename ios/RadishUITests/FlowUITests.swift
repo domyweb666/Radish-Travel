@@ -22,7 +22,8 @@ final class FlowUITests: RadishUITestCase {
         if waitUntil(timeout: 15, { self.visibleElement(in: skip) != nil }) {
             shot("操作說明第一步")
             visibleElement(in: skip)?.tap()
-            _ = waitUntil(timeout: 5) { self.visibleElement(in: skip) == nil }
+            // 不回頭問那顆按鈕還在不在：它正在消失時去問，XCUITest 會記一條失敗
+            RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         }
     }
 
@@ -56,11 +57,11 @@ final class FlowUITests: RadishUITestCase {
         let pull = idQuery("next-pull")
         if visibleElement(in: pull) != nil || waitUntil(timeout: 5, { self.visibleElement(in: pull) != nil }) {
             visibleElement(in: pull)?.tap()
-            let moment = requireVisible(idQuery("pull-moment"), "拔蘿蔔動畫", timeout: 8)
-            RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+            requireVisible(idQuery("pull-moment"), "拔蘿蔔動畫", timeout: 8)
             shot("拔蘿蔔")
-            moment.tap()
-            _ = waitUntil(timeout: 8) { self.visibleElement(in: self.idQuery("pull-moment")) == nil }
+            // 動畫播完會自己關，等它關掉就好
+            RunLoop.current.run(until: Date().addingTimeInterval(5))
+            XCTAssertFalse(idQuery("pull-moment").firstMatch.exists, "拔蘿蔔動畫沒有自己關掉")
             shot("拔完之後")
         } else {
             XCTFail("今天出發的行程，沒看到「去過了，拔起來」")
