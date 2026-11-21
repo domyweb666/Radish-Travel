@@ -11,3 +11,12 @@ ios/RadishCore/.build/
 ios/RadishCore/.swiftpm/
 ios/**/xcuserdata/
 .DS_Store
+
+# 憑證與金鑰永遠不進 repo
+*.p12
+*.p8
+*.cer
+*.csr
+*.key
+*.pem
+*.mobileprovision

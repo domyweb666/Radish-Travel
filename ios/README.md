@@ -60,6 +60,6 @@ bash ios/tools/watch-check.sh
 ## 還沒驗的
 
 - 沒在真的 iPhone 上跑過。震動、拔蘿蔔的節奏、通知會不會跳出來、定位、分享網頁檔，模擬器都驗不到。
-- 要裝到手機得走 TestFlight，需要簽章金鑰放進這個 repo 的 Secrets。還沒設。
+- 要裝到手機得走 TestFlight。工作流寫好了（`.github/workflows/ios.yml`），還差三件只有多米能做的事，步驟在 `ios/ci/README.md`。這條線還沒真的跑過。
 - 深色模式沒截圖看過。
 - 過敏告知卡的韓文、首爾資料，跟 Expo 版一樣都還沒核對。
