@@ -1,6 +1,8 @@
 // 排行程的本機規則，從原型第三版搬過來。純函式，不碰畫面，tests/ 可以直接跑。
 // 接上 AI 之後，第一版行程改由後端產生，這裡留著當離線與測試用的底。
 import { ADJ, AREA, CAT, FLV, FOOD, HOTEL, PART, PLACES, PURPOSE, STAY } from '../data/seoul';
+import { BODY_TEXT, TWEAK_TEXT, WALK_TEXT } from './labels';
+import { banned, bannedFood, learnedText, outdoor, seasonOf, tripSettings } from './prefs';
 import type { AreaKey, Cat, FoodKind, Part, Place, Purpose, Seed, Settings, Slot, Stop, Trip, TripDraft } from './types';
 
 export const PARTS: Part[] = ['am', 'pm', 'eve'];
@@ -11,7 +13,12 @@ export const defaultSettings = (): Settings => ({
   stay: 'cheap',
   base: 'C',
   food: { street: 2, local: 3, famous: 1, fine: 0 },
+  allergy: [],
   avoid: [],
+  meh: [],
+  walk: 'normal',
+  body: [],
+  learned: [],
   queue: 'some',
   mealMax: 1500,
   budget: 1500,
@@ -28,8 +35,11 @@ export const defaultSettings = (): Settings => ({
 export const money = (n: number) => 'NT$ ' + Math.round(n).toLocaleString('en-US');
 
 export function foodLv(st: Settings): Record<FoodKind, number> {
-  const any = FOOD_KINDS.some((k) => st.food[k] > 0);
-  return any ? st.food : { street: 0, local: 1, famous: 0, fine: 0 };
+  // 說過「以後都不排」的那幾種，當成不要
+  const no = bannedFood(st);
+  const f = Object.fromEntries(FOOD_KINDS.map((k) => [k, no.has(k) ? 0 : st.food[k]])) as Record<FoodKind, number>;
+  const any = FOOD_KINDS.some((k) => f[k] > 0);
+  return any ? f : { street: 0, local: 1, famous: 0, fine: 0 };
 }
 export function foodPct(st: Settings): Record<FoodKind, number> {
   const f = foodLv(st);
@@ -64,6 +74,7 @@ const PURPOSE_CATS: Record<Purpose, Cat[]> = {
 function prefWhy(p: Place, st: Settings): string {
   if (st.play[p.c] === 2) return `你最愛${CAT[p.c]}`;
   if (st.play[p.c] === 1) return `你喜歡${CAT[p.c]}`;
+  if (st.walk === 'less' && p.l) return '你說要少走，這一站輕鬆';
   const hit = st.purposes.find((purpose) => PURPOSE_CATS[purpose].includes(p.c) || (purpose === 'rest' && p.l));
   if (hit) return `你旅行想${PURPOSE[hit]}`;
   return p.s === 'L' ? `${AREA[p.a]}這一帶的主要景點` : `${AREA[p.a]}這一帶順路的小地方`;
@@ -71,17 +82,24 @@ function prefWhy(p: Place, st: Settings): string {
 
 const toStop = (p: Place, why: string): Stop => ({ ...p, status: 'kept', swaps: 0, why });
 
-export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () => number = Math.random): Trip {
+export function generate(d: TripDraft, base0: Settings, shuffle = false, rnd: () => number = Math.random): Trip {
+  const st = tripSettings(base0, d.tweaks);
   const w = weights(st);
+  const season = seasonOf(d.start);
+  const weather = (season === 'hot' && st.body.includes('heat')) || (season === 'cold' && st.body.includes('cold'));
+  const noUp = st.body.includes('stairs');
+  // 這趟有要慶祝的事：中間挑一天晚餐排精緻餐廳
+  const treatDay = d.tweaks?.includes('treat') ? Math.ceil(d.days / 2) : 0;
   const used = new Set<string>();
   const { pace } = st;
   const base = d.base ?? st.base;
   const rest = st.purposes.includes('rest');
   const lv = foodLv(st);
   const jit = () => (shuffle ? rnd() * 2.5 : 0);
-  const score = (p: Place) => w[p.c] + (rest && p.l ? 2 : 0);
+  const score = (p: Place) => w[p.c] + (rest && p.l ? 2 : 0) + (st.walk === 'less' && p.l ? 2 : 0) - (weather && outdoor(p) ? 3 : 0);
+  const fits = (p: Place) => !banned(p, st) && !(noUp && p.up);
   const take = (areas: AreaKey[], size: 'L' | 'S' | null, want: ((p: Place) => boolean) | null, why: (p: Place) => string): Stop | null => {
-    const c = PLACES.filter((p) => !used.has(p.id) && areas.includes(p.a) && (!size || p.s === size) && (!want || want(p)))
+    const c = PLACES.filter((p) => !used.has(p.id) && fits(p) && areas.includes(p.a) && (!size || p.s === size) && (!want || want(p)))
       .map((p) => [p, score(p) + jit()] as const)
       .sort((x, y) => y[1] - x[1]);
     if (!c.length) return null;
@@ -91,8 +109,8 @@ export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () =>
   const near = (a: AreaKey): AreaKey[] => [a, ...ADJ[a]];
   const ALL = Object.keys(AREA) as AreaKey[];
   const areaScore = (a: AreaKey) => {
-    const ps = PLACES.filter((p) => p.a === a);
-    return ps.reduce((s, p) => s + score(p), 0) / ps.length + jit();
+    const ps = PLACES.filter((p) => p.a === a && fits(p));
+    return (ps.length ? ps.reduce((s, p) => s + score(p), 0) / ps.length : 0) + jit();
   };
   const order: AreaKey[] = ALL.filter((a) => a !== 'J')
     .map((a) => [a, areaScore(a)] as const)
@@ -137,7 +155,7 @@ export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () =>
     cnt[best]++;
     return best;
   };
-  const dinnerWhy = (p: Place) => (p.f ? `晚餐排${FOOD[p.f].name}，你設的是「${FLV[lv[p.f]]}」` : pref(p));
+  const dinnerWhyOf = (p: Place) => (p.f ? `晚餐排${FOOD[p.f].name}，你設的是「${FLV[lv[p.f]]}」` : pref(p));
 
   for (let day = 1; day <= d.days; day++) {
     let parts: Part[] = ['am', 'pm', 'eve'];
@@ -173,7 +191,9 @@ export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () =>
       };
       const city: AreaKey[] = a === 'J' ? [base] : near(a);
       if (part === 'eve') {
-        const k = nextKind();
+        const treat = day === treatDay;
+        const k = treat ? 'fine' : nextKind();
+        const dinnerWhy = treat ? () => '這趟有要慶祝的事，這一餐排好一點' : dinnerWhyOf;
         add(
           take(city, 'S', (p) => p.c === 'eat' && p.f === k, dinnerWhy) ??
             take(ALL, 'S', (p) => p.c === 'eat' && p.f === k, dinnerWhy) ??
@@ -193,7 +213,8 @@ export function generate(d: TripDraft, st: Settings, shuffle = false, rnd: () =>
       } else {
         const big = !lightDay && (part === 'am' ? st.wake !== 'late' : pace !== 'slow' || st.wake === 'late');
         add((big ? take([a], 'L', null, pref) : null) ?? take([a], 'S', dayOK, pref) ?? take(near(a), 'S', dayOK, pref));
-        if (pace === 'fast' || ((!items[0] || items[0].s === 'S') && pace !== 'slow')) {
+        // 要少走的話，半天只排一站（選「排滿」的例外）
+        if (pace === 'fast' || ((!items[0] || items[0].s === 'S') && pace !== 'slow' && !(st.walk === 'less' && items[0]))) {
           const first = items[0];
           const sameArea = () => (first ? `跟「${first.n}」同一帶，順路` : '這一帶順路的小地方');
           add(take([a], 'S', dayOK, sameArea) ?? take(near(a), 'S', dayOK, sameArea));
@@ -312,11 +333,13 @@ export function addOwn(t: Trip, seeds: Seed[], name: string): string {
 }
 
 /** 同一帶、同大小的三個替代選項 */
-export function alternatives(t: Trip, st: Settings, it: Stop): Place[] {
+export function alternatives(t: Trip, base: Settings, it: Stop): Place[] {
+  const st = tripSettings(base, t.tweaks);
+  const noUp = st.body.includes('stairs');
   const used = usedIds(t);
   const w = weights(st);
   const ar: AreaKey[] = it.a ? [it.a, ...ADJ[it.a]] : (Object.keys(AREA) as AreaKey[]);
-  return PLACES.filter((p) => !used.has(p.id) && ar.includes(p.a) && p.s === it.s && (it.c !== 'eat' || p.c === 'eat'))
+  return PLACES.filter((p) => !used.has(p.id) && !banned(p, st) && !(noUp && p.up) && ar.includes(p.a) && p.s === it.s && (it.c !== 'eat' || p.c === 'eat'))
     .sort((a, b) => w[b.c] - w[a.c])
     .slice(0, 3);
 }
@@ -329,10 +352,10 @@ export function replaceWith(t: Trip, fromId: string, p: Place): string | null {
 }
 
 /** 順路可去：當天去的那幾帶裡，還沒排進來的小站 */
-export function nearbyPool(t: Trip, day: number): string[] {
+export function nearbyPool(t: Trip, day: number, st?: Settings): string[] {
   const used = usedIds(t);
   const areas = [...new Set(dayStops(t, day).map((x) => x.it.a).filter(Boolean))];
-  return PLACES.filter((p) => areas.includes(p.a) && !used.has(p.id) && p.s === 'S')
+  return PLACES.filter((p) => areas.includes(p.a) && !used.has(p.id) && p.s === 'S' && !(st && banned(p, st)))
     .slice(0, 3)
     .map((p) => p.n);
 }
@@ -359,7 +382,8 @@ export function km(a: Pt, b: Pt): number | null {
 export function leg(a: Pt, b: Pt, st: Settings): Leg | null {
   const d = km(a, b);
   if (d == null) return null;
-  const walkMax = st.move === 'walk' ? 2 : 1;
+  // 走路的上限（公里）：要少走的 0.5，能走的 2，其他 1
+  const walkMax = st.walk === 'less' ? 0.5 : st.move === 'walk' || st.walk === 'lots' ? 2 : 1;
   if (d < 0.15) return { mode: '就在旁邊', km: d, min: 2, cost: 0 };
   if (d <= walkMax) return { mode: '走路', km: d, min: Math.round(d * 13), cost: 0 };
   if (d >= 25) return { mode: '火車或巴士', km: d, min: Math.round(d * 1.3 + 25), cost: 250 };
@@ -370,10 +394,11 @@ export function leg(a: Pt, b: Pt, st: Settings): Leg | null {
 export const baseOf = (t: Pick<Trip, 'base'> | null | undefined, st: Settings) => t?.base ?? st.base;
 export const hotelPt = (st: Settings, t?: Pick<Trip, 'base'> | null) => HOTEL[baseOf(t, st)];
 /** 重排時要帶回去的那幾項 */
-export const draftOf = (t: Trip): TripDraft => ({ city: t.city, base: t.base, stayName: t.stayName, name: t.name, cover: t.cover, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
+export const draftOf = (t: Trip): TripDraft => ({ tweaks: t.tweaks, city: t.city, base: t.base, stayName: t.stayName, name: t.name, cover: t.cover, start: t.start, days: t.days, arrive: t.arrive, leave: t.leave, people: t.people });
 
 /** 這一天每一段：住的地方 → 第 1 站 → … → 住的地方。長度是站數＋1 */
-export function dayLegs(t: Trip, st: Settings, day: number): Array<Leg | null> {
+export function dayLegs(t: Trip, base: Settings, day: number): Array<Leg | null> {
+  const st = tripSettings(base, t.tweaks);
   const stops = dayStops(t, day).map((x) => x.it);
   if (!stops.length) return [];
   const pts: Pt[] = [hotelPt(st, t), ...stops, hotelPt(st, t)];
@@ -388,7 +413,8 @@ export interface CostRow {
   amount: number;
   note: string;
 }
-export function cost(t: Trip, st: Settings): { rows: CostRow[]; total: number; people: number } {
+export function cost(t: Trip, base: Settings): { rows: CostRow[]; total: number; people: number } {
+  const st = tripSettings(base, t.tweaks);
   const n = t.people || 1;
   const nights = Math.max(t.days - 1, 0);
   const items = allItems(t).map((x) => x.it);
@@ -428,7 +454,15 @@ export function settingsSummary(st: Settings): string {
   const pace = { slow: '輕鬆', mid: '剛好', fast: '排滿' }[st.pace];
   const want = st.purposes.length ? '；旅行想' + st.purposes.map((k) => PURPOSE[k]).join('、') : '';
   const more = [...st.tags, st.wish].filter(Boolean).join('、');
-  return `住${STAY[st.stay].name}、${HOTEL[st.base].n}一帶；吃的是${food}，一天吃喝 ${money(st.budget)}${st.avoid.length ? '，不吃' + st.avoid.join('、') : ''}；喜歡${likes.join('、') || '什麼都可以'}；節奏${pace}${want}${more ? '；還想：' + more : ''}`;
+  const eat = [st.allergy.length ? '過敏：' + st.allergy.join('、') : '', st.avoid.length ? '絕對不吃' + st.avoid.join('、') : '', st.meh.length ? '不愛吃' + st.meh.join('、') : ''].filter(Boolean).join('，');
+  const body = [st.walk !== 'normal' ? WALK_TEXT[st.walk].name : '', ...st.body.map((k) => BODY_TEXT[k])].filter(Boolean).join('、');
+  const never = st.learned.map(learnedText).join('、');
+  return `住${STAY[st.stay].name}、${HOTEL[st.base].n}一帶；吃的是${food}，一天吃喝 ${money(st.budget)}${eat ? '，' + eat : ''}；喜歡${likes.join('、') || '什麼都可以'}；節奏${pace}${body ? '；體力：' + body : ''}${want}${never ? '；以後都' + never : ''}${more ? '；還想：' + more : ''}`;
+}
+
+/** 這趟臨時調整，給人看的一行。沒有就是空字串 */
+export function tweakSummary(t: Pick<Trip, 'tweaks'>): string {
+  return (t.tweaks ?? []).map((k) => TWEAK_TEXT[k].name).join('、');
 }
 
 /** 整趟的純文字版，給 AI 看，也用來傳給旅伴 */

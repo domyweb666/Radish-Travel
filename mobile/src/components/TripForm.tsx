@@ -5,7 +5,8 @@ import { Image, View } from 'react-native';
 import { DomyButton, DomyText, DomyTextField, T } from '@domy/design';
 import { HOTEL } from '../data/seoul';
 import { addDays, fmtDay } from '../domain/dates';
-import type { BaseKey, Part, Trip } from '../domain/types';
+import { TWEAKS, TWEAK_TEXT } from '../domain/labels';
+import type { BaseKey, Part, Trip, Tweak } from '../domain/types';
 import { pickPhoto, photoUri } from '../io/photos';
 import { useApp } from '../store';
 import { Calendar } from './Calendar';
@@ -30,9 +31,10 @@ export interface TripFormValue {
   base?: BaseKey;
   baseDone: boolean;
   stayName: string;
+  tweaks: Tweak[];
 }
 
-export const blankForm = (): TripFormValue => ({ name: '', baseDone: false, stayName: '' });
+export const blankForm = (): TripFormValue => ({ name: '', baseDone: false, stayName: '', tweaks: [] });
 export const formOf = (t: Trip): TripFormValue => ({
   name: t.name ?? '',
   cover: t.cover,
@@ -44,6 +46,7 @@ export const formOf = (t: Trip): TripFormValue => ({
   base: t.base,
   baseDone: true,
   stayName: t.stayName ?? '',
+  tweaks: t.tweaks ?? [],
 });
 
 /** 還沒填的必填欄位，用來告訴使用者為什麼還不能按 */
@@ -129,6 +132,28 @@ export function TripForm({ value, onChange, minStart, fallbackBase }: { value: T
         </ChipRow>
         <DomyText variant="footnote" tone="secondary">
           每天的路線會從住的地方出發、再回來。{value.baseDone && !value.base ? `還沒決定的話，先當作住${HOTEL[fallbackBase].n}。` : ''}
+        </DomyText>
+      </Field>
+
+      <Field label="這趟有什麼不一樣（可以不選）">
+        <ChipRow>
+          {TWEAKS.map((k) => {
+            const on = value.tweaks.includes(k);
+            return <Chip key={k} label={TWEAK_TEXT[k].name} selected={on} onPress={() => set({ tweaks: on ? value.tweaks.filter((x) => x !== k) : [...value.tweaks, k] })} />;
+          })}
+        </ChipRow>
+        {value.tweaks.length ? (
+          <View style={{ gap: T.space[1] }}>
+            <Label>這趟會改成</Label>
+            {TWEAKS.filter((k) => value.tweaks.includes(k)).map((k) => (
+              <DomyText key={k} variant="subheadline">
+                {TWEAK_TEXT[k].name}：{TWEAK_TEXT[k].note}。
+              </DomyText>
+            ))}
+          </View>
+        ) : null}
+        <DomyText variant="footnote" tone="secondary">
+          只改這一趟，不會動到「我」裡存好的偏好。
         </DomyText>
       </Field>
 

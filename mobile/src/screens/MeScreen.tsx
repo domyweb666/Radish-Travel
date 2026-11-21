@@ -4,11 +4,13 @@ import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DomyButton, DomyListRow, DomyScreen, DomySection, DomySettingsRow, DomyText, DomyTextField, T, useTabBarClearance } from '@domy/design';
+import { AllergyCard } from '../components/AllergyCard';
 import { Sheet } from '../components/Sheet';
-import { Chip, ChipRow, Label, Segmented } from '../components/ui';
-import { AVOID, CAT, FLV, FOOD, HOTEL, PURPOSE, STAY } from '../data/seoul';
-import { INTEREST_TAGS, PACES, PACE_TEXT } from '../domain/labels';
+import { Card, Chip, ChipRow, Label, Segmented, TextRow } from '../components/ui';
+import { ALLERGENS, AVOID, CAT, FLV, FOOD, HOTEL, MEH, PURPOSE, STAY } from '../data/seoul';
+import { BODIES, BODY_NOTE, BODY_TEXT, INTEREST_TAGS, PACES, PACE_TEXT, WALKS, WALK_TEXT } from '../domain/labels';
 import { foodPct, money } from '../domain/plan';
+import { learnedText, unlearn } from '../domain/prefs';
 import type { BaseKey, Cat, FoodKind, Purpose, Settings } from '../domain/types';
 import { blankState, hydrate, useApp } from '../store';
 
@@ -25,6 +27,7 @@ const MOVE: Array<Opt<Settings['move']>> = [
   { v: 'taxi', label: '多搭計程車' },
   { v: 'walk', label: '能走就走' },
 ];
+const WALK: Array<Opt<Settings['walk']>> = WALKS.map((k) => ({ v: k, label: WALK_TEXT[k].name, note: WALK_TEXT[k].note }));
 const BASE: Array<Opt<BaseKey>> = (Object.keys(HOTEL) as BaseKey[]).map((k) => ({ v: k, label: HOTEL[k].n }));
 const STAYS: Array<Opt<Settings['stay']>> = (Object.keys(STAY) as Array<Settings['stay']>).map((k) => ({
   v: k,
@@ -35,7 +38,7 @@ const BUDGET: Array<Opt<number>> = [1000, 1500, 2500, 4000].map((b) => ({ v: b, 
 
 const labelOf = <V,>(opts: Array<Opt<V>>, v: V) => opts.find((o) => o.v === v)?.label ?? '';
 
-type Editing = 'purposes' | 'pace' | 'wake' | 'move' | 'base' | 'stay' | 'budget' | 'food' | 'avoid' | 'play' | 'import' | 'reset' | null;
+type Editing = 'purposes' | 'pace' | 'wake' | 'move' | 'base' | 'stay' | 'budget' | 'food' | 'avoid' | 'play' | 'walk' | 'body' | 'learned' | 'import' | 'reset' | null;
 
 /** 單選的一張卡：選了就關 */
 function PickSheet<V extends string | number>({ title, options, value, onPick, onClose, footer }: { title: string; options: Array<Opt<V>>; value: V; onPick: (v: V) => void; onClose: () => void; footer?: string }) {
@@ -74,6 +77,7 @@ export function MeScreen() {
   const likes = (Object.keys(CAT) as Cat[]).filter((k) => st.play[k]);
   const likeNames = [...likes.map((k) => CAT[k]), ...st.tags];
   const likesText = likeNames.length ? (likeNames.length > 2 ? `${likeNames[0]}等 ${likeNames.length} 種` : likeNames.join('、')) : '都可以';
+  const eatParts = [st.allergy.length ? `過敏 ${st.allergy.length} 樣` : '', st.avoid.length ? `不吃 ${st.avoid.length} 樣` : '', st.meh.length ? `不愛 ${st.meh.length} 樣` : ''].filter(Boolean);
   const purposeText = st.purposes.length ? st.purposes.map((k) => PURPOSE[k]).join('、') : '都可以';
 
   return (
@@ -82,11 +86,17 @@ export function MeScreen() {
         <DomySettingsRow label="旅行回來想怎樣" value={purposeText} onPress={() => setEditing('purposes')} />
         <DomySettingsRow label="一天排多滿" value={labelOf(PACE, st.pace)} onPress={() => setEditing('pace')} />
         <DomySettingsRow label="吃的偏好" value={`${FOOD[topFood].name}為主`} onPress={() => setEditing('food')} />
-        <DomySettingsRow label="不吃的" value={st.avoid.length ? st.avoid.join('、') : '沒有'} onPress={() => setEditing('avoid')} />
+        <DomySettingsRow label="過敏和不吃的" value={eatParts.length ? eatParts.join('、') : '沒有'} onPress={() => setEditing('avoid')} />
         <DomySettingsRow label="喜歡做什麼" value={likesText} onPress={() => setEditing('play')} />
         <DomySettingsRow label="早上" value={labelOf(WAKE, st.wake)} onPress={() => setEditing('wake')} />
         <DomySettingsRow label="怎麼移動" value={labelOf(MOVE, st.move)} onPress={() => setEditing('move')} />
+        <DomySettingsRow label="一天能走多少" value={labelOf(WALK, st.walk)} onPress={() => setEditing('walk')} />
+        <DomySettingsRow label="身體上要避開的" value={st.body.length ? st.body.map((k) => BODY_TEXT[k]).join('、') : '沒有'} onPress={() => setEditing('body')} />
         <DomySettingsRow label="住哪一帶" value={labelOf(BASE, st.base)} onPress={() => setEditing('base')} />
+      </DomySection>
+
+      <DomySection footer="你在行程上拿掉一站、選了「以後不排」，會記在這裡。每一條都寫著是哪一次記的。">
+        <DomySettingsRow label="從行程學到的" value={st.learned.length ? `${st.learned.length} 條` : '還沒有'} onPress={() => setEditing('learned')} />
       </DomySection>
 
       <DomySection title="預算" footer="只拿來估這趟大概花多少，不會影響排哪些站。">
@@ -137,6 +147,7 @@ export function MeScreen() {
 
       {editing === 'pace' ? <PickSheet title="一天排多滿" options={PACE} value={st.pace} onPick={(v) => setSettings({ pace: v })} onClose={close} footer={PACE_EXAMPLES} /> : null}
       {editing === 'wake' ? <PickSheet title="早上" options={WAKE} value={st.wake} onPick={(v) => setSettings({ wake: v })} onClose={close} /> : null}
+      {editing === 'walk' ? <PickSheet title="一天能走多少" options={WALK} value={st.walk} onPick={(v) => setSettings({ walk: v })} onClose={close} footer="站和站之間的距離是照直線估的；逛一個景點裡面要走多少，這裡算不到。" /> : null}
       {editing === 'move' ? <PickSheet title="怎麼移動" options={MOVE} value={st.move} onPick={(v) => setSettings({ move: v })} onClose={close} /> : null}
       {editing === 'base' ? <PickSheet title="通常住哪一帶" options={BASE} value={st.base} onPick={(v) => setSettings({ base: v })} onClose={close} /> : null}
       {editing === 'stay' ? <PickSheet title="住宿" options={STAYS} value={st.stay} onPick={(v) => setSettings({ stay: v })} onClose={close} /> : null}
@@ -174,16 +185,81 @@ export function MeScreen() {
         <DomyButton title="好了" fullWidth onPress={close} />
       </Sheet>
 
-      <Sheet visible={editing === 'avoid'} title="不吃的" onClose={close}>
+      <Sheet visible={editing === 'avoid'} title="過敏和不吃的" onClose={close}>
         <DomyText variant="subheadline" tone="secondary">
-          可以選好幾個。這一版先記著，還不會照這個挑店；接上 AI 之後，排餐廳和用講的改行程都會避開。
+          分三層，越上面越嚴。這一版吃的站只排到「哪一帶、吃哪一種」，還沒有指定店家，所以我沒辦法照這些幫你挑店。用講的改行程時，AI 會照這三層來。
         </DomyText>
-        <ChipRow>
-          {AVOID.map((a) => {
-            const on = st.avoid.includes(a);
-            return <Chip key={a} label={a} selected={on} onPress={() => setSettings({ avoid: on ? st.avoid.filter((x) => x !== a) : [...st.avoid, a] })} />;
-          })}
-        </ChipRow>
+        <View style={{ gap: T.space[2] }}>
+          <DomyText variant="headline">過敏，不能出錯</DomyText>
+          <DomyText variant="footnote" tone="secondary">
+            有選的話，每個吃的站都會提醒你，還會給你一張韓文告知卡，點餐前拿給店員看。
+          </DomyText>
+          <ChipRow>
+            {ALLERGENS.map((a) => {
+              const on = st.allergy.includes(a.n);
+              return <Chip key={a.n} label={a.n} selected={on} onPress={() => setSettings({ allergy: on ? st.allergy.filter((x) => x !== a.n) : [...st.allergy, a.n] })} />;
+            })}
+          </ChipRow>
+        </View>
+        <AllergyCard list={st.allergy} />
+        <View style={{ gap: T.space[2] }}>
+          <DomyText variant="headline">絕對不吃</DomyText>
+          <ChipRow>
+            {AVOID.map((a) => {
+              const on = st.avoid.includes(a);
+              return <Chip key={a} label={a} selected={on} onPress={() => setSettings({ avoid: on ? st.avoid.filter((x) => x !== a) : [...st.avoid, a], meh: st.meh.filter((x) => x !== a) })} />;
+            })}
+          </ChipRow>
+        </View>
+        <View style={{ gap: T.space[2] }}>
+          <DomyText variant="headline">不愛，但同行的人想吃可以</DomyText>
+          <ChipRow>
+            {MEH.map((a) => {
+              const on = st.meh.includes(a);
+              return <Chip key={a} label={a} selected={on} onPress={() => setSettings({ meh: on ? st.meh.filter((x) => x !== a) : [...st.meh, a], avoid: st.avoid.filter((x) => x !== a) })} />;
+            })}
+          </ChipRow>
+        </View>
+        <DomyButton title="好了" fullWidth onPress={close} />
+      </Sheet>
+
+      <Sheet visible={editing === 'body'} title="身體上要避開的" onClose={close}>
+        <DomyText variant="subheadline" tone="secondary">
+          可以選好幾個。有選的，排行程時會照下面寫的做。
+        </DomyText>
+        {BODIES.map((k) => {
+          const on = st.body.includes(k);
+          return (
+            <View key={k} style={{ gap: T.space[1] }}>
+              <ChipRow>
+                <Chip label={BODY_TEXT[k]} selected={on} onPress={() => setSettings({ body: on ? st.body.filter((x) => x !== k) : [...st.body, k] })} />
+              </ChipRow>
+              <DomyText variant="footnote" tone="secondary">
+                {BODY_NOTE[k]}
+              </DomyText>
+            </View>
+          );
+        })}
+        <DomyButton title="好了" fullWidth onPress={close} />
+      </Sheet>
+
+      <Sheet visible={editing === 'learned'} title="從行程學到的" onClose={close}>
+        {st.learned.length ? (
+          <DomySection footer="拿掉之後，下一次排行程就會再排到它。拿掉可以復原。">
+            {st.learned.map((l) => (
+              <TextRow
+                key={l.id}
+                title={`以後${learnedText(l)}`}
+                note={l.source}
+                right={<DomyButton title="拿掉" variant="plain" size="compact" accessibilityLabel={`拿掉：以後${learnedText(l)}`} onPress={() => act((d) => (unlearn(d.settings, l.id) ? `拿掉了：以後${learnedText(l)}。` : undefined), { undoable: true })} />}
+              />
+            ))}
+          </DomySection>
+        ) : (
+          <Card>
+            <DomyText variant="body">還沒有。在行程上點一站、按「不想去這一站」、選「以後不排」，這裡就會多一條。</DomyText>
+          </Card>
+        )}
         <DomyButton title="好了" fullWidth onPress={close} />
       </Sheet>
 

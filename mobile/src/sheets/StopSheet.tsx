@@ -3,6 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DomyButton, DomyListRow, DomySection, DomySettingsRow, DomyText, T } from '@domy/design';
+import { AllergyCard } from '../components/AllergyCard';
 import { CatIcon, kindName } from '../components/icons';
 import { Sheet } from '../components/Sheet';
 import { Card, Chip, ChipRow, Label, Tag, TagRow } from '../components/ui';
@@ -10,11 +11,13 @@ import { VisitNote } from '../components/VisitNote';
 import { AREA, PART } from '../data/seoul';
 import { fmtDay, addDays } from '../domain/dates';
 import { PARTS, alternatives, areaOf, bigCount, dayStops, findItem, money, moveItem, replaceWith, seedOut, slotAt, warnings } from '../domain/plan';
+import { learn, learnChoices, learnedText, tripSettings } from '../domain/prefs';
+import { tripTitle } from '../domain/tripActions';
 import type { Part } from '../domain/types';
 import { useApp } from '../store';
 import { openApple, openGoogle, openNaver } from './links';
 
-type Mode = 'main' | 'move' | 'swap' | 'show';
+type Mode = 'main' | 'move' | 'swap' | 'show' | 'drop' | 'allergy';
 
 export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) {
   const { s, act, phase } = useApp();
@@ -37,6 +40,53 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
   const [to, setTo] = useState<{ day: number; part: Part }>(() => ({ day: found?.s.day ?? 1, part: found?.s.part ?? 'am' }));
   if (!trip || !found) return null;
   const { it, s: slot } = found;
+  const st = tripSettings(s.settings, trip.tweaks);
+  const eats = it.c === 'eat' || it.c === 'cafe';
+  const choices = learnChoices(it, s.settings);
+  // 拿掉這一站。choice 有給的話，順便記成「以後都不排」；兩件事算同一步，可以一起復原
+  const drop = (choice?: (typeof choices)[number]) => {
+    act(
+      (d) => {
+        if (!d.trip) return;
+        if (!choice) {
+          seedOut(d.trip, d.seeds, id, '你說這次不去');
+          return `「${it.n}」放到下次再來了。`;
+        }
+        const x = findItem(d.trip, id);
+        if (!x) return;
+        x.s.items = x.s.items.filter((i) => i !== x.it);
+        if (!x.s.items.length) x.s.rest = true;
+        learn(d.settings, choice, `${tripTitle(d.trip)}：你拿掉了${it.n}`);
+        return `「${it.n}」拿掉了。以後${learnedText(choice)}，在「我」可以拿掉這一條。${choice.kind === 'place' ? '' : '這趟已經排的其他站沒動。'}`;
+      },
+      { undoable: true },
+    );
+    onClose();
+  };
+
+  if (mode === 'allergy') {
+    return (
+      <Sheet visible title="過敏告知卡" onClose={() => setMode('main')}>
+        <AllergyCard list={st.allergy} />
+      </Sheet>
+    );
+  }
+
+  if (mode === 'drop') {
+    return (
+      <Sheet visible title={`不去「${it.n}」`} onClose={() => setMode('main')}>
+        <DomyText variant="body">是這次不想去，還是以後都不要排？</DomyText>
+        <DomyButton title="只是這次不想，放到下次再來" fullWidth onPress={() => drop()} />
+        {choices.map((c) => (
+          <DomyButton key={c.kind} title={c.kind === 'place' ? '以後不排這一站' : `以後不排「${c.n}」`} variant="secondary" fullWidth onPress={() => drop(c)} />
+        ))}
+        <DomyButton title="算了，留著" variant="plain" fullWidth onPress={() => setMode('main')} />
+        <DomyText variant="footnote" tone="secondary">
+          選「以後不排」的話，之後每一趟排行程、換一個的時候都會跳過；有引號的那一顆是整個類別都不排。記下來的在「我」→「從行程學到的」，隨時可以拿掉。
+        </DomyText>
+      </Sheet>
+    );
+  }
 
   if (mode === 'show') {
     return (
@@ -149,6 +199,7 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
             {it.ai ? <Tag label="AI 加的・未核對" tone="warn" /> : null}
             {it.mine ? <Tag label="自己加的" /> : null}
             {it.status === 'pulled' ? <Tag label="去過了" tone="accent" /> : null}
+            {it.up && st.body.includes('stairs') ? <Tag label="坡多或階梯多" tone="warn" /> : null}
           </TagRow>
         </View>
       </View>
@@ -167,6 +218,14 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
           照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。
         </DomyText>
       </Card>
+
+      {eats && st.allergy.length ? (
+        <Card>
+          <Label>{`你有過敏：${st.allergy.join('、')}`}</Label>
+          <DomyText variant="body">這一站我不知道店裡用了哪些食材，沒辦法幫你排除。點餐前把告知卡拿給店員看，自己確認。</DomyText>
+          <DomyButton title="打開過敏告知卡" variant="secondary" size="compact" style={{ alignSelf: 'flex-start' }} onPress={() => setMode('allergy')} />
+        </Card>
+      ) : null}
 
       {it.status === 'pulled' ? (
         <VisitNote
@@ -225,20 +284,10 @@ export function StopSheet({ id, onClose }: { id: string; onClose: () => void }) 
           <DomyButton title="移到別的時段" variant="secondary" fullWidth onPress={() => setMode('move')} />
           <DomyButton title="換一個" variant="secondary" fullWidth onPress={() => setMode('swap')} />
           <DomyButton
-            title="這次不去，放到下次再來"
+            title={choices.length ? '不想去這一站' : '這次不去，放到下次再來'}
             variant="plain"
             fullWidth
-            onPress={() => {
-              act(
-                (d) => {
-                  if (!d.trip) return;
-                  seedOut(d.trip, d.seeds, id, '你說這次不去');
-                  return `「${it.n}」放到下次再來了。`;
-                },
-                { undoable: true },
-              );
-              onClose();
-            }}
+            onPress={() => (choices.length ? setMode('drop') : drop())}
           />
         </View>
       ) : (

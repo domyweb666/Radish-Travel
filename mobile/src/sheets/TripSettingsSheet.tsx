@@ -1,6 +1,6 @@
 // 行程設定：排好之後回來改這趟的基本資料。
 // 只改名稱、封面、出發日、人數、住宿名稱，行程原樣留著。
-// 改天數、到離時間、住哪一帶要整趟重排；已經有去過的站時不讓重排，免得去過的紀錄被排掉。
+// 改天數、到離時間、住哪一帶、這趟有什麼不一樣要整趟重排；已經有去過的站時不讓重排，免得去過的紀錄被排掉。
 import { useState } from 'react';
 import { DomyButton, DomyText } from '@domy/design';
 import { Sheet } from '../components/Sheet';
@@ -17,7 +17,7 @@ export function TripSettingsSheet({ onClose }: { onClose: () => void }) {
   if (!trip || !form) return null;
 
   const missing = missingOf(form);
-  const regen = form.days !== trip.days || form.arrive !== trip.arrive || form.leave !== trip.leave || form.base !== trip.base;
+  const regen = form.days !== trip.days || form.arrive !== trip.arrive || form.leave !== trip.leave || form.base !== trip.base || [...form.tweaks].sort().join() !== [...(trip.tweaks ?? [])].sort().join();
   const visited = allItems(trip).some((x) => x.it.status === 'pulled');
   const blocked = regen && visited;
 
@@ -27,7 +27,7 @@ export function TripSettingsSheet({ onClose }: { onClose: () => void }) {
     act(
       (d) => {
         if (!d.trip) return;
-        const patch = { start, days, arrive, leave, people, base: form.base, stayName: form.stayName.trim() || undefined, name: form.name.trim() || undefined, cover: form.cover };
+        const patch = { tweaks: form.tweaks.length ? form.tweaks : undefined, start, days, arrive, leave, people, base: form.base, stayName: form.stayName.trim() || undefined, name: form.name.trim() || undefined, cover: form.cover };
         if (regen) {
           d.trip = { ...generate({ ...draftOf(d.trip), ...patch }, d.settings), ...ownOf(d.trip) };
           d.settingsDirty = false;
@@ -45,9 +45,9 @@ export function TripSettingsSheet({ onClose }: { onClose: () => void }) {
     <Sheet visible title="行程設定" onClose={onClose}>
       <TripForm value={form} onChange={setForm} minStart={trip.start < today ? trip.start : today} fallbackBase={s.settings.base} />
       {blocked ? (
-        <Banner text="這趟已經有去過的站。天數、到離時間、住哪一帶現在不能改，改了會整趟重排，去過的紀錄會不見。其他欄位可以改。" />
+        <Banner text="這趟已經有去過的站。天數、到離時間、住哪一帶、這趟有什麼不一樣現在不能改，改了會整趟重排，去過的紀錄會不見。其他欄位可以改。" />
       ) : regen ? (
-        <Banner text="你改了天數、到離時間或住哪一帶。存了會整趟重排，手動改過的地方也會重排。存完可以復原。" />
+        <Banner text="你改了天數、到離時間、住哪一帶，或這趟有什麼不一樣。存了會整趟重排，手動改過的地方也會重排。存完可以復原。" />
       ) : null}
       {missing.length ? (
         <DomyText variant="footnote" tone="secondary">

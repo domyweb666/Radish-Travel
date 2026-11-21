@@ -119,6 +119,7 @@ export const PLACES: Place[] = [
   },
   {
     "id": "p2",
+    "up": true,
     "n": "北村韓屋村",
     "kr": "북촌한옥마을",
     "a": "A",
@@ -167,6 +168,7 @@ export const PLACES: Place[] = [
   },
   {
     "id": "p6",
+    "up": true,
     "n": "昌德宮與後苑",
     "kr": "창덕궁",
     "a": "B",
@@ -224,6 +226,7 @@ export const PLACES: Place[] = [
   },
   {
     "id": "p11",
+    "up": true,
     "n": "N 首爾塔",
     "kr": "N서울타워",
     "a": "C",
@@ -664,6 +667,7 @@ export const PLACES: Place[] = [
   },
   {
     "id": "p49",
+    "up": true,
     "n": "水原華城",
     "kr": "수원화성",
     "a": "J",
@@ -748,6 +752,24 @@ export const AVOID = [
   "內臟",
   "吃素"
 ] as const;
+
+/** 不愛但可以的選項：絕對不吃的那幾樣，加上只是不愛的 */
+export const MEH = [...AVOID.filter((a) => a !== '吃素'), '香菜', '炸物', '甜食', '冷的'];
+
+/** 過敏原。韓文是常見說法，還沒請懂韓文的人核對（未核對） */
+export const ALLERGENS: Array<{ n: string; kr: string }> = [
+  { n: '花生', kr: '땅콩' },
+  { n: '堅果', kr: '견과류' },
+  { n: '蝦蟹', kr: '새우·게' },
+  { n: '貝類', kr: '조개류' },
+  { n: '魚', kr: '생선' },
+  { n: '蛋', kr: '계란' },
+  { n: '牛奶', kr: '우유' },
+  { n: '小麥', kr: '밀가루' },
+  { n: '大豆', kr: '콩' },
+  { n: '芝麻', kr: '참깨' },
+  { n: '蕎麥', kr: '메밀' },
+];
 
 export const PURPOSE: Record<Purpose, string> = {
   "rest": "放鬆回來",

@@ -20,6 +20,7 @@ export interface Place {
   fee?: number; // 粗估 NT$
   tip?: string; // 須知
   l?: boolean; // 輕鬆
+  up?: boolean; // 坡多或階梯多。粗略標的，沒核對
   f?: FoodKind;
   ic?: IconKey;
 }
@@ -37,6 +38,7 @@ export interface Stop {
   fee?: number;
   tip?: string;
   l?: boolean;
+  up?: boolean;
   f?: FoodKind;
   ic?: IconKey;
   status: 'kept' | 'pulled';
@@ -56,7 +58,11 @@ export interface Slot {
   items: Stop[];
 }
 
+/** 這趟臨時調整。只改這一趟，不動「我」裡存好的偏好 */
+export type Tweak = 'elder' | 'easy' | 'save' | 'treat';
+
 export interface TripDraft {
+  tweaks?: Tweak[];
   city?: 'seoul'; // 第一版只有首爾
   base?: BaseKey; // 這趟住哪一帶。沒填就用「我」裡的
   stayName?: string; // 住宿的名字，使用者自己打的，沒查證
@@ -90,7 +96,12 @@ export interface Settings {
   stay: 'cheap' | 'mid' | 'nice';
   base: BaseKey;
   food: Record<FoodKind, number>; // 0 不要、1 偶爾、2 常常、3 主力
-  avoid: string[];
+  allergy: string[]; // 過敏，不能出錯。記的是 ALLERGENS 的中文名
+  avoid: string[]; // 絕對不吃
+  meh: string[]; // 不愛，但可以
+  walk: Walk; // 一天能走多少
+  body: Body[]; // 身體上要避開的
+  learned: Learned[]; // 在行程上說「以後都不排」學到的
   queue: 'no' | 'some' | 'any';
   mealMax: number; // 0 是不限
   budget: number; // 一天吃喝
@@ -102,6 +113,18 @@ export interface Settings {
   wake: 'early' | 'normal' | 'late';
   move: 'transit' | 'taxi' | 'walk';
   tuned: boolean; // 使用者自己回答過偏好了嗎
+}
+
+export type Walk = 'less' | 'normal' | 'lots';
+export type Body = 'stairs' | 'heat' | 'cold';
+
+/** 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的 */
+export interface Learned {
+  id: string;
+  kind: 'place' | 'cat' | 'food';
+  key: string; // 地點代號、Cat 或 FoodKind
+  n: string; // 給人看的名字
+  source: string;
 }
 
 export interface Seed {

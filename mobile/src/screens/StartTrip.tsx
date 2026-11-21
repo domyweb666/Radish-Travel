@@ -69,7 +69,7 @@ export function StartTrip({ goSettings }: { goSettings: () => void }) {
         prefs.likes.forEach((k) => (play[k] = 1));
         d.settings = { ...d.settings, purposes: prefs.purposes, pace: prefs.pace, food: LEAN[prefs.lean].food, play, tuned: true };
       }
-      d.trip = generate({ city: 'seoul', start, days, arrive, leave, people, base: form.base, stayName: form.stayName.trim() || undefined, name: form.name.trim() || undefined, cover: form.cover }, d.settings);
+      d.trip = generate({ tweaks: form.tweaks.length ? form.tweaks : undefined, city: 'seoul', start, days, arrive, leave, people, base: form.base, stayName: form.stayName.trim() || undefined, name: form.name.trim() || undefined, cover: form.cover }, d.settings);
       d.chat = [];
       d.checks = Object.fromEntries(Object.entries(d.checks).filter(([k]) => !k.startsWith('b_')));
       d.settingsDirty = false;

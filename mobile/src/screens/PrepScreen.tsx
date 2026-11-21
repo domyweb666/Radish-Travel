@@ -7,6 +7,7 @@ import { DomyButton, DomyEmptyState, DomySection, DomyText, DomyTextField, T, us
 import { TabTrip } from '../components/icons';
 import { Screen } from '../components/Screen';
 import { Sheet } from '../components/Sheet';
+import { AllergyCard } from '../components/AllergyCard';
 import { Banner, Card, CheckRow, Segmented, TextRow } from '../components/ui';
 import { CHECKLIST, DIFF, DISHES, EATS, GIFTS, GIFT_RULES, NO_BRING, PART, SOS, TABOO, TABOO_LEVEL, type Fact, type Pick } from '../data/seoul';
 import { addDays, fmtDay, type Phase } from '../domain/dates';
@@ -149,8 +150,15 @@ function Before() {
 
 /** 在當地：跟台灣不一樣的、當地人的地雷、吃什麼、出事打哪裡 */
 function There() {
+  const { s } = useApp();
+  const allergy = s.settings.allergy;
   return (
     <>
+      {allergy.length ? (
+        <DomySection title={`你有過敏：${allergy.join('、')}`} footer="我不知道每家店用了哪些食材，沒辦法幫你排除。點餐前拿給店員看，自己確認。">
+          <AllergyCard list={allergy} />
+        </DomySection>
+      ) : null}
       <FactList title="跟台灣不一樣的地方" facts={DIFF} />
       {([3, 2, 1] as const).map((lv) => (
         <DomySection key={lv} title={`當地人的地雷：${TABOO_LEVEL[lv]}`}>

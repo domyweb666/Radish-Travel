@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { phaseOf, todayISO, type Phase } from './domain/dates';
 import { defaultSettings } from './domain/plan';
-import type { AppState, Settings } from './domain/types';
+import type { AppState, Learned, Settings } from './domain/types';
 
 const KEY = 'radish-travel-v1';
 const UNDO_MAX = 20;
@@ -44,7 +44,8 @@ export function hydrate(raw: string | null): AppState {
   }
 }
 
-type Snapshot = Pick<AppState, 'trip' | 'seeds' | 'pool' | 'baskets' | 'settingsDirty'>;
+// learned 是設定裡「從行程學到的」那一份：拿掉一站順便記的，要能跟著那一步一起復原
+type Snapshot = Pick<AppState, 'trip' | 'seeds' | 'pool' | 'baskets' | 'settingsDirty'> & { learned: Learned[] };
 export interface Notice {
   id: number;
   text: string;
@@ -106,7 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const msg = fn(draft);
       if (opts?.undoable) {
         const { trip, seeds, pool, baskets, settingsDirty } = prev;
-        undoStack.current.push(clone({ trip, seeds, pool, baskets, settingsDirty }));
+        undoStack.current.push(clone({ trip, seeds, pool, baskets, settingsDirty, learned: prev.settings.learned }));
         if (undoStack.current.length > UNDO_MAX) undoStack.current.shift();
         setUndoLen(undoStack.current.length);
       }
@@ -121,7 +122,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const snap = undoStack.current.pop();
     if (!snap) return;
     setUndoLen(undoStack.current.length);
-    const next = { ...sRef.current, ...snap };
+    const { learned, ...rest } = snap;
+    const next = { ...sRef.current, ...rest, settings: { ...sRef.current.settings, learned } };
     sRef.current = next;
     setS(next);
     show('復原了上一步。', false);

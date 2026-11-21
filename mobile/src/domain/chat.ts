@@ -13,11 +13,13 @@ import {
   planText,
   seedOut,
   settingsSummary,
+  tweakSummary,
   slotAt,
   swapDays,
   swapParts,
   usedIds,
 } from './plan';
+import { banned, tripSettings } from './prefs';
 import type { AiPlace, Cat, ChatMsg, Op, Part, Seed, Settings, Stop, Trip } from './types';
 
 export interface BrainOut {
@@ -158,9 +160,11 @@ export function applyOps(t: Trip, seeds: Seed[], ops: unknown): { changes: strin
 export const AI_ENDPOINT: string = process.env.EXPO_PUBLIC_AI_ENDPOINT ?? '';
 export const aiReady = () => AI_ENDPOINT.length > 0;
 
-export function aiPrompt(msg: string, t: Trip, st: Settings, chat: ChatMsg[]): string {
+export function aiPrompt(msg: string, t: Trip, base: Settings, chat: ChatMsg[]): string {
+  const st = tripSettings(base, t.tweaks);
+  const tweak = tweakSummary(t);
   const used = usedIds(t);
-  const cand = PLACES.filter((p) => !used.has(p.id))
+  const cand = PLACES.filter((p) => !used.has(p.id) && !banned(p, st))
     .map((p) => `[${p.id}] ${p.n}(${p.s === 'L' ? '大' : '小'},${CAT[p.c]},${AREA[p.a]}${p.b ? ',要先訂' : ''})`)
     .join('\n');
   const hist = chat
@@ -177,8 +181,11 @@ export function aiPrompt(msg: string, t: Trip, st: Settings, chat: ChatMsg[]): s
 - 你不知道即時資訊。營業時間、票價、是否需要預約都不要講成確定的事，說「去之前查一下」。
 - 要加新的地方時，優先從候選清單挑（用它的 id）。清單裡沒有適合的，才自己提一個真實存在的首爾地點，給中文名、韓文名、類別、大小、大概經緯度。
 - 使用者只是問問題、沒有要改行程時，ops 給空陣列。
+- 使用者的過敏是硬規則：不要加主打那些食材的店或小吃。你不知道每家店的食材，所以只要動到吃的站，reply 裡提醒他點餐前出示過敏告知卡、自己確認。
+- 「絕對不吃」的不要排；「不愛吃」的盡量避開，真的排了要在 reply 裡先講。
+- 使用者說過「以後都不排」的站或類別，不要加回來。
 
-使用者的習慣：${settingsSummary(st)}。這趟 ${t.people || 1} 人，${t.start} 出發。
+使用者的習慣：${settingsSummary(st)}。這趟 ${t.people || 1} 人，${t.start} 出發。${tweak ? '這趟特別的地方：' + tweak + '。' : ''}
 
 目前行程（方括號裡是 id）：
 ${planText(t, true)}
