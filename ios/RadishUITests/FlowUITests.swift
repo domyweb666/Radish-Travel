@@ -19,7 +19,7 @@ final class FlowUITests: RadishUITestCase {
     /// 第一次排好之後的操作說明會蓋住整個畫面，有出現就關掉。
     private func skipGuideIfShown() {
         let skip = idQuery("guide-skip")
-        if waitUntil(timeout: 6, { self.visibleElement(in: skip) != nil }) {
+        if waitUntil(timeout: 15, { self.visibleElement(in: skip) != nil }) {
             shot("操作說明第一步")
             visibleElement(in: skip)?.tap()
             _ = waitUntil(timeout: 5) { self.visibleElement(in: skip) == nil }
@@ -38,8 +38,11 @@ final class FlowUITests: RadishUITestCase {
         tapId("base-C")
         shot("開一趟-填到住哪")
         tapId("start-go")
-        requireVisible(idQuery("day-tab-1"), "第 1 天的分頁", timeout: 20)
+        // 第一次排好會先跳操作說明，蓋住整個畫面；先關掉它才看得到每天的分頁
         skipGuideIfShown()
+        scrollUp()
+        scrollUp()
+        requireVisible(idQuery("day-tab-1"), "第 1 天的分頁", timeout: 20)
     }
 
     func test01從空白開一趟到拔第一站() {
