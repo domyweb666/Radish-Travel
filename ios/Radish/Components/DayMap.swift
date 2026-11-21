@@ -167,7 +167,7 @@ struct DayMap: View {
         let showMe: Bool = locator.me
         return Map(position: $position) {
             MapPolyline(coordinates: line)
-                .stroke(C.accent, style: StrokeStyle(lineWidth: MAP_LINE, dash: MAP_DASH))
+                .stroke(C.accent, style: StrokeStyle(lineWidth: MAP_LINE, lineCap: .round, dash: MAP_DASH))
             ForEach(Array(points.enumerated()), id: \.element.id) { index, p in
                 Marker(markerTitle(index, p), coordinate: CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng))
                     .tint(p.home == true ? C.textPrimary : C.accent)

@@ -201,6 +201,17 @@ AI 改行程用的動作（原型已實作，見 `prototype/index.html` 的 `app
 - 把偏好送給 AI 的揭露要求，要對 Apple 最新條文
 - 不吃的、一餐上限、排隊耐受：原型只記不篩，正式版由 AI 處理，要測它有沒有真的照做
 
+## 13. 2026-11-21：app 改用 SwiftUI
+
+多米決定不走 Expo，改成 SwiftUI。第 7 節技術路線表裡「app：Expo」那一列以這一節為準，其他列（後端、AI、地點資料、地圖）沒有變。
+
+- SwiftUI 版在 `ios/`，怎麼看結果、檔案在哪、規矩是什麼，都寫在 `ios/README.md`。
+- `mobile/`（Expo 版）先留著當對照，還沒刪。等 SwiftUI 版在真機驗過再刪。
+- 現況：四個分頁、七張彈出卡、開一趟表單、拔蘿蔔動畫、操作說明全部搬完。GitHub Actions 上 30 條規則測試和三支走主流程的 UI 測試都過，截圖看過，長相跟 Expo 版一樣。
+- 這台電腦沒有 Mac。編譯和測試都靠 GitHub Actions 的「iOS check」，推到 `swiftui`、`work/**`、`overnight-**` 分支會跑。
+- 還沒做：TestFlight（要簽章金鑰）、真機驗手感、AI 後端。Expo 版「開發伺服器轉接 claude cli」那條測試用的路沒有搬過來。
+- 最低支援 iOS 18。bundle id 是 `org.domyweb.radish`。
+
 ## 來源
 
 - 韓國地圖：Korea How Now（2026-10 實測）、Korea Herald（2026-02-27）、Engadget（2026-02-27）、BGR、Wikipedia〈Map platforms in South Korea〉
