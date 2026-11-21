@@ -111,7 +111,7 @@ final class AppStore {
 
     /// 改狀態。fn 直接改 draft；回傳的字串會顯示在提示條（回 nil 就不顯示）。
     /// undoable 為 true 時這一步可以復原。會改到行程的動作都要 undoable: true。
-    func act(undoable: Bool = false, _ change: (inout AppState) -> String?) {
+    func act(undoable: Bool = false, animated: Bool = true, _ change: (inout AppState) -> String?) {
         let prev = s
         var draft = s
         let message: String? = change(&draft)
@@ -126,7 +126,12 @@ final class AppStore {
             canUndo = true
         }
         // 資料變了要看得出哪裡動了：列表增減、數字換值都用同一條曲線
-        withAnimation(Motion.change) {
+        // animated 傳 false 的情況：同一下還要開全螢幕的東西（拔蘿蔔），兩個動畫撞在一起那張會開不出來
+        if animated {
+            withAnimation(Motion.change) {
+                s = draft
+            }
+        } else {
             s = draft
         }
         save()

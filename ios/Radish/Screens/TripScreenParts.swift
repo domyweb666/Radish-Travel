@@ -293,7 +293,7 @@ struct TripNextStop: View {
         let name: String = it.n
         let line: String = PULL_LINES.randomElement() ?? ""
         setPulled(PulledStop(name: name, size: it.s, line: line))
-        store.act(undoable: true) { (d: inout AppState) -> String? in
+        store.act(undoable: true, animated: false) { (d: inout AppState) -> String? in
             if var trip = d.trip, let x = findItem(trip, id) {
                 trip.slots[x.si].items[x.ii].status = .pulled
                 d.trip = trip
