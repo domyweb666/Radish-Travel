@@ -49,6 +49,9 @@ struct BrainOut {
 let LOCAL_HINTS: [String] = ["第 2 天上午下午對調", "第 2 天跟第 3 天對調", "第 3 天輕鬆一點", "重排"]
 let AI_HINTS: [String] = ["第 2 天上午下午對調", "第 3 天輕鬆一點", "多排一點咖啡廳", "有一天想整天逛街", "雨天備案是什麼"]
 
+/// 旅途中說要整趟重排時回的話
+let NO_REGEN_ON_TRIP: String = "旅途中不整趟重排，去過的站會被洗掉。想改今天剩下的，直接說哪一段。"
+
 private let PART_WORD: [String: Part] = ["上午": .am, "下午": .pm, "晚上": .eve]
 
 /* ---------- Op ↔ JSON ---------- */
@@ -145,9 +148,13 @@ private func chatFind(_ name: String, _ t: Trip) -> Found? {
     return nil
 }
 
-/// 沒接 AI 時的本機指令。聽不懂就老實說聽不懂
-func localBrain(_ msg: String, _ t: Trip) -> BrainOut {
+/// 沒接 AI 時的本機指令。聽不懂就老實說聽不懂。now 有給（旅途中）時，「輕鬆一點」只挑還沒過、還沒拔的站
+func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
+    // 旅途中說的「今天」就是第幾天，下面的說法都認得
+    var msg: String = raw
+    if let n = now { msg = msg.replacingOccurrences(of: "今天", with: "第 \(n.day) 天") }
     if msg.contains("重排") || msg.contains("重新排") {
+        if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
         return BrainOut(reply: "好，整趟重排一次。", ops: [], regen: true)
     }
     if let m = chatMatch("第\\s*([0-9]+)\\s*天.*第\\s*([0-9]+)\\s*天.*(對調|交換|互換)", msg),
@@ -179,8 +186,10 @@ func localBrain(_ msg: String, _ t: Trip) -> BrainOut {
             return BrainOut(reply: "「\(x.it.n)」拿掉了，放進下次再來。", ops: [opJSON(op)])
         }
     }
-    if let m = chatMatch("第\\s*([0-9]+)\\s*天.*(輕鬆|少一點|太累|太滿)", msg), let d1 = chatGroup(m, 1) {
-        let stops: [Found] = dayStops(t, chatInt(d1))
+    if let m = chatMatch("第\\s*([0-9]+)\\s*天.*(輕鬆|少一點|太累|好累|太滿)", msg), let d1 = chatGroup(m, 1) {
+        let stops: [Found] = dayStops(t, chatInt(d1)).filter { (s: Found) -> Bool in
+            return s.it.status != .pulled && !slotPast(now, s.s.day, s.s.part)
+        }
         let big: Found? = stops.first { (s: Found) -> Bool in s.it.s == .L }
         if let x = big ?? stops.first {
             let op: Op = Op.remove(id: x.it.id)
@@ -437,10 +446,68 @@ private func chatApplyOne(_ t: inout Trip, _ seeds: inout [Seed], _ o: [String: 
     return err
 }
 
+/* ---------- 旅途中不能動的：過去的時段、拔起來的站 ---------- */
+
+private func chatSlotPulled(_ t: Trip, _ day: Int, _ part: Part) -> Bool {
+    return t.slots.contains { (s: Slot) -> Bool in
+        return s.day == day && s.part == part && s.items.contains { (it: Stop) -> Bool in it.status == .pulled }
+    }
+}
+
+/// 這一站能不能動。能動回 nil
+private func chatStopFrozen(_ t: Trip, _ id: Any?, _ now: TripNow?) -> String? {
+    guard let id = id as? String, let x = findItem(t, id) else { return nil }
+    if x.it.status == .pulled { return "「\(x.it.n)」已經拔起來了，不動它" }
+    if slotPast(now, x.s.day, x.s.part) { return "「\(x.it.n)」在已經過了的時段，不動它" }
+    return nil
+}
+
+/// 這個時段能不能排東西進去。能回 nil
+private func chatSlotFrozen(_ dayRaw: Any?, _ partRaw: Any?, _ now: TripNow?) -> String? {
+    guard let day = chatWhole(chatNum(dayRaw)), let part = chatPart(partRaw) else { return nil }
+    if slotPast(now, day, part) { return "\(chatWhere(day, part))已經過了，不能再排" }
+    return nil
+}
+
+/// 這一步會不會動到不能動的東西。會就回原因，這一步不做。找不到站、時段不對這類錯，留給 chatApplyOne 講
+private func chatFrozen(_ t: Trip, _ o: [String: Any], _ now: TripNow?) -> String? {
+    guard let op = o["op"] as? String else { return nil }
+    if op == "move" {
+        return chatStopFrozen(t, o["id"], now) ?? chatSlotFrozen(o["day"], o["part"], now)
+    }
+    if op == "remove" || op == "replace" {
+        return chatStopFrozen(t, o["id"], now)
+    }
+    if op == "add" || op == "rest" {
+        return chatSlotFrozen(o["day"], o["part"], now)
+    }
+    if op == "swapParts" {
+        guard let day = chatWhole(chatNum(o["day"])) else { return nil }
+        for raw in [o["a"], o["b"]] {
+            guard let part = chatPart(raw) else { continue }
+            if slotPast(now, day, part) || chatSlotPulled(t, day, part) {
+                return "第 \(day) 天\(PART[need: part])已經過了或有拔起來的站，不能對調"
+            }
+        }
+        return nil
+    }
+    if op == "swapDays" {
+        for raw in [o["a"], o["b"]] {
+            guard let day = chatWhole(chatNum(raw)) else { continue }
+            if dayFrozen(t, now, day) {
+                return "第 \(day) 天有已經過了的時段或拔起來的站，不能整天對調"
+            }
+        }
+        return nil
+    }
+    return nil
+}
+
 /// 把一串動作套到行程上。changes 是給人看的「哪一站從哪到哪」，notes 是沒做成的原因。
 /// ops 是 JSONSerialization 解出來的東西（AI 回的，不可信），也可以直接給 [Op]
+/// now 有給（旅途中）時，過去的時段不動；拔起來的站不管什麼時候都不動
 @discardableResult
-func applyOps(_ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?) -> (changes: [String], notes: [String]) {
+func applyOps(_ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?, _ now: TripNow? = nil) -> (changes: [String], notes: [String]) {
     var changes: [String] = []
     var notes: [String] = []
     guard let list = ops as? [Any] else { return (changes: changes, notes: notes) }
@@ -458,6 +525,10 @@ func applyOps(_ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?) -> (changes: 
         }
         // 不是物件的（數字、字串、陣列）在 TS 是每個分支都不成立，什麼都不做
         guard let o = obj else { continue }
+        if let stop = chatFrozen(t, o, now) {
+            notes.append(stop)
+            continue
+        }
         if let err = chatApplyOne(&t, &seeds, o, &changes), !err.isEmpty {
             notes.append(err)
         }
@@ -474,7 +545,8 @@ func aiReady() -> Bool {
     return AI_ENDPOINT.count > 0
 }
 
-func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg]) -> String {
+/// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期
+func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ clock: ChatClock? = nil) -> String {
     let st: Settings = tripSettings(base, t.tweaks)
     let tweak: String = tweakSummary(t)
     let used: Set<String> = usedIds(t)
@@ -495,7 +567,14 @@ func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg]) -> 
     let habit: String = settingsSummary(st)
     let people: Int = t.people == 0 ? 1 : t.people
     let tweakLine: String = tweak.isEmpty ? "" : "這趟特別的地方：" + tweak + "。"
-    let plan: String = planText(t, true)
+    let now: TripNow? = tripNow(clock)
+    let dated: Bool = clock != nil && !t.start.isEmpty
+    var fmt: ((Int) -> String)? = nil
+    if dated {
+        let trip: Trip = t
+        fmt = { (d: Int) -> String in tripDayLabel(trip, d) }
+    }
+    let plan: String = planText(t, true, fmt, now)
     let histBlock: String = hist.isEmpty ? "" : "前面的對話：\n" + hist + "\n\n"
 
     let head: String = """
@@ -513,7 +592,20 @@ func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg]) -> 
 - 使用者說過「以後都不排」的站或類別，不要加回來。
 """
 
+    var rules: String = ""
+    if dated {
+        rules += "\n- 每一天後面是日期和星期幾。有休館日或只開某幾天的地方，要對得上星期幾；你不確定哪天休息，就說去之前查。"
+    }
+    if now != nil {
+        rules += "\n- 標「已經過了」的時段、標「拔起來了」的站不能動，也不能把東西排進已經過了的時段。"
+        rules += "\n- 使用者說累了、下雨、晚了、多出時間，只調今天還沒過的時段，除非他講的是別天。"
+        rules += "\n- 他說「下一站」，指今天還沒拔起來的第一站。"
+        rules += "\n- 旅途中不要整趟重排。"
+    }
+
+    let nowText: String = nowLine(t, clock)
     var mid: String = "\n\n使用者的習慣：\(habit)。這趟 \(people) 人，\(t.start) 出發。\(tweakLine)"
+    if !nowText.isEmpty { mid += "\n" + nowText }
     mid += "\n\n目前行程（方括號裡是 id）：\n\(plan)\n還沒用到的候選：\n\(cand)"
     mid += "\n\n\(histBlock)使用者現在說：\(msg)\n\n"
 
@@ -531,7 +623,7 @@ ops 可用的動作：
 {"op":"rest","day":3,"part":"pm","on":true}        把某個時段設成留白或取消留白
 """
 
-    return head + mid + tail
+    return head + rules + mid + tail
 }
 
 /// 送去後端時會出的錯。TS 是丟 Error('HTTP 500') 這種

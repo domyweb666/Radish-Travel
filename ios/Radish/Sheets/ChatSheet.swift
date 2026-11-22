@@ -212,38 +212,45 @@ struct ChatSheet: View {
         let settings: Settings = store.s.settings
         let chat: [ChatMsg] = store.s.chat
         let useRemote: Bool = remote
+        // 按下去那一刻的「現在」：旅途中第幾天幾點。AI 和套用改動都用同一個，免得送出到回來之間跨過時段
+        let clock: ChatClock? = store.phase.map { (p: Phase) -> ChatClock in chatClock(p) }
         busy = true
         text = ""
         store.mutate { (d: inout AppState) -> Void in
             d.chat.append(ChatMsg(r: .me, t: msg))
         }
         Task { @MainActor in
-            let got: (out: BrainOut, failed: Bool) = await ask(msg, trip, settings, chat, useRemote)
-            apply(got.out, got.failed)
+            let got: (out: BrainOut, failed: Bool) = await ask(msg, trip, settings, chat, useRemote, clock)
+            apply(got.out, got.failed, tripNow(clock))
             busy = false
         }
     }
 
     /// 兩條路：有接 AI 就問後端，沒回好就退回本機指令；沒接就直接本機指令
     @MainActor
-    private func ask(_ msg: String, _ trip: Trip, _ settings: Settings, _ chat: [ChatMsg], _ useRemote: Bool) async -> (out: BrainOut, failed: Bool) {
+    private func ask(
+        _ msg: String, _ trip: Trip, _ settings: Settings, _ chat: [ChatMsg], _ useRemote: Bool, _ clock: ChatClock?
+    ) async -> (out: BrainOut, failed: Bool) {
+        let now: TripNow? = tripNow(clock)
         if !useRemote {
-            return (out: localBrain(msg, trip), failed: false)
+            return (out: localBrain(msg, trip, now), failed: false)
         }
         do {
-            let prompt: String = aiPrompt(msg, trip, settings, chat)
+            let prompt: String = aiPrompt(msg, trip, settings, chat, clock)
             let out: BrainOut = try await askRemote(prompt, AI_ENDPOINT)
             return (out: out, failed: false)
         } catch {
-            return (out: localBrain(msg, trip), failed: true)
+            return (out: localBrain(msg, trip, now), failed: true)
         }
     }
 
     /// 把回來的動作套到行程上，對話裡記下改了什麼、哪幾步沒做成。有改到行程才留復原
     @MainActor
-    private func apply(_ out: BrainOut, _ failed: Bool) {
+    private func apply(_ out: BrainOut, _ failed: Bool, _ now: TripNow?) {
         if failed { Haptic.notify(.error) }
-        let regen: Bool = out.regen == true
+        // 旅途中不整趟重排：去過的站會被洗掉
+        let blockRegen: Bool = out.regen == true && now != nil
+        let regen: Bool = out.regen == true && !blockRegen
         let willChange: Bool = regen || !out.ops.isEmpty
         store.act(undoable: willChange) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }
@@ -262,11 +269,14 @@ struct ChatSheet: View {
                 changes.append("整趟照現在的設定重排了")
             }
             var seeds: [Seed] = d.seeds
-            let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, out.ops)
+            let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, out.ops, now)
             d.trip = trip
             d.seeds = seeds
             changes.append(contentsOf: r.changes)
             d.chat.append(ChatMsg(r: .ai, t: out.reply, changes: changes))
+            if blockRegen {
+                d.chat.append(ChatMsg(r: .sys, t: NO_REGEN_ON_TRIP))
+            }
             let notes: [String] = r.notes + warnings(trip)
             for n in notes {
                 d.chat.append(ChatMsg(r: .sys, t: n))

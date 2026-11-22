@@ -116,7 +116,7 @@ func monthGrid(_ year: Int, _ month: Int) -> [String?] {
     return cells
 }
 
-enum Phase: Equatable {
+enum Phase: Equatable, Sendable {
     case plan(daysToGo: Int)
     case trip(day: Int)
     case done

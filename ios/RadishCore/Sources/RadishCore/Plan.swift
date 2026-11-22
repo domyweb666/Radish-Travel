@@ -639,11 +639,13 @@ func tweakSummary(_ t: TripDraft) -> String {
 }
 
 /// 整趟的純文字版，給 AI 看，也用來傳給旅伴
-func planText(_ t: Trip, _ withIds: Bool = false, _ fmtDate: ((Int) -> String)? = nil) -> String {
+/// now 有給時（旅途中），過去的時段和拔起來的站會標出來，給 AI 看
+func planText(_ t: Trip, _ withIds: Bool = false, _ fmtDate: ((Int) -> String)? = nil, _ now: TripNow? = nil) -> String {
     var s: String = ""
     for d in stride(from: 1, through: t.days, by: 1) {
         var head: String = "第 \(d) 天"
         if let fmt = fmtDate { head += " " + fmt(d) }
+        if let n = now, n.day == d { head += "（今天）" }
         s += head + "\n"
         for p in PARTS {
             let found: Slot? = t.slots.first { (x: Slot) -> Bool in x.day == d && x.part == p }
@@ -657,7 +659,8 @@ func planText(_ t: Trip, _ withIds: Bool = false, _ fmtDate: ((Int) -> String)? 
             for i in sl.items {
                 if withIds {
                     let size: String = i.s == .L ? "大" : "小"
-                    items.append("[\(i.id)] \(i.n)(\(size),\(CAT[need: i.c]),\(areaOf(i)))")
+                    let pulled: String = i.status == .pulled ? ",拔起來了" : ""
+                    items.append("[\(i.id)] \(i.n)(\(size),\(CAT[need: i.c]),\(areaOf(i))\(pulled))")
                 } else {
                     items.append(i.n + (i.b == true ? "（要先訂）" : ""))
                 }
@@ -665,6 +668,7 @@ func planText(_ t: Trip, _ withIds: Bool = false, _ fmtDate: ((Int) -> String)? 
             var line: String = items.joined(separator: "、")
             if line.isEmpty { line = sl.rest ? "留白" : "空的" }
             if withIds && sl.rest { line += "；留白" }
+            if slotPast(now, d, p) { line += "；已經過了" }
             s += "  \(partName)：\(line)\n"
         }
     }
