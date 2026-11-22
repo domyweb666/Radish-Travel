@@ -84,8 +84,7 @@ final class TalkTests: XCTestCase {
     }
 
     func test直接問Claude_回的文字裡夾著JSON也讀得出來() throws {
-        let text: String = "好的。
-{\"reply\":\"第 3 天少排一站。\",\"ops\":[{\"op\":\"remove\",\"id\":\"p3\"}]}"
+        let text: String = "好的。 {\"reply\":\"第 3 天少排一站。\",\"ops\":[{\"op\":\"remove\",\"id\":\"p3\"}]}"
         let out: BrainOut = try brainFromText(text)
         XCTAssertEqual(out.reply, "第 3 天少排一站。")
         XCTAssertEqual(out.ops.count, 1)
