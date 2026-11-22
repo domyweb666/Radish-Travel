@@ -7,8 +7,8 @@
 // 用法：`Screen(...) { ... }.talkBar("第 3 天", target: .day(3))`、`.talkBar(stop.n, target: .stop(id: id))`
 import SwiftUI
 
-/// 小標最寬多少：站名太長就截掉，不要把輸入框擠沒了
-private let TALK_TAG_MAX: CGFloat = 140  // domy-ignore: 只在這裡用的寬度上限
+/// 小標最多幾個字：站名太長就截掉，不要把輸入框擠沒了
+private let TALK_TAG_MAX: Int = 7
 /// 輸入框最多打幾個字
 let TALK_MAX: Int = 200
 
@@ -152,12 +152,12 @@ struct TalkBar: View {
 
     /// AI 在看哪裡。只是標示，不能點
     private var tag: some View {
-        DomyText(label, .footnote, weight: .semibold, lines: 1)
+        let short: String = label.count > TALK_TAG_MAX ? String(label.prefix(TALK_TAG_MAX - 1)) + "…" : label
+        return DomyText(short, .footnote, weight: .semibold, lines: 1)
+            .fixedSize()
             .padding(.horizontal, T.Space.s2 + T.Space.s1 / 2)
             .padding(.vertical, T.Space.s2)
-            .frame(maxWidth: TALK_TAG_MAX)
             .background(C.surfaceMuted, in: Capsule())
-            .layoutPriority(1)
             .accessibilityHidden(true)
     }
 
