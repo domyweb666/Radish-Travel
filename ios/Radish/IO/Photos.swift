@@ -2,6 +2,7 @@
 // 行程裡只記檔名，不記完整路徑。iOS 更新 app 之後資料夾的路徑會變，記完整路徑會找不到檔案。
 // 用系統的 PhotosPicker 挑照片，不用問相簿權限（系統只把使用者挑的那一張交給 app）。
 // 對應 mobile/src/io/photos.ts。
+import ImageIO
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -25,9 +26,51 @@ enum PhotoStore {
         dir.appendingPathComponent(ref)
     }
 
-    /// 讀出來顯示。檔案不在就回 nil
-    static func image(_ ref: String) -> UIImage? {
-        UIImage(contentsOfFile: url(ref).path)
+    /// 不縮的時候讀多大：存的時候就縮到這麼大了
+    static let fullPixels: Int = Int(maxEdge)
+
+    /// 讀過的照片記在記憶體裡，捲回來不用再讀檔。手機記憶體不夠時系統會自己清
+    private static let cache: NSCache<NSString, UIImage> = {
+        let c = NSCache<NSString, UIImage>()
+        c.totalCostLimit = 64 * 1024 * 1024  // domy-ignore: 快取上限 64MB，不是介面尺寸
+        return c
+    }()
+
+    private static func cacheKey(_ ref: String, _ pixels: Int) -> NSString {
+        "\(ref)@\(pixels)" as NSString
+    }
+
+    /// 記憶體裡已經有的那一張。沒有就回 nil，不讀檔
+    static func cached(_ ref: String, _ pixels: Int) -> UIImage? {
+        cache.object(forKey: cacheKey(ref, pixels))
+    }
+
+    /// 讀出來顯示：在背景讀檔、縮到長邊 pixels 像素、先解碼好，畫面拿到就能直接畫。檔案不在就回 nil
+    static func load(_ ref: String, _ pixels: Int) async -> UIImage? {
+        if let hit = cached(ref, pixels) { return hit }
+        let file: URL = url(ref)
+        let image: UIImage? = await Task.detached(priority: .userInitiated) {
+            decode(file, pixels)
+        }.value
+        if let image, let cg = image.cgImage {
+            cache.setObject(image, forKey: cacheKey(ref, pixels), cost: cg.bytesPerRow * cg.height)
+        }
+        return image
+    }
+
+    /// 用系統的縮圖功能讀：不把整張原圖讀進記憶體，而且在這裡就解碼完，不留到畫面上才做
+    private static func decode(_ file: URL, _ pixels: Int) -> UIImage? {
+        let sourceOptions: CFDictionary = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(file as CFURL, sourceOptions) else { return nil }
+        let thumbOptions: CFDictionary =
+            [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: pixels,
+            ] as CFDictionary
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOptions) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     /// 把使用者挑的那一張縮小存起來。回傳要記進行程的檔名；失敗回 nil
@@ -116,15 +159,44 @@ struct PhotoThumb: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
-        Group {
-            if let image = PhotoStore.image(ref) {
-                Image(uiImage: image).resizable().scaledToFill()
+        PhotoImage(ref: ref, edge: edge)
+            .frame(width: edge, height: edge)
+            .clipShape(shape)
+    }
+}
+
+/// 一張照片，裁滿外面給的框。在背景讀、縮成畫面用得到的大小，讀好之前和檔案讀不到時顯示灰底。
+/// 外面要自己給 .frame 和 .clipShape
+struct PhotoImage: View {
+    let ref: String
+    /// 這張在畫面上最長那一邊是幾點。nil 是不縮（整列寬的封面）
+    var edge: CGFloat? = nil
+
+    @Environment(\.displayScale) private var scale: CGFloat
+    @State private var got: UIImage?
+    @State private var gotKey: String = ""
+
+    private var pixels: Int {
+        guard let edge else { return PhotoStore.fullPixels }
+        return min(PhotoStore.fullPixels, Int((edge * scale).rounded(.up)))
+    }
+
+    var body: some View {
+        let px: Int = pixels
+        let key: String = "\(ref)@\(px)"
+        let shown: UIImage? = (gotKey == key ? got : nil) ?? PhotoStore.cached(ref, px)
+        ZStack {
+            if let shown {
+                Image(uiImage: shown).resizable().scaledToFill()
             } else {
                 C.surfaceMuted
             }
         }
-        .frame(width: edge, height: edge)
-        .clipShape(shape)
+        .task(id: key) {
+            let image: UIImage? = await PhotoStore.load(ref, px)
+            got = image
+            gotKey = key
+        }
     }
 }
 

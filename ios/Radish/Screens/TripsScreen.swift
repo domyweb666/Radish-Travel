@@ -50,14 +50,8 @@ private struct TripCover: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
-        Group {
-            if let image = PhotoStore.image(ref) {
-                Image(uiImage: image).resizable().scaledToFill()
-            } else {
-                C.surfaceMuted
-            }
-        }
-        .frame(width: T.Size.heroButton, height: T.Size.row)
+        PhotoImage(ref: ref, edge: max(T.Size.heroButton, T.Size.row))
+            .frame(width: T.Size.heroButton, height: T.Size.row)
         .clipShape(shape)
         .accessibilityHidden(true)
     }

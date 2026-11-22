@@ -343,9 +343,7 @@ private struct CoverPhoto: View {
             .frame(maxWidth: .infinity)
             .frame(height: COVER_H)
             .overlay {
-                if let image = PhotoStore.image(ref) {
-                    Image(uiImage: image).resizable().scaledToFill()
-                }
+                PhotoImage(ref: ref)
             }
             .clipShape(shape)
             .accessibilityElement(children: .ignore)

@@ -30,6 +30,9 @@ struct RadishApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         store.refreshToday()
+                    } else {
+                        // 要離開前景（進多工畫面、回主畫面）：排著還沒寫的那一份現在就寫，被滑掉也不會掉
+                        store.flush(wait: true)
                     }
                 }
         }
@@ -45,6 +48,7 @@ enum PrepStage: String, CaseIterable, Hashable {
     case before, there, back, cost
 }
 
+/// 外殼只看 store.ready，不讀行程資料：改一站的時候外殼不用跟著重算。通知的重排在 AppStore 存檔時做
 struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
@@ -58,17 +62,6 @@ struct RootView: View {
         TabItem(id: TabKey.trips.rawValue, title: "旅行", icon: IconPaths.tabTrips),
         TabItem(id: TabKey.me.rawValue, title: "我", icon: IconPaths.tabMe),
     ]
-
-    /// 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空
-    private var reminders: [Reminder] {
-        store.s.remind ? remindersOf(store.s, store.today) : []
-    }
-
-    /// 通知內容有沒有變，用這串字比
-    private var reminderKey: String {
-        let lines: [String] = reminders.map { item in "\(item.on)|\(item.title)|\(item.body)" }
-        return (store.ready ? "1" : "0") + lines.joined(separator: "/")
-    }
 
     var body: some View {
         @Bindable var sheets = sheets
@@ -106,11 +99,6 @@ struct RootView: View {
                 .environment(store)
                 .environment(sheets)
                 .tint(C.accent)
-        }
-        .onChange(of: reminderKey, initial: true) { _, _ in
-            guard store.ready else { return }
-            let list: [Reminder] = reminders
-            Task { await syncReminders(list) }
         }
     }
 }

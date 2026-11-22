@@ -39,6 +39,15 @@ final class AppStore {
     @ObservationIgnored private var noticeId = 0
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private let fileURL: URL
+    /// 有改過、還沒寫進檔案
+    @ObservationIgnored private var dirty = false
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+    /// 寫檔排隊用：一次寫一份，照改的順序寫
+    @ObservationIgnored private let writer = DispatchQueue(label: "org.domyweb.radish.save", qos: .utility)
+    /// 上次排通知用的內容，沒變就不重排。nil 是還沒排過
+    @ObservationIgnored private var reminderKey: String?
+    /// 改完多久才寫檔，這段時間內再改就併成一次
+    private static let saveDelay: Double = 0.3
 
     init(fileURL: URL = AppStore.defaultURL()) {
         self.fileURL = fileURL
@@ -74,18 +83,60 @@ final class AppStore {
             }
         }
         ready = true
+        syncReminderList()
     }
 
+    /// 排一次存檔。連著改好幾下只寫最後那一份，寫檔在背景做，畫面不用等它。
+    /// app 要離開前景時 RadishApp 會叫 flush(wait: true)，所以排著還沒寫的那一份不會掉
     private func save() {
         guard ready else { return }
-        do {
-            let dir = fileURL.deletingLastPathComponent()
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let data = try JSONEncoder().encode(s)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            show("這一步沒有存成功，手機的空間可能滿了。", false)
+        dirty = true
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(AppStore.saveDelay))
+            guard !Task.isCancelled else { return }
+            self?.flush()
         }
+    }
+
+    /// 現在就把還沒寫的那一份寫進檔案。wait 為 true 時等寫完才回來（app 要進背景時用）。
+    /// 寫完順便把排好的通知換成新的
+    func flush(wait: Bool = false) {
+        saveTask?.cancel()
+        saveTask = nil
+        guard ready, dirty else { return }
+        dirty = false
+        let state: AppState = s
+        let url: URL = fileURL
+        let job: @Sendable () -> Void = { [weak self] in
+            do {
+                let dir = url.deletingLastPathComponent()
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                let data = try JSONEncoder().encode(state)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                Task { @MainActor [weak self] in
+                    self?.show("這一步沒有存成功，手機的空間可能滿了。", false)
+                }
+            }
+        }
+        if wait {
+            writer.sync(execute: job)
+        } else {
+            writer.async(execute: job)
+        }
+        syncReminderList()
+    }
+
+    /// 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空。內容跟上次一樣就不動
+    private func syncReminderList() {
+        guard ready else { return }
+        let list: [Reminder] = s.remind ? remindersOf(s, today) : []
+        let key: String = list.map { (item: Reminder) -> String in "\(item.on)|\(item.title)|\(item.body)" }
+            .joined(separator: "/")
+        if key == reminderKey { return }
+        reminderKey = key
+        Task { await syncReminders(list) }
     }
 
     private func show(_ text: String, _ undoable: Bool) {
@@ -199,6 +250,7 @@ final class AppStore {
         let now = todayISO()
         if now != today {
             today = now
+            syncReminderList()
         }
     }
 }
