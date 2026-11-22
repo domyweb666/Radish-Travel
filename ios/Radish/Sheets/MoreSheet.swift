@@ -88,7 +88,7 @@ struct MoreSheet: View {
 
     private func tripSection(_ trip: Trip) -> some View {
         DomySection("這趟") {
-            SettingsRow("花費", value: "每人大概花多少（估）") {
+            SettingsRow("花費") {
                 sheets.close()
                 nav.push(.cost)
             }
