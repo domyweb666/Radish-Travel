@@ -103,10 +103,17 @@ private struct BubbleAsk: View {
 struct ChatSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     @State private var text: String = ""
     @State private var busy: Bool = false
 
-    init() {}
+    /// true 是放在「問 AI」分頁裡（沒有關閉、右上角有平常的我）；false 是從這趟打開的彈出卡。
+    /// 片 3 會把分頁版改成照線框 A14 的樣子
+    private let inTab: Bool
+
+    init(inTab: Bool = false) {
+        self.inTab = inTab
+    }
 
     private var remote: Bool { aiReady() }
     private var needConsent: Bool { remote && !store.s.aiConsent }
@@ -115,26 +122,44 @@ struct ChatSheet: View {
     private var canSend: Bool { !typed.isEmpty && !busy }
 
     var body: some View {
-        if store.s.trip != nil {
-            SheetScaffold("用講的改行程", scroll: false, onClose: { sheets.close() }) {
-                if needConsent {
-                    consentCard
+        if inTab {
+            FixedScreen("問 AI", actions: { TopActions() }) {
+                if store.s.trip != nil {
+                    inner
                 } else {
-                    talk
-                    hintRow
-                    inputRow
-                    DomyText(
-                        remote ? "已接上 AI。它不知道即時的營業時間和票價，去之前查一下。" : "這一版還沒接上 AI，只聽得懂上面那幾種說法。",
-                        .footnote, tone: .secondary)
+                    DomyEmptyState(
+                        icon: IconPaths.tabAsk,
+                        title: "還沒有這趟",
+                        message: "先在「這趟」排好一趟，再來這裡跟 AI 講要怎麼改。",
+                        actionTitle: "去排一趟",
+                        action: { nav.show(.trip) }
+                    )
                 }
             }
+        } else if store.s.trip != nil {
+            SheetScaffold("用講的改行程", scroll: false, onClose: { sheets.close() }) {
+                inner
+            }
+        }
+    }
+
+    @ViewBuilder private var inner: some View {
+        if needConsent {
+            consentCard
+        } else {
+            talk
+            hintRow
+            inputRow
+            DomyText(
+                remote ? "已接上 AI。它不知道即時的營業時間和票價，去之前查一下。" : "這一版還沒接上 AI，只聽得懂上面那幾種說法。",
+                .footnote, tone: .secondary)
         }
     }
 
     private var consentCard: some View {
         Card {
             DomyText("第一次用之前，先講清楚", .headline)
-            DomyText("用講的改行程時，這三樣會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）：你打的那句話、這趟的行程、「我」分頁裡平常的習慣。", .body)
+            DomyText("用講的改行程時，這三樣會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）：你打的那句話、這趟的行程、「平常的我」裡的習慣。", .body)
             DomyText("不會送你的位置、名字、聯絡方式。", .body)
             DomyButton("知道了，開始用", fullWidth: true) {
                 store.mutate { (d: inout AppState) -> Void in

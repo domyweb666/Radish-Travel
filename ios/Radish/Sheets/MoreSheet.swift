@@ -1,10 +1,12 @@
-// 「更多」：不常用的動作收在這裡，主畫面只留看行程和用講的改。
+// 「更多」：不常用的動作收在這裡，從這趟右上角打開（線框 A7）。
+// 這一天：復原上一步、上午和下午對調、自己加一站；這趟：花費、行程設定、傳給旅伴看；「這趟不排了」單獨放最下面。
 // 對應 mobile/src/sheets/MoreSheet.tsx。TS 的 onAdd、onSettings 改成 sheets.open(.add)、sheets.open(.settings)。
 import SwiftUI
 
 struct MoreSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     @State private var share: ShareItem?
     private let day: Int
 
@@ -36,6 +38,7 @@ struct MoreSheet: View {
             daySection(trip)
             tripSection(trip)
             poolSection
+            archiveSection
         }
         .sheet(item: $share) { (item: ShareItem) in
             ShareSheet(items: item.items)
@@ -57,6 +60,13 @@ struct MoreSheet: View {
         let canSwap: Bool = slotAt(trip, day, .am) != nil && slotAt(trip, day, .pm) != nil
         let big: Stop? = bigStop(trip)
         return DomySection("第 \(day) 天") {
+            if store.canUndo {
+                SettingsRow("復原上一步") {
+                    sheets.close()
+                    store.undo()
+                }
+                .accessibilityIdentifier("more-undo")
+            }
             if canSwap {
                 SettingsRow("上午和下午對調") {
                     swapHalves()
@@ -78,6 +88,11 @@ struct MoreSheet: View {
 
     private func tripSection(_ trip: Trip) -> some View {
         DomySection("這趟") {
+            SettingsRow("花費", value: "每人大概花多少（估）") {
+                sheets.close()
+                nav.push(.cost)
+            }
+            .accessibilityIdentifier("more-cost")
             SettingsRow("行程設定", value: "日期、住哪、名稱、封面") {
                 sheets.open(.settings)
             }
@@ -86,7 +101,13 @@ struct MoreSheet: View {
                 share = ShareItem(items: [shareText(trip)])
             }
             .accessibilityIdentifier("more-share")
-            SettingsRow("這趟不排了，收起來") {
+        }
+    }
+
+    /// 收起來單獨一塊放最下面，不跟常用的擠在一起。可以復原
+    private var archiveSection: some View {
+        DomySection {
+            SettingsRow("這趟不排了，收起來", destructive: true) {
                 store.act(undoable: true) { (d: inout AppState) -> String? in
                     archiveTrip(&d)
                 }

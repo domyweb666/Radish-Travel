@@ -6,17 +6,23 @@ import SwiftUI
 let tabBarClearance: CGFloat = T.Size.tabBarBottom + T.Size.tabBar + T.Space.s4
 
 /// 分頁的外框：畫布色、左右 20 邊距、大標題、區塊之間間距 s6。
+/// actions 是大標題上面靠右那一排圓鈕（分頁最上層的更多、平常的我）；推進頁不給。
 /// 鍵盤出來時 SwiftUI 會自己把正在打的那一格推上來。
 /// 要捲到某一塊：在那一塊加 `.id("名字")`，外面包 ScrollViewReader 傳 proxy 進來用，或用 `scrollTo` 參數。
-struct Screen<Content: View>: View {
+struct Screen<Actions: View, Content: View>: View {
     let title: String
     /// 設了就捲到那個 id（操作說明用）。捲完自己不會清掉，要呼叫的人清
     var scrollTo: String?
+    @ViewBuilder var actions: Actions
     @ViewBuilder var content: Content
 
-    init(_ title: String, scrollTo: String? = nil, @ViewBuilder content: () -> Content) {
+    init(
+        _ title: String, scrollTo: String? = nil, @ViewBuilder actions: () -> Actions,
+        @ViewBuilder content: () -> Content
+    ) {
         self.title = title
         self.scrollTo = scrollTo
+        self.actions = actions()
         self.content = content()
     }
 
@@ -24,8 +30,13 @@ struct Screen<Content: View>: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: T.Space.s6) {
-                    DomyText(title, .largeTitle)
-                        .accessibilityAddTraits(.isHeader)
+                    VStack(alignment: .leading, spacing: T.Space.s1) {
+                        if Actions.self != EmptyView.self {
+                            actions
+                        }
+                        DomyText(title, .largeTitle)
+                            .accessibilityAddTraits(.isHeader)
+                    }
                     content
                 }
                 .padding(.top, T.Space.s2)
@@ -42,6 +53,42 @@ struct Screen<Content: View>: View {
                 }
             }
         }
+    }
+}
+
+extension Screen where Actions == EmptyView {
+    init(_ title: String, scrollTo: String? = nil, @ViewBuilder content: () -> Content) {
+        self.init(title, scrollTo: scrollTo, actions: { EmptyView() }, content: content)
+    }
+}
+
+/// 不整頁捲動的分頁外框：大標題和右上角固定在上面，內容自己管捲動（問 AI 的對話）。
+/// 底部留分頁列的空間
+struct FixedScreen<Actions: View, Content: View>: View {
+    let title: String
+    @ViewBuilder var actions: Actions
+    @ViewBuilder var content: Content
+
+    init(_ title: String, @ViewBuilder actions: () -> Actions, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.actions = actions()
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: T.Space.s3) {
+            VStack(alignment: .leading, spacing: T.Space.s1) {
+                actions
+                DomyText(title, .largeTitle)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            content
+        }
+        .padding(.top, T.Space.s2)
+        .padding(.horizontal, T.Size.screenMargin)
+        .padding(.bottom, tabBarClearance)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(C.canvas.ignoresSafeArea())
     }
 }
 
@@ -113,10 +160,11 @@ struct DomyTabBar: View {
                 let focused: Bool = tab.id == selected
                 let color: Color = focused ? C.strong : C.textPrimary
                 Button {
+                    // 點的是現在這格也要傳出去：推進到裡面的頁面時，再點一次回最上層
                     if !focused {
                         Haptic.select()
-                        onSelect(tab.id)
                     }
+                    onSelect(tab.id)
                 } label: {
                     VStack(spacing: T.Space.s1 / 2) {
                         LineIcon(tab.icon, color: color)

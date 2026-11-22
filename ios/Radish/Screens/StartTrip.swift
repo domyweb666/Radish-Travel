@@ -77,6 +77,7 @@ private struct PrefGroup<Content: View>: View {
 
 struct StartTrip: View {
     @Environment(AppStore.self) private var store
+    @Environment(Nav.self) private var nav
     let goSettings: () -> Void
     @State private var form: TripFormValue = blankForm()
     @State private var prefs: StartPrefs = StartPrefs()
@@ -135,9 +136,14 @@ struct StartTrip: View {
     }
 
     var body: some View {
-        Screen("開一趟") {
+        Screen("開一趟", actions: { TopActions() }) {
             VStack(alignment: .leading, spacing: T.Space.s5) {
                 DomyText("填好這一頁，我把整趟排好。排完想改，用講的就可以；這一頁之後也能回來改。", .subheadline, tone: .secondary)
+                // 還沒排也能先看須知：在當地、回程
+                EntryChip("須知", icon: IconPaths.notes) {
+                    nav.push(.notes)
+                }
+                .accessibilityIdentifier("open-notes")
                 TripForm(value: $form, minStart: store.today, fallbackBase: store.s.settings.base)
                 if first {
                     firstCard
@@ -152,7 +158,7 @@ struct StartTrip: View {
     private var firstCard: some View {
         Card {
             DomyText("第一次排，多問四題", .headline)
-            DomyText("不選也可以，我先用一般的排法。之後在「我」都能改。", .subheadline, tone: .secondary)
+            DomyText("不選也可以，我先用一般的排法。之後在「平常的我」都能改。", .subheadline, tone: .secondary)
             purposeGroup
             paceGroup
             leanGroup

@@ -107,6 +107,39 @@ struct Chip: View {
     }
 }
 
+/// 常駐入口膠囊：前面一個小圖示，白底細框（這趟標題下面的檢查這趟、須知）。
+/// 看起來跟選項膠囊不一樣，點了是推進一頁，不是選一個值
+struct EntryChip: View {
+    let label: String
+    let icon: String
+    let action: () -> Void
+
+    init(_ label: String, icon: String, action: @escaping () -> Void) {
+        self.label = label
+        self.icon = icon
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: T.Space.s1 + T.Space.s1 / 2) {
+                LineIcon(icon, size: IconPaths.chipSize)
+                DomyText(label, .subheadline, weight: .semibold, lines: 1)
+            }
+            .padding(.horizontal, T.Space.s4 - T.Space.s1 / 2)
+            .frame(minHeight: T.Size.buttonCompact)
+            .background(C.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(C.separator, lineWidth: T.Size.hairline))
+            .frame(minHeight: T.Size.touch)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
 /// 會自動換行的橫排（RN 的 flexWrap）
 struct FlowLayout: Layout {
     var spacing: CGFloat = T.Space.s2

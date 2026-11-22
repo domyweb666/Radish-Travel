@@ -310,7 +310,7 @@ struct StopSheetDrop: View {
             DomyButton("算了，留著", variant: .plain, fullWidth: true, action: back)
                 .accessibilityIdentifier("stop-drop-cancel")
             DomyText(
-                "選「以後不排」的話，之後每一趟排行程、換一個的時候都會跳過；有引號的那一顆是整個類別都不排。記下來的在「我」→「從行程學到的」，隨時可以拿掉。",
+                "選「以後不排」的話，之後每一趟排行程、換一個的時候都會跳過；有引號的那一顆是整個類別都不排。記下來的在「平常的我」→「從行程學到的」，隨時可以拿掉。",
                 .footnote, tone: .secondary)
         }
     }

@@ -54,7 +54,7 @@ struct PrepCost: View {
     private func rowsSection(_ trip: Trip) -> some View {
         let c: (rows: [CostRow], total: Double, people: Int) = cost(trip, store.s.settings)
         let rows: [CostRow] = c.rows
-        return DomySection(footer: "都是粗估，沒有核對過票價和匯率，只能看比例。購物不算在裡面。住宿和一天吃喝的預算在「我」改。") {
+        return DomySection(footer: "都是粗估，沒有核對過票價和匯率，只能看比例。購物不算在裡面。住宿和一天吃喝的預算在「平常的我」改。") {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, r in
                 TextRow(r.name, note: prepNote(r.note)) {
                     DomyText(money(r.amount), .headline, numeric: true)

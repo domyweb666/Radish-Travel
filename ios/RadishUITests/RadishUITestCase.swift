@@ -160,7 +160,7 @@ extension RadishUITestCase {
         requireVisible(query, "含「\(part)」的按鈕", timeout: timeout, file: file, line: line).tap()
     }
 
-    /// 點底部分頁列的那一格：prep 行前、trip 這趟、trips 旅行、me 我。
+    /// 點底部分頁列的那一格：trip 這趟、ask 問 AI、trips 旅行。
     func openTab(
         _ key: String, timeout: TimeInterval = 15, file: StaticString = #filePath,
         line: UInt = #line
@@ -175,6 +175,13 @@ extension RadishUITestCase {
             isSelected = waitUntil(timeout: 5) { tab.isSelected }
         }
         XCTAssertTrue(isSelected, "點了分頁列的 \(key)，它沒有變成選中", file: file, line: line)
+    }
+
+    /// 推進頁左上角的系統返回。
+    func goBack(file: StaticString = #filePath, line: UInt = #line) {
+        let query = app.navigationBars.buttons
+        requireVisible(query, "左上角的返回", timeout: 10, file: file, line: line).tap()
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
     }
 }
 

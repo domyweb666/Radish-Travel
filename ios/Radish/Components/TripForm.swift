@@ -278,7 +278,7 @@ struct TripForm: View {
             if !value.tweaks.isEmpty {
                 tweakNotes
             }
-            DomyText("只改這一趟，不會動到「我」裡存好的偏好。", .footnote, tone: .secondary)
+            DomyText("只改這一趟，不會動到「平常的我」裡存好的偏好。", .footnote, tone: .secondary)
         }
     }
 

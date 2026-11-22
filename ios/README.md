@@ -27,9 +27,9 @@ bash ios/tools/watch-check.sh
 | `RadishCore/Sources/RadishCore/` | 資料型別和規則：排行程、喜好、花費、提醒、對話、地圖網頁。只用 Foundation |
 | `RadishCore/Sources/RadishCore/Resources/seoul.json` | 首爾資料包，從 `mobile/src/data/seoul.ts` 轉出來的，全部未核對 |
 | `RadishCore/Tests/` | 規則的測試，跟 `mobile/tests/` 一條對一條 |
-| `Radish/App/` | 外殼、四個分頁、狀態儲存（`AppStore`）、彈出卡總管（`Sheets`） |
+| `Radish/App/` | 外殼、三個分頁（這趟／問 AI／旅行）、推進頁總管（`Nav`）、狀態儲存（`AppStore`）、彈出卡總管（`Sheets`） |
 | `Radish/Kit/` | Domy Design 的 SwiftUI 元件、蘿蔔橘（`Theme.swift`）、圖示、蘿蔔和蘿蔔人 |
-| `Radish/Screens/` | 行前、這趟、旅行、我，加上開一趟 |
+| `Radish/Screens/` | 這趟、旅行、開一趟；推進頁：檢查這趟、須知、花費（`TripPages`）、平常的我（`MeScreen`） |
 | `Radish/Sheets/` | 單站的卡、用講的改、地圖、自己加一站、更多、行程設定、相簿 |
 | `Radish/Components/` | 表單、月曆、拔蘿蔔動畫、操作說明、過敏告知卡 |
 | `Radish/IO/` | 照片、本機通知、外部地圖、分享 |

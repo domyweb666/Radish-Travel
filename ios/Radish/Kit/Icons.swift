@@ -28,6 +28,7 @@ enum IconPaths {
     static let viewBox: CGFloat = 24  // domy-ignore: SVG 的座標格，不是介面尺寸
     static let tabSize: CGFloat = 22  // domy-ignore: 跟 @domy/design 分頁列的圖示一樣大
     static let stroke: CGFloat = 2  // domy-ignore: 圖示線寬
+    static let chipSize: CGFloat = 18  // domy-ignore: 常駐入口膠囊裡的小圖示，照線框 A1
 
     static let tabTrip =
         "M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"
@@ -35,6 +36,14 @@ enum IconPaths {
     static let tabBasket = "M4 10h16l-1.5 9h-13zM8 10l3-6M16 10l-3-6M9 14v2M12 14v2M15 14v2"
     static let tabTrips = "M4 8h16v11H4zM9 8V5h6v3M4 13h16"
     static let tabMe = "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"
+    /// 問 AI：對話框
+    static let tabAsk = "M4 5h16v11H10l-6 4zM8 9.5h8M8 12.5h5"
+    /// 更多：三個點
+    static let more = "M5 12h.01M12 12h.01M19 12h.01"
+    /// 檢查這趟：打勾的清單（原本行前分頁的圖示）
+    static let check = tabPrep
+    /// 須知：圓圈裡一個 i
+    static let notes = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01"
     static let send = "M12 19V5M5 12l7-7 7 7"
     static let sprout = "M12 21v-9M12 14c-5 0-7-3-7-7 5 0 7 3 7 7zM12 11c0-4 2-6 7-6 0 4-2 6-7 6z"
 }

@@ -94,7 +94,7 @@ struct TripsScreen: View {
     }
 
     var body: some View {
-        Screen("旅行") {
+        Screen("旅行", actions: { TopActions() }) {
             Segmented(
                 value: tab,
                 options: [(TripsTab.trips, "我的旅行"), (TripsTab.later, "下次再來")]

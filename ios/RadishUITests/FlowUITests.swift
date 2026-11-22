@@ -1,6 +1,6 @@
 import XCTest
 
-/// 主流程：從空白開一趟 → 看排好的行程 → 拔一站 → 逛四個分頁 → 關掉重開資料還在。
+/// 主流程：從空白開一趟 → 看排好的行程 → 拔一站 → 逛三個分頁和推進頁 → 關掉重開資料還在。
 /// 每一步截一張圖，下載回來看畫面長得對不對。
 final class FlowUITests: RadishUITestCase {
     private func todayISO() -> String {
@@ -96,29 +96,60 @@ final class FlowUITests: RadishUITestCase {
         shot("這天的地圖")
         tapButton("關閉")
 
+        // 更多在右上角，捲回最上面才看得到
+        scrollUp()
+        scrollUp()
+        scrollUp()
         tapId("open-more")
         seeText("關閉")
         shot("更多")
         tapButton("關閉")
     }
 
-    func test03四個分頁與重開留存() {
+    func test03三個分頁推進頁與重開留存() {
         startTrip()
-        openTab("prep")
-        seeText("行前")
-        shot("行前")
-        for stage in ["出發前", "在當地", "回程", "花費"] {
-            tapButton(stage)
-            shot("行前-\(stage)")
-            scrollShots("行前-\(stage)", count: 1)
+        scrollUp()
+
+        // 標題下面的兩個常駐入口：檢查這趟、須知（推進）
+        tapId("open-check")
+        seeText("檢查這趟")
+        shot("檢查這趟")
+        scrollShots("檢查這趟", count: 2)
+        goBack()
+
+        tapId("open-notes")
+        seeText("須知")
+        for part in ["在當地", "按天", "回程"] {
+            tapButton(part)
+            shot("須知-\(part)")
+            scrollShots("須知-\(part)", count: 1)
             scrollUp()
         }
+        goBack()
+
+        // 右上角：更多（半頁）裡的花費推進一頁；平常的我推進一頁
+        tapId("open-more")
+        seeText("關閉")
+        tapId("more-cost")
+        seeText("花費", timeout: 10)
+        shot("花費")
+        scrollShots("花費", count: 1)
+        goBack()
+
+        tapId("open-me")
+        seeText("平常的我")
+        shot("平常的我")
+        scrollShots("平常的我", count: 2)
+        goBack()
+
+        openTab("ask")
+        requireVisible(idQuery("chat-input"), "問 AI 分頁的輸入框")
+        shot("問 AI")
         openTab("trips")
         seeText("旅行")
         shot("旅行")
-        openTab("me")
-        shot("我")
-        scrollShots("我", count: 2)
+        openTab("trip")
+        requireVisible(idQuery("day-tab-1"), "切回這趟，第 1 天的分頁")
 
         // 關掉重開：行程還在
         app.terminate()

@@ -102,7 +102,7 @@ struct StopSheet: View {
             _ = learn(&settings, choice, "\(tripTitle(trip))：你拿掉了\(name)")
             d.settings = settings
             let tail: String = choice.kind == .place ? "" : "這趟已經排的其他站沒動。"
-            return "「\(name)」拿掉了。以後\(learnedText(choice))，在「我」可以拿掉這一條。\(tail)"
+            return "「\(name)」拿掉了。以後\(learnedText(choice))，在「平常的我」可以拿掉這一條。\(tail)"
         }
         sheets.close()
     }

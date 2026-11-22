@@ -1,4 +1,4 @@
-// 「我」分頁：平常的我（設一次，每趟照這個排）、備份、測試用的開關。
+// 平常的我（從每個分頁右上角推進）：設一次，每趟照這個排；備份、測試用的開關。
 // 主畫面只是一張清單，每列寫著現在的值；點一列才打開那一項來改（那些卡在 MeEditors.swift）。
 // 對應 mobile/src/screens/MeScreen.tsx。
 import SwiftUI
@@ -15,7 +15,7 @@ struct MeScreen: View {
     private var st: Settings { store.s.settings }
 
     var body: some View {
-        Screen("我") {
+        Screen("平常的我") {
             usualSection
             learnedSection
             budgetSection
@@ -91,7 +91,7 @@ struct MeScreen: View {
 
     private var usualSection: some View {
         let tail: String = store.s.trip != nil ? "改了之後，回「這趟」可以照新的重排。" : ""
-        return DomySection("平常的我", footer: "設一次，之後每趟都照這個排。\(tail)") {
+        return DomySection(footer: "設一次，之後每趟都照這個排。\(tail)") {
             row("旅行回來想怎樣", purposeText, .purposes)
             row("一天排多滿", MeOptions.label(MeOptions.pace, st.pace), .pace)
             row("吃的偏好", foodText, .food)
