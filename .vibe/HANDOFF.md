@@ -53,6 +53,7 @@
 
 ## ⏭️ 下一步從哪繼續
 
+> 2026-11-23 第三次更新（6b4c540，CI 全綠）：平常的我可以填 Claude API 金鑰（claude-opus-5-5、effort low、鑰匙圈）；句數 ❓28 先定成「只有走後端才算、第一趟 20 句之後 100 句、AI 有回才算、復原不退」；路線半頁的「這次會改」做完（RouteSuggest.swift，沒接 AI 時手機算）；`ios/tools/claude-bridge` 電腦端轉接 + 平常的我「連電腦的 Claude CLI」掃 QR code（有連就最優先）。❓49 畫了對照圖給多米，Agent 建議 B（表單多一格），等他選。掃 QR 要真機，下一步推 tf-4。
 > 2026-11-23 再更新：片 2–6 也做完了（多米說「直接開 subagent，全做」），四個 subagent 各管各的檔，合併後 97b8092、b411d93，CI 全綠、截圖看過。
 > 新檔：`Components/TalkBar.swift`（`.talkBar(_:target:)`、`AppStore.talk(_:target:)`）、`Sheets/ReplySheet.swift`、`Screens/AskScreen.swift`、`IO/Network.swift`、`Screens/StopScreen*.swift`、`Sheets/MoveSheet.swift`、`Components/DriverView.swift`、`Sheets/NearbySheet.swift`、`Components/TripCards.swift`、`Screens/VisitedScreen.swift`；刪了 ChatSheet、StopSheet、AlbumSheet、操作說明三步。
 > 還沒做：句數用完只有畫面、不會出現（❓28）；路線半頁「AI 的改法換一面」等 AI 回覆格式；回報這則（沒後端）；清單上的站「剛改過／AI 加的」標籤；開一趟（❓49）；S06 從檢查這趟進來的排序。都沒上真機，下一步推 tf-4 給多米。
