@@ -1,6 +1,7 @@
-// 「旅行」分頁：每一趟是一個資料夾。
-// 上面是現在打開的這一趟，接著是其他排好還沒去的、已經去過的；可以同時排好幾趟，點一下就切過去。
-// 「下次再來」是這幾趟拿掉、排不進去的地方。
+// 「旅行」分頁（S19，線框 .uiux/03-線框/線框/A15-Trips.dc.html）：每一趟是一個資料夾。
+// 我的旅行：現在這趟、其他排好的、開新的一趟、去過的旅行；可以同時排好幾趟，點一下就切過去。
+// 「下次再來」是這幾趟拿掉、排不進去的地方。這一頁沒有跟 AI 講的那一列。
+// 去過的那一趟是推進頁（VisitedScreen），從這裡的「去過的 N 站」和去過的旅行進去。
 // 對應 mobile/src/screens/TripsScreen.tsx。
 import SwiftUI
 
@@ -8,7 +9,42 @@ private enum TripsTab: Hashable {
     case trips, later
 }
 
-/// 一趟一列：有封面照就放在右邊
+/// 一組：小標題、白卡。線框的小標題是小灰字，不是 DomySection 的大標題
+private struct TripsGroup<Content: View>: View {
+    let title: String
+    var footer: String?
+    @ViewBuilder var content: Content
+
+    init(_ title: String, footer: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.footer = footer
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: T.Space.s2) {
+            DomyText(title, .footnote, tone: .secondary)
+                .padding(.horizontal, T.Space.s1)
+                .accessibilityAddTraits(.isHeader)
+            DomySection(footer: footer) {
+                content
+            }
+        }
+    }
+}
+
+/// 一組裡還沒有東西時的那一行
+private struct NoneRow: View {
+    let text: String
+
+    var body: some View {
+        DomyText(text, .subheadline, tone: .secondary)
+            .padding(.vertical, T.Space.s3)
+            .frame(maxWidth: .infinity, minHeight: T.Size.row, alignment: .leading)
+    }
+}
+
+/// 一趟一列：有封面照就放在左邊，右邊是箭頭
 private struct TripRow: View {
     let title: String
     let meta: String
@@ -18,14 +54,15 @@ private struct TripRow: View {
 
     private var row: some View {
         HStack(spacing: T.Space.s3) {
-            VStack(alignment: .leading, spacing: T.Space.s1) {
-                DomyText(meta, .footnote, tone: .secondary)
-                DomyText(title, .headline, lines: 2)
-            }
-            .fillLeading()
             if let cover {
                 TripCover(ref: cover)
             }
+            VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
+                DomyText(title, .headline, lines: 2)
+                DomyText(meta, .footnote, tone: .secondary)
+            }
+            .fillLeading()
+            Chevron()
         }
         .padding(.vertical, T.Space.s3)
         .frame(minHeight: T.Size.row)
@@ -44,22 +81,25 @@ private struct TripRow: View {
     }
 }
 
-/// 封面照：橫的一小張。檔案讀不到時顯示灰底，不讓版面跳掉
+/// 封面照：方的一小張。檔案讀不到時顯示灰底，不讓版面跳掉
 private struct TripCover: View {
     let ref: String
 
     var body: some View {
+        // 線框 A15 的封面是 80 點的方塊：一列高 52 加 24 加 4
+        let edge: CGFloat = T.Size.row + T.Space.s6 + T.Space.s1
         let shape = RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
-        PhotoImage(ref: ref, edge: max(T.Size.heroButton, T.Size.row))
-            .frame(width: T.Size.heroButton, height: T.Size.row)
-        .clipShape(shape)
-        .accessibilityHidden(true)
+        PhotoImage(ref: ref, edge: edge)
+            .frame(width: edge, height: edge)
+            .background(C.surfaceMuted)
+            .clipShape(shape)
+            .accessibilityHidden(true)
     }
 }
 
 struct TripsScreen: View {
     @Environment(AppStore.self) private var store
-    @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     @State private var tab: TripsTab = .trips
     private let goTrip: () -> Void
 
@@ -69,19 +109,18 @@ struct TripsScreen: View {
 
     private var curPulled: Int {
         guard let cur = store.s.trip else { return 0 }
-        let pulled: [Found] = allItems(cur).filter { (x: Found) -> Bool in x.it.status == .pulled }
-        return pulled.count
+        return visitedOf(cur).count
     }
 
     private func range(_ start: String, _ days: Int) -> String {
-        return "\(fmtDay(start))–\(fmtDay(addDays(start, days - 1)))"
+        return "\(fmtDay(start)) – \(fmtDay(addDays(start, days - 1)))"
     }
 
     private func when(_ t: Trip, _ debugDay: Int?) -> String {
         let p: Phase = phaseOf(t.start, t.days, store.today, debugDay)
         switch p {
         case .plan(let daysToGo):
-            return "還有 \(daysToGo) 天出發"
+            return "還有 \(daysToGo) 天"
         case .trip(let day):
             return "旅途中，第 \(day) 天"
         case .done:
@@ -125,24 +164,15 @@ struct TripsScreen: View {
             if let cur = store.s.trip {
                 currentSection(cur)
             }
-            if !store.s.shelf.isEmpty {
-                shelfSection
-            }
+            shelfSection
             newTripButton
-            if !store.s.baskets.isEmpty {
-                basketsSection
-            }
+            basketsSection
         }
-    }
-
-    private var currentFooter: String? {
-        if let phase = store.phase, case .plan = phase { return nil }
-        return "旅途中去過的站會收在這一趟裡，可以寫一句、加照片。"
     }
 
     private func currentSection(_ cur: Trip) -> some View {
         let pulled: Int = curPulled
-        return DomySection("現在這趟", footer: currentFooter) {
+        return TripsGroup("現在這趟") {
             TripRow(
                 title: tripTitle(cur),
                 meta: "\(range(cur.start, cur.days))・\(when(cur, store.s.debugDay))",
@@ -153,7 +183,7 @@ struct TripsScreen: View {
             }
             if pulled > 0 {
                 DomyListRow(meta: "這趟到目前為止", title: "去過的 \(pulled) 站") {
-                    sheets.open(.album(.current))
+                    nav.push(.visited(.current))
                 }
                 .accessibilityIdentifier("trips-album-current")
             }
@@ -161,27 +191,36 @@ struct TripsScreen: View {
     }
 
     private var shelfSection: some View {
-        DomySection("其他排好的", footer: "點一下切到那一趟。現在這趟會原樣留著，不會不見。") {
-            ForEach(store.s.shelf, id: \.id) { (x: Shelved) in
-                TripRow(
-                    title: tripTitle(x.trip),
-                    meta: "\(range(x.trip.start, x.trip.days))・\(when(x.trip, x.debugDay))",
-                    cover: x.trip.cover,
-                    testId: "trip-card-\(x.id)"
-                ) {
-                    let id: String = x.id
-                    store.act { (d: inout AppState) -> String? in
-                        return openShelved(&d, id)
+        let shelf: [Shelved] = store.s.shelf
+        return TripsGroup(
+            "其他排好的", footer: shelf.isEmpty ? nil : "點一下切到那一趟。現在這趟會原樣留著，不會不見。"
+        ) {
+            if shelf.isEmpty {
+                NoneRow(text: "還沒有。")
+            } else {
+                ForEach(shelf, id: \.id) { (x: Shelved) in
+                    TripRow(
+                        title: tripTitle(x.trip),
+                        meta: "\(range(x.trip.start, x.trip.days))・\(when(x.trip, x.debugDay))",
+                        cover: x.trip.cover,
+                        testId: "trip-card-\(x.id)"
+                    ) {
+                        let id: String = x.id
+                        store.act { (d: inout AppState) -> String? in
+                            return openShelved(&d, id)
+                        }
+                        goTrip()
                     }
-                    goTrip()
                 }
             }
         }
     }
 
+    /// 線框 A15：有這趟時是次要按鈕（主要的是現在這趟），沒有這趟時是主要按鈕
     @ViewBuilder private var newTripButton: some View {
         let hasCur: Bool = store.s.trip != nil
         DomyButton("開新的一趟", variant: hasCur ? .secondary : .primary, fullWidth: true) {
+            // 現在這趟先放到其他排好的。不走復原：復原只還原行程，放一邊的那份會多一份
             if store.s.trip != nil {
                 store.mutate { (d: inout AppState) in
                     shelveCurrent(&d)
@@ -193,6 +232,7 @@ struct TripsScreen: View {
         if hasCur {
             DomyText("現在這趟會留在「其他排好的」，隨時可以切回來。", .footnote, tone: .secondary, align: .center)
                 .frame(maxWidth: .infinity)
+                .padding(.top, -T.Space.s4)
         }
     }
 
@@ -205,15 +245,20 @@ struct TripsScreen: View {
     }
 
     private var basketsSection: some View {
-        DomySection("去過的旅行") {
-            ForEach(store.s.baskets, id: \.id) { (b: Basket) in
-                TripRow(
-                    title: b.title,
-                    meta: basketMeta(b),
-                    cover: b.cover,
-                    testId: "basket-card-\(b.id)"
-                ) {
-                    sheets.open(.album(.basket(id: b.id)))
+        let baskets: [Basket] = store.s.baskets
+        return TripsGroup("去過的旅行") {
+            if baskets.isEmpty {
+                NoneRow(text: "還沒有。這趟收起來之後，會放在這裡。")
+            } else {
+                ForEach(baskets, id: \.id) { (b: Basket) in
+                    TripRow(
+                        title: b.title,
+                        meta: basketMeta(b),
+                        cover: b.cover,
+                        testId: "basket-card-\(b.id)"
+                    ) {
+                        nav.push(.visited(.basket(id: b.id)))
+                    }
                 }
             }
         }

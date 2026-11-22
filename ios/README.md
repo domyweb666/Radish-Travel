@@ -29,9 +29,9 @@ bash ios/tools/watch-check.sh
 | `RadishCore/Tests/` | 規則的測試，跟 `mobile/tests/` 一條對一條 |
 | `Radish/App/` | 外殼、三個分頁（這趟／問 AI／旅行）、推進頁總管（`Nav`）、狀態儲存（`AppStore`）、彈出卡總管（`Sheets`） |
 | `Radish/Kit/` | Domy Design 的 SwiftUI 元件、蘿蔔橘（`Theme.swift`）、圖示、蘿蔔和蘿蔔人 |
-| `Radish/Screens/` | 這趟、旅行、開一趟；推進頁：檢查這趟、須知、花費（`TripPages`）、平常的我（`MeScreen`） |
-| `Radish/Sheets/` | 單站的卡、用講的改、地圖、自己加一站、更多、行程設定、相簿 |
-| `Radish/Components/` | 表單、月曆、拔蘿蔔動畫、操作說明、過敏告知卡 |
+| `Radish/Screens/` | 這趟、問 AI（`AskScreen`）、旅行、開一趟；推進頁：檢查這趟、須知、花費（`TripPages`）、平常的我（`MeScreen`）、一站（`StopScreen`）、去過的那一趟（`VisitedScreen`） |
+| `Radish/Sheets/` | 半頁：剛剛那一則、路線、附近、移到別的時段、自己加一站、更多、行程設定 |
+| `Radish/Components/` | 講的那一列（`TalkBar`）、剛排好和回來後的卡（`TripCards`）、表單、月曆、拔蘿蔔動畫、給司機看、過敏告知卡 |
 | `Radish/IO/` | 照片、本機通知、外部地圖、分享 |
 | `RadishUITests/` | 走主流程並截圖的測試 |
 | `tools/` | 轉資料、檢查寫死數值、等 CI 的腳本 |

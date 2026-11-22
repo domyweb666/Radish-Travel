@@ -1,4 +1,4 @@
-// 平常的我（從每個分頁右上角推進）：設一次，每趟照這個排；備份、測試用的開關。
+// 平常的我（從每個分頁右上角推進）：設一次，每趟照這個排；送給 AI 的資料（可以收回）、備份、測試用的開關。
 // 主畫面只是一張清單，每列寫著現在的值；點一列才打開那一項來改（那些卡在 MeEditors.swift）。
 // 對應 mobile/src/screens/MeScreen.tsx。
 import SwiftUI
@@ -20,9 +20,6 @@ struct MeScreen: View {
             learnedSection
             budgetSection
             dataSection
-            if store.s.trip != nil && store.s.guideSeen {
-                guideSection
-            }
             if let trip = store.s.trip {
                 debugSection(trip)
             }
@@ -124,6 +121,8 @@ struct MeScreen: View {
             "資料",
             footer: "行程、去過的旅行、照片、設定都只存在這支手機裡，沒有網路也看得到。換手機前先複製備份；備份裡沒有照片，照片要另外留。"
         ) {
+            // 線框 A17：同意過才寫「可以收回」。收回之後下次要送給 AI 前會再問一次
+            row("送給 AI 的資料", store.s.aiConsent ? "已同意・可以收回" : "還沒同意", .ai)
             SettingsRow("複製備份") {
                 copyBackup()
             }
@@ -143,18 +142,6 @@ struct MeScreen: View {
             store.say("備份複製好了，貼到備忘錄存起來。")
         } else {
             store.say("複製不了，等一下再試一次。")
-        }
-    }
-
-    private var guideSection: some View {
-        DomySection {
-            SettingsRow("再看一次操作說明") {
-                store.mutate { (d: inout AppState) in
-                    d.guideSeen = false
-                }
-                store.say("回到「這趟」就會再帶一次。")
-            }
-            .accessibilityIdentifier("me-guide")
         }
     }
 

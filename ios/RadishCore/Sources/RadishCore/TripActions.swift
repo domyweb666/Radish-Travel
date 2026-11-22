@@ -127,6 +127,114 @@ func updateBasketItem(_ d: inout AppState, _ basketId: String, _ index: Int, _ c
     return item
 }
 
+/* ---------- 剛排好那張卡（S01 第一次，線框 A4） ---------- */
+
+/// 這一版是誰排的。畫面上兩種講法不能一樣（.uiux/02-流程-暫定.md 9-6 第 7 條）
+enum PlanBy: String, Codable, Sendable {
+    /// AI 照他講的排的
+    case ai
+    /// app 內建的排法排的，沒有問 AI
+    case app
+}
+
+/// 這一版的樣子，變成一小段字。站換了、移了、拔了、日期或住哪改了，算出來就不一樣
+func planMarkOf(_ t: Trip) -> String {
+    var text: String = "\(t.start)|\(t.days)|\(t.base?.rawValue ?? "")"
+    for s in t.slots {
+        text += "|\(s.day)\(s.part.rawValue)\(s.rest ? "r" : "")\(s.off == true ? "o" : "")"
+        for it in s.items {
+            text += "," + it.id + (it.status == .pulled ? "p" : "")
+        }
+    }
+    // djb2：每次開 app 都要算出一樣的字，不能用 Swift 的 hashValue（每次開都不一樣）
+    var h: UInt64 = 5381
+    for u in text.unicodeScalars {
+        h = (h &* 33) &+ UInt64(u.value)
+    }
+    return String(h, radix: 36)
+}
+
+/// 看起來還沒動過：沒有自己加的、AI 加的、換過的、拔起來的站。
+/// 給還沒記過 planMark 的舊行程用：動過的舊行程不再跳出剛排好那張卡
+func planUntouched(_ t: Trip) -> Bool {
+    for x in allItems(t) {
+        let it: Stop = x.it
+        if it.mine == true || it.ai == true || it.swaps > 0 || it.status == .pulled { return false }
+    }
+    return true
+}
+
+/// YYYY-MM-DD 變成 11/22。看不懂就回 nil
+private func planMonthDay(_ iso: String) -> String? {
+    let parts: [Substring] = iso.split(separator: "-")
+    guard parts.count == 3, let m = Int(parts[1]), let d = Int(parts[2]) else { return nil }
+    return "\(m)/\(d)"
+}
+
+/// 剛排好那張卡的兩行字：上面一行是誰排的，下面一段是照你說的排了哪些
+struct PlanCardText: Hashable, Sendable {
+    let head: String
+    let body: String
+}
+
+/// 喜歡的那幾類各排了幾個。沒說喜歡什麼就是空字串
+private func planCatLine(_ t: Trip, _ st: Settings) -> String {
+    let liked: [Cat] = Cat.allCases.filter { (c: Cat) -> Bool in (st.play[c] ?? 0) > 0 }
+    if liked.isEmpty { return "" }
+    let all: [Found] = allItems(t)
+    var counts: [(c: Cat, n: Int)] = []
+    for c in liked {
+        let n: Int = all.filter { (x: Found) -> Bool in x.it.c == c }.count
+        counts.append((c: c, n: n))
+    }
+    let first: Int = counts[0].n
+    let same: Bool = counts.allSatisfy { (x: (c: Cat, n: Int)) -> Bool in x.n == first }
+    if same && first > 0 && counts.count > 1 {
+        let names: [String] = counts.map { (x: (c: Cat, n: Int)) -> String in CAT[need: x.c] }
+        return names.joined(separator: "、") + "各排了 \(first) 個"
+    }
+    let bits: [String] = counts.map { (x: (c: Cat, n: Int)) -> String in
+        return x.n > 0 ? "\(CAT[need: x.c])排了 \(x.n) 個" : "\(CAT[need: x.c])這次沒排到"
+    }
+    return bits.joined(separator: "，")
+}
+
+/// 剛排好那張卡要寫的字。平常的我有設過，沒講到的寫「先照平常的我排」；沒設過才寫「先照一般的排法」
+/// （.uiux/03-線框/方向說明-暫定.md：A4 跟 A1 的平常的我要對得起來）
+func planCardText(_ t: Trip, _ st: Settings) -> PlanCardText {
+    var head: String = "這一版是 app 內建的排法排的，沒有問 AI"
+    if t.planBy == .ai {
+        head = "AI 照你說的排的"
+        if let at = t.planAt, let md = planMonthDay(at) {
+            head += "・" + md
+        }
+    }
+    var bits: [String] = []
+    bits.append("住\(HOTEL[need: baseOf(t, st)].n)一帶")
+    let cats: String = planCatLine(t, st)
+    if !cats.isEmpty { bits.append(cats) }
+    var most: Int = 0
+    if t.days >= 1 {
+        for d in 1...t.days {
+            most = max(most, bigCount(t, d))
+        }
+    }
+    if most > 0 { bits.append("一天最多 \(most) 個主要景點") }
+    let tweaks: String = tweakSummary(t)
+    if !tweaks.isEmpty { bits.append("這趟照你選的「\(tweaks)」調過") }
+    let rest: String = st.tuned ? "你沒講到的，先照平常的我排。" : "你沒講到的，先照一般的排法。"
+    return PlanCardText(head: head, body: bits.joined(separator: "；") + "。" + rest)
+}
+
+/// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。可以復原。
+/// 跟收起來一樣，對話會清掉，復原只拿回行程
+@discardableResult
+func dropPlan(_ d: inout AppState) -> String? {
+    guard d.trip != nil else { return nil }
+    clearCurrent(&d, true)
+    return "這一版拿掉了，可以重新開一趟。"
+}
+
 func shareText(_ trip: Trip) -> String {
     let start: String = trip.start
     let end: String = addDays(start, trip.days - 1)

@@ -67,7 +67,7 @@ struct RootView: View {
                         }
                     case .ask:
                         NavigationStack(path: $nav.ask) {
-                            ChatSheet(inTab: true)
+                            AskScreen()
                                 .pushPages("問 AI")
                         }
                     case .trips:

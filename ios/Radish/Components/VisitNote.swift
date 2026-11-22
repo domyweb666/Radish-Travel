@@ -1,9 +1,10 @@
 // 去過的一站可以留的東西：一句話、幾張照片。旅途中的站和已經收起來的旅行共用這一塊。
-// 對應 mobile/src/components/VisitNote.tsx。
+// 對應 mobile/src/components/VisitNote.tsx。一站改成推進頁（Screens/StopScreen.swift）後也是放在那一頁裡。
 import SwiftUI
 
 struct VisitNote: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
     let photos: [String]
     let onSay: (String) -> Void
     let onPhotos: ([String]) -> Void
@@ -52,6 +53,12 @@ struct VisitNote: View {
             }
         }
         .onDisappear { commit() }
+        // 打到一半就切走 app 或被系統結束：離開前台的那一下先存起來（S06「那一句打到一半被結束」）
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                commit()
+            }
+        }
         .accessibilityIdentifier("visit-say")
     }
 

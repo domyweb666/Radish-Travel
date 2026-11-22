@@ -176,6 +176,9 @@ struct Trip: Codable, Hashable, Sendable {
     var flight: Double = 0
     var spend: [Spend]?  // 實際花的，一筆一筆記
     var rate: Double?  // 1000 韓元換多少台幣。使用者自己填的，app 不抓匯率
+    var planBy: PlanBy?  // 這一版是誰排的。nil 當成 app 內建的排法（舊檔、現在的開一趟都是）
+    var planAt: String?  // AI 排好的那一天，YYYY-MM-DD。內建的排法不寫
+    var planMark: String?  // 剛排好那張卡第一次出現時，這一版的樣子（planMarkOf）。之後對不上就是改過了
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -285,6 +288,14 @@ struct ChatMsg: Codable, Hashable, Sendable {
     var ask: [String]?  // 確認卡上的每一行：這些要使用者按「套用」才改
     var askOps: String?  // 確認卡對應的 op（JSON）。按過或過期了就清掉
     var asked: Bool?  // 按了什麼：true 套用、false 不要；還沒按是 nil
+    // 以下是片 2（跟 AI 講）加的，全部可以沒有，舊的存檔照樣讀得出來
+    var day: Int?  // 講這句的時候在看第幾天（我說的、回的那一則都記）
+    var stop: String?  // 講這句的時候在看哪一站（站的 id）。在看某一天時是 nil
+    var local: Bool?  // true：手機自己算的，沒有問 AI
+    var at: Double?  // 回的時間（1970 起算的秒數），畫面上寫「剛剛」或幾點
+    var failed: String?  // 我說的那句沒有收到回覆。字是錯誤代碼，不知道就是空字串；有回覆了就清掉
+    var undo: String?  // 這一輪改動在復原紀錄裡的記號。還是最後一步時才能「復原這次」
+    var undone: Bool?  // 這一輪按過「復原這次」了
 }
 
 /// 排好了、先放在一邊的一趟。行程、對話、要先訂的勾選都跟著它

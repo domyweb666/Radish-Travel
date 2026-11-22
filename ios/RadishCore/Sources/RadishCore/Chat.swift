@@ -573,8 +573,11 @@ func aiReady() -> Bool {
     return AI_ENDPOINT.count > 0
 }
 
-/// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期
-func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ clock: ChatClock? = nil) -> String {
+/// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期。
+/// focus 是使用者講這句時在看哪裡（talkFocus 組的一行），沒給就不講
+func aiPrompt(
+    _ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ clock: ChatClock? = nil, _ focus: String = ""
+) -> String {
     let st: Settings = tripSettings(base, t.tweaks)
     let tweak: String = tweakSummary(t)
     let used: Set<String> = usedIds(t)
@@ -635,6 +638,7 @@ func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ c
     let nowText: String = nowLine(t, clock)
     var mid: String = "\n\n使用者的習慣：\(habit)。這趟 \(people) 人，\(t.start) 出發。\(tweakLine)"
     if !nowText.isEmpty { mid += "\n" + nowText }
+    if !focus.isEmpty { mid += "\n" + focus }
     mid += "\n\n目前行程（方括號裡是 id）：\n\(plan)\n還沒用到的候選：\n\(cand)"
     mid += "\n\n\(histBlock)使用者現在說：\(msg)\n\n"
 
@@ -755,4 +759,230 @@ func hasAiPlace(_ ops: [Any]) -> Bool {
         }
     }
     return false
+}
+
+/* ---------- 跟 AI 講：在看哪裡、手機先答、改完每一天差多少（SwiftUI 版才有，線框 A1–A3、A14） ---------- */
+
+/// 句子裡有沒有講到第幾天
+func talkMentionsDay(_ msg: String) -> Bool {
+    return chatMatch("第\\s*[0-9]+\\s*天", msg) != nil
+}
+
+/// 這句在問哪一天：句子裡講了第幾天就用那一天；旅途中說「明天」「今天」照今天算；都沒講就是在看的那一天
+func talkDay(_ msg: String, _ fallback: Int, _ now: TripNow?) -> Int {
+    if let m = chatMatch("第\\s*([0-9]+)\\s*天", msg), let d = chatGroup(m, 1) {
+        return chatInt(d)
+    }
+    if let n = now {
+        if msg.contains("明天") { return n.day + 1 }
+        if msg.contains("今天") { return n.day }
+    }
+    return fallback
+}
+
+/// 站名去掉括號裡的補充：「明洞的名店韓定食（挑一間）」→「明洞的名店韓定食」
+private func talkBare(_ name: String) -> String {
+    let bare: String = chatStrip("（.*?）", name)
+    return bare.isEmpty ? name : bare
+}
+
+/// 給本機指令聽的那句：「這一站」換成站名、「這天」換成第幾天。
+/// prefix 為 true（在看某一天）而且句子沒講到哪一天、也不是講整趟時，前面補「第 N 天」
+func talkLocal(_ msg: String, _ t: Trip, _ day: Int?, _ stopId: String?, _ prefix: Bool) -> String {
+    var out: String = msg
+    if let id = stopId, let x = findItem(t, id) {
+        let name: String = talkBare(x.it.n)
+        for w in ["這一站", "這站", "這裡"] {
+            out = out.replacingOccurrences(of: w, with: name)
+        }
+    }
+    if let d = day {
+        for w in ["這一天", "這天"] {
+            out = out.replacingOccurrences(of: w, with: "第 \(d) 天")
+        }
+        let open: Bool =
+            !talkMentionsDay(out) && !out.contains("這趟") && !out.contains("今天") && !out.contains("明天")
+        if prefix && open { out = "第 \(d) 天" + out }
+    }
+    return out
+}
+
+/// 給 AI 的那一行：使用者講這句的時候在看哪裡（輸入列左邊的小標）
+func talkFocus(_ t: Trip, _ day: Int?, _ stopId: String?) -> String {
+    if let id = stopId, let x = findItem(t, id) {
+        let part: String = PART[need: x.s.part]
+        return "使用者現在在看「\(x.it.n)」[\(x.it.id)] 這一站（第 \(x.s.day) 天\(part)）。他說「這一站」「這裡」就是它。"
+    }
+    if let d = day, d >= 1, d <= t.days {
+        let label: String = t.start.isEmpty ? "" : "（\(tripDayLabel(t, d))）"
+        return "使用者現在在看第 \(d) 天\(label)。他說「這天」「這一天」就是這天；句子裡講了第幾天，以句子為準。"
+    }
+    return ""
+}
+
+/// 句子裡有這些字，就是要改這趟，不給手機答
+private let TALK_EDIT_WORDS: [String] = [
+    "換", "移", "搬", "挪", "拿掉", "不要", "不去", "加", "排", "對調", "交換", "改", "刪", "取消", "留白",
+]
+
+/// 手機自己答得出的問題（❓15 暫定：手機答得出的先由手機答，畫面上標「手機算的，沒有問 AI」）。
+/// 答不出來、或句子是要改這趟的，回 nil，交給 AI 或本機指令。
+/// day 是在看的那一天，stopId 是在看的那一站（在看某一天時是 nil），now 是旅途中的現在
+func phoneAnswer(_ raw: String, _ d: AppState, _ day: Int, _ stopId: String?, _ now: TripNow?) -> String? {
+    guard let t = d.trip else { return nil }
+    let msg: String = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if msg.isEmpty { return nil }
+    if TALK_EDIT_WORDS.contains(where: { (w: String) -> Bool in msg.contains(w) }) { return nil }
+    if let id = stopId, let x = findItem(t, id), msg.contains("注意") {
+        return phoneStopTip(x.it)
+    }
+    if msg.contains("要先訂") || msg.contains("要預約") {
+        return phoneBooking(t, d.checks)
+    }
+    let asked: Int = talkDay(msg, day, now)
+    if msg.contains("幾站") {
+        return phoneCount(t, d.settings, asked, msg.contains("剩"), now)
+    }
+    if msg.contains("接下來去哪") || msg.contains("下一站") {
+        return phoneNext(t, d.settings, now)
+    }
+    if msg.contains("附近") {
+        return phoneNearby(t, d.settings, asked)
+    }
+    if msg.contains("注意") {
+        return phoneNotes(t, asked)
+    }
+    if msg.contains("去了哪") || msg.contains("去過哪") {
+        return phoneVisited(t)
+    }
+    if msg.contains("下次再來") {
+        return phoneSeeds(d.seeds)
+    }
+    return nil
+}
+
+private func phoneStopTip(_ it: Stop) -> String {
+    var bits: [String] = []
+    if let tip = it.tip, !tip.isEmpty { bits.append(tip) }
+    if it.b == true { bits.append("要先訂") }
+    if bits.isEmpty { return "「\(it.n)」沒有寫要注意的。營業時間、票價去之前查一下。" }
+    return "「\(it.n)」：\(bits.joined(separator: "；"))。這是資料裡寫的，還沒核對過，去之前查一下。"
+}
+
+private func phoneBooking(_ t: Trip, _ checks: [String: Bool]) -> String {
+    let all: [Stop] = allItems(t).map { (x: Found) -> Stop in x.it }.filter { (it: Stop) -> Bool in
+        return it.b == true && it.status == .kept
+    }
+    if all.isEmpty { return "這趟沒有寫要先訂的站。資料還沒核對過，去之前還是查一下。" }
+    let left: [Stop] = unbookedOf(t, checks)
+    if left.isEmpty { return "要先訂的 \(all.count) 站，你都在「檢查這趟」打勾了。" }
+    let names: [String] = left.map { (it: Stop) -> String in "「\(it.n)」" }
+    return "還沒打勾的有 \(left.count) 站：\(names.joined(separator: "、"))。訂好了到「檢查這趟」打勾。要不要先訂是資料裡寫的，還沒核對過。"
+}
+
+private func phoneCount(_ t: Trip, _ base: Settings, _ day: Int, _ left: Bool, _ now: TripNow?) -> String {
+    if day < 1 || day > t.days { return "這趟只有 \(t.days) 天。" }
+    var stops: [Found] = dayStops(t, day)
+    if left {
+        stops = stops.filter { (x: Found) -> Bool in
+            return x.it.status == .kept && !slotPast(now, x.s.day, x.s.part)
+        }
+    }
+    if stops.isEmpty { return left ? "第 \(day) 天沒有剩下的站了。" : "第 \(day) 天沒有排站。" }
+    let st: Settings = tripSettings(base, t.tweaks)
+    var legs: [String] = []
+    for i in 1..<stops.count {
+        let a: Stop = stops[i - 1].it
+        let b: Stop = stops[i].it
+        if let l = leg(GeoPt(a), GeoPt(b), st) {
+            legs.append("\(talkBare(a.n))到\(talkBare(b.n))，\(l.mode) \(l.min) 分鐘（估）")
+        } else {
+            legs.append("\(talkBare(a.n))到\(talkBare(b.n))距離不明")
+        }
+    }
+    let head: String = "第 \(day) 天\(left ? "還剩" : "有") \(stops.count) 站。"
+    if legs.isEmpty { return head }
+    return head + legs.joined(separator: "；") + "。"
+}
+
+private func phoneNext(_ t: Trip, _ base: Settings, _ now: TripNow?) -> String {
+    guard let n = now else { return "現在不是旅途中。出發之後再問，手機會照那天排的告訴你下一站。" }
+    let stops: [Found] = dayStops(t, n.day)
+    guard let i = stops.firstIndex(where: { (x: Found) -> Bool in x.it.status == .kept }) else {
+        return "今天排的都拔完了。"
+    }
+    let x: Found = stops[i]
+    var out: String = "下一站是「\(x.it.n)」，\(PART[need: x.s.part])・\(areaOf(x.it))。"
+    if i > 0 {
+        let prev: Stop = stops[i - 1].it
+        if let l = leg(GeoPt(prev), GeoPt(x.it), tripSettings(base, t.tweaks)) {
+            out += "從「\(talkBare(prev.n))」\(l.mode) \(l.min) 分鐘（估）。"
+        }
+    }
+    return out
+}
+
+private func phoneNearby(_ t: Trip, _ base: Settings, _ day: Int) -> String {
+    if day < 1 || day > t.days { return "這趟只有 \(t.days) 天。" }
+    let names: [String] = nearbyPool(t, day, tripSettings(base, t.tweaks))
+    if names.isEmpty { return "第 \(day) 天那一帶，資料裡沒有還沒排的小地方了。" }
+    let quoted: [String] = names.map { (n: String) -> String in "「\(n)」" }
+    return "第 \(day) 天那一帶還沒排的：\(quoted.joined(separator: "、"))。這是照區域挑的，沒有照距離排，資料也還沒核對過。"
+}
+
+private func phoneNotes(_ t: Trip, _ day: Int) -> String {
+    if day < 1 || day > t.days { return "這趟只有 \(t.days) 天。" }
+    let label: String = t.start.isEmpty ? "" : "（\(tripDayLabel(t, day))）"
+    let stops: [Found] = dayStops(t, day)
+    if stops.isEmpty { return "第 \(day) 天\(label)沒有排站。" }
+    var lines: [String] = []
+    for x in stops {
+        var bits: [String] = []
+        if let tip = x.it.tip, !tip.isEmpty { bits.append(tip) }
+        if x.it.b == true { bits.append("要先訂") }
+        if !bits.isEmpty { lines.append("「\(talkBare(x.it.n))」\(bits.joined(separator: "，"))") }
+    }
+    if lines.isEmpty { return "第 \(day) 天\(label)的站沒有特別寫要注意的。營業時間、票價去之前查一下。" }
+    return "第 \(day) 天\(label)：\(lines.joined(separator: "；"))。這些是資料裡寫的，還沒核對過，營業時間、票價去之前查一下。"
+}
+
+private func phoneVisited(_ t: Trip) -> String {
+    let pulled: [String] = allItems(t).filter { (x: Found) -> Bool in x.it.status == .pulled }.map {
+        (x: Found) -> String in "「\(talkBare(x.it.n))」"
+    }
+    if pulled.isEmpty { return "這趟還沒有拔起來的站。" }
+    return "這趟拔起來的有 \(pulled.count) 個：\(pulled.joined(separator: "、"))。有去過但沒按到的，點那一站可以補。"
+}
+
+private func phoneSeeds(_ seeds: [Seed]) -> String {
+    if seeds.isEmpty { return "下次再來還是空的。" }
+    let names: [String] = seeds.prefix(8).map { (x: Seed) -> String in "「\(x.n)」" }
+    let more: String = seeds.count > 8 ? "等" : ""
+    return "下次再來有 \(seeds.count) 個：\(names.joined(separator: "、"))\(more)。在「旅行」的下次再來看得到全部。"
+}
+
+/// 這一天路上大約幾分鐘（估），含從住的地方出發和回去，跟這一天下面那行的加法一樣
+private func talkMinutes(_ t: Trip, _ base: Settings, _ day: Int) -> Int {
+    var total: Int = 0
+    for l in dayLegs(t, base, day) {
+        if let l = l { total += l.min }
+    }
+    return total
+}
+
+/// 改完之後每一天差多少：「第 3 天：6 站 → 4 站，路上大約 138 → 90 分鐘（估）」。沒變的天不寫，最多寫 3 天
+func dayDeltas(_ before: Trip, _ after: Trip, _ base: Settings) -> [String] {
+    var out: [String] = []
+    let days: Int = max(before.days, after.days)
+    if days < 1 { return out }
+    for day in 1...days {
+        let a: Int = dayStops(before, day).count
+        let b: Int = dayStops(after, day).count
+        let ma: Int = talkMinutes(before, base, day)
+        let mb: Int = talkMinutes(after, base, day)
+        if a == b && ma == mb { continue }
+        out.append("第 \(day) 天：\(a) 站 → \(b) 站，路上大約 \(ma) → \(mb) 分鐘（估）")
+        if out.count >= 3 { break }
+    }
+    return out
 }

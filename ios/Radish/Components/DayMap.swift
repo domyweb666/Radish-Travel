@@ -1,5 +1,6 @@
 // iPhone 上的地圖：用系統內建的 Apple 地圖元件（MapKit 的 SwiftUI Map）。
 // 對應 mobile/src/sheets/DayMap.tsx。定位只在按了「我在哪」之後才問，只問使用期間。
+// compact 是這一天的路線（線框 A8）用的矮版：半頁裡上面放地圖，下面還看得到每一段怎麼去。
 import CoreLocation
 import MapKit
 import Observation
@@ -12,20 +13,27 @@ struct MapPoint: Identifiable {
     var lat: Double
     var lng: Double
     var home: Bool?
+    /// 標記上的號碼，跟下面每一段的號碼對得起來。沒給就照第幾個點數（住的地方不算）
+    var num: Int?
 
     var id: String { key }
 
-    init(key: String, title: String, subtitle: String? = nil, lat: Double, lng: Double, home: Bool? = nil) {
+    init(
+        key: String, title: String, subtitle: String? = nil, lat: Double, lng: Double, home: Bool? = nil,
+        num: Int? = nil
+    ) {
         self.key = key
         self.title = title
         self.subtitle = subtitle
         self.lat = lat
         self.lng = lng
         self.home = home
+        self.num = num
     }
 }
 
 private let MAP_H: CGFloat = 380  // domy-ignore: 地圖的高度，TS 的 MAP_H，只有這裡用
+private let MAP_H_COMPACT: CGFloat = 190  // domy-ignore: 這一天的路線（線框 A8）半頁裡的地圖高度
 private let MAP_PAD: Double = 1.5  // domy-ignore: 看整條路線時四邊多留的比例（TS 是四邊各留 60 點）
 private let MAP_MIN_SPAN: Double = 0.01  // domy-ignore: 只有一個點時至少看這麼大一塊（經緯度）
 private let MAP_ME_SPAN: Double = 0.02  // domy-ignore: 移到「我在哪」時看多大一塊，TS 的 latitudeDelta
@@ -130,24 +138,31 @@ final class MapLocator: NSObject, CLLocationManagerDelegate {
 
 struct DayMap: View {
     let points: [MapPoint]
+    let compact: Bool
     @State private var position: MapCameraPosition
     @State private var locator: MapLocator = MapLocator()
 
-    init(points: [MapPoint]) {
+    init(points: [MapPoint], compact: Bool = false) {
         self.points = points
+        self.compact = compact
         self._position = State(initialValue: dayMapCamera(points))
     }
 
+    /// 路線的線：照點的順序連起來。第一個點是住的地方時，最後再連回住的地方（出發、回去）
     private var coords: [CLLocationCoordinate2D] {
-        points.map { (p: MapPoint) -> CLLocationCoordinate2D in
+        var out: [CLLocationCoordinate2D] = points.map { (p: MapPoint) -> CLLocationCoordinate2D in
             CLLocationCoordinate2D(latitude: p.lat, longitude: p.lng)
         }
+        if let first = points.first, first.home == true, points.count > 1 {
+            out.append(CLLocationCoordinate2D(latitude: first.lat, longitude: first.lng))
+        }
+        return out
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             map
-                .frame(height: MAP_H)
+                .frame(height: compact ? MAP_H_COMPACT : MAP_H)
                 .clipShape(RoundedRectangle(cornerRadius: T.Radius.xl, style: .continuous))
             HStack(spacing: T.Space.s2) {
                 DomyButton("我在哪", variant: .secondary, size: .compact) { locator.locate() }
@@ -180,7 +195,8 @@ struct DayMap: View {
     }
 
     private func markerTitle(_ index: Int, _ p: MapPoint) -> String {
-        return p.home == true ? p.title : "\(index). \(p.title)"
+        if p.home == true { return p.title }
+        return "\(p.num ?? index). \(p.title)"
     }
 
     /// 看整條路線：鏡頭調到包住所有點

@@ -77,20 +77,27 @@
 
 ```swift
 // Screens/
-struct TripScreen: View   { init(goSettings: @escaping () -> Void, goPrep: @escaping (PrepStage) -> Void) }
+// 2026-11-23 照線框 A 版改過外殼：三個分頁、推進頁走 Nav（App/Nav.swift 的 Push），半頁走 Sheets（App/Sheets.swift 的 SheetReq）
+struct TripScreen: View   { init() }                        // 這趟分頁；最下面 .talkBar
 struct StartTrip: View    { init(goSettings: @escaping () -> Void) }
-struct PrepScreen: View   { init(open: PrepStage?, goTrip: @escaping () -> Void) }
+struct AskScreen: View    { init() }                        // 問 AI 分頁
 struct TripsScreen: View  { init(goTrip: @escaping () -> Void) }
-struct MeScreen: View     { init() }
+// 推進頁（nav.push）
+struct CheckScreen: View  { init() }                        // 檢查這趟
+struct NotesScreen: View  { init() }                        // 須知
+struct CostScreen: View   { init() }                        // 花費
+struct MeScreen: View     { init() }                        // 平常的我
+struct StopScreen: View   { init(id: String) }              // 一站
+struct VisitedScreen: View { init(source: AlbumSource) }    // 去過的那一趟
 
-// Sheets/（都不帶 onClose，自己用 sheets.close()）
-struct StopSheet: View         { init(id: String) }
-struct ChatSheet: View         { init() }
-struct MapSheet: View          { init(day: Int) }
+// 半頁（sheets.open，都不帶 onClose，自己用 sheets.close()）
+struct ReplySheet: View        { init() }                   // 剛剛那一則
+struct MapSheet: View          { init(day: Int) }           // 這一天的路線
+struct NearbySheet: View       { init(day: Int) }           // 附近還有什麼
+struct MoveSheet: View         { init(id: String) }         // 移到別的時段
 struct AddSheet: View          { init() }
 struct TripSettingsSheet: View { init() }
-struct MoreSheet: View         { init(day: Int) }     // 裡面要開別張卡就 sheets.open(.add)、sheets.open(.settings)
-struct AlbumSheet: View        { init(source: AlbumSource) }   // 要開某一站就 sheets.open(.stop(id:))
+struct MoreSheet: View         { init(day: Int) }
 
 // Components/
 struct TripFormValue { … }                                    // 欄位照 TS 的 TripFormValue

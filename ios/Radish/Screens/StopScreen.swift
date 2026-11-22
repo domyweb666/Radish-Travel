@@ -1,0 +1,281 @@
+// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、韓文名、找路，
+// 下面是移到別的時段、換一個，右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
+// 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
+// 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」），只給看。
+// 每一塊的畫面在 StopScreenParts.swift；換一個、不去這一站、過敏告知卡是這一頁自己開的半頁，給司機看是全螢幕。
+import SwiftUI
+
+/// 這一頁自己開的半頁。移到別的時段走 Sheets 的 .move(id:)，不在這裡
+enum StopPane: String, Identifiable {
+    case swap, drop, allergy
+
+    var id: String { rawValue }
+}
+
+struct StopScreen: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    private let id: String
+
+    init(id: String) {
+        self.id = id
+    }
+
+    var body: some View {
+        let trip: Trip? = store.s.trip
+        let found: Found? = trip.flatMap { (t: Trip) -> Found? in findItem(t, id) }
+        let place: Place? = found == nil ? PLACES.first(where: { (p: Place) -> Bool in p.id == id }) : nil
+        Group {
+            if let trip, let found {
+                StopPage(id: id, trip: trip, found: found)
+            } else if let place {
+                // 附近還有什麼的「看那站」：還沒排進這趟的地方，只給看
+                StopPreview(place: place)
+            } else {
+                StopGone()
+            }
+        }
+        // 剛被拿掉、換掉（在這頁按的、或用講的改掉的）：這一站不在這趟裡了，回上一頁。提示條上有復原
+        .onChange(of: found != nil) { (old: Bool, new: Bool) in
+            if old && !new {
+                dismiss()
+            }
+        }
+    }
+}
+
+/// 進來的時候這一站就已經不在了（例：剛復原過、從舊的入口點進來）
+private struct StopGone: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Screen("這一站") {
+            DomyEmptyState(
+                icon: IconPaths.sprout,
+                title: "這一站已經不在這趟了",
+                message: "可能剛被拿掉或換掉了。拿掉的站會在「下次再來」，可以排回來。",
+                actionTitle: "回上一頁",
+                action: { dismiss() }
+            )
+        }
+    }
+}
+
+/// 還沒排進這趟的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver。
+/// 不給移時段、換一個、不想去、拔起來；要排進來在附近還有什麼那張半頁按
+private struct StopPreview: View {
+    @Environment(AppStore.self) private var store
+    @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
+    let place: Place
+
+    @State private var driver: Bool = false
+    @State private var allergy: Bool = false
+
+    private var it: Stop {
+        planToStop(place, "還沒排進這趟。這是首爾資料包裡的地點，從附近還有什麼看到的。")
+    }
+
+    var body: some View {
+        Screen(place.n) {
+            header
+                .padding(.top, -T.Space.s4)
+            StopInfoSection(it: it)
+            if let trip = store.s.trip {
+                StopAllergyEntry(it: it, trip: trip) {
+                    allergy = true
+                }
+            }
+            StopPlaceCard(it: it) {
+                driver = true
+            }
+            StopOtherMaps(it: it)
+        }
+        .sheet(isPresented: $allergy) {
+            SheetScaffold("過敏告知卡", onClose: { allergy = false }) {
+                AllergyCardView(list: tripSettings(store.s.settings, store.s.trip?.tweaks).allergy)
+            }
+            .presentationDetents([.fraction(0.75), .large])  // domy-ignore: 半頁高度照 A13
+            .environment(store)
+            .environment(sheets)
+            .environment(nav)
+            .tint(C.accent)
+        }
+        .fullScreenCover(isPresented: $driver) {
+            DriverView(name: place.n, kr: place.kr)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: T.Space.s2) {
+            HStack(alignment: .center, spacing: T.Space.s3) {
+                CatIcon(place)
+                DomyText("\(AREA[need: place.a])・\(kindName(place))", .subheadline, tone: .secondary)
+                    .fillLeading()
+            }
+            TagRow {
+                Tag("還沒排進這趟", tone: .accent)
+                Tag(place.s == .L ? "主要景點" : "順路小地方")
+                if place.b == true {
+                    Tag("要先訂", tone: .accent)
+                }
+            }
+        }
+    }
+}
+
+/// 找得到這一站時的整頁
+private struct StopPage: View {
+    @Environment(AppStore.self) private var store
+    @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
+    let id: String
+    let trip: Trip
+    let found: Found
+
+    @State private var pane: StopPane?
+    @State private var driver: Bool = false
+    /// 半頁收起來之後才做的事（拿掉、換掉）。在半頁還開著的時候改行程，這一頁會在收半頁的同時被拿掉，兩個動畫會撞在一起
+    @State private var afterPane: (() -> Void)?
+
+    private var it: Stop { found.it }
+
+    private var choices: [LearnChoice] {
+        learnChoices(it, store.s.settings)
+    }
+
+    var body: some View {
+        Screen(it.n) {
+            content
+        }
+        .toolbar {
+            // 去過了的站不能拿掉（要先按「按錯了，這站還沒去」）
+            if it.status == .kept {
+                ToolbarItem(placement: .topBarTrailing) {
+                    removeButton
+                }
+            }
+        }
+        .talkBar(it.n, target: .stop(id: id))
+        .sheet(item: $pane, onDismiss: runAfterPane) { (p: StopPane) in
+            paneView(p)
+                .environment(store)
+                .environment(sheets)
+                .environment(nav)
+                .tint(C.accent)
+        }
+        .fullScreenCover(isPresented: $driver) {
+            DriverView(name: it.n, kr: it.kr)
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        StopHeader(it: it, trip: trip, slot: found.s)
+            .padding(.top, -T.Space.s4)
+        StopInfoSection(it: it)
+        StopAllergyEntry(it: it, trip: trip) {
+            pane = .allergy
+        }
+        StopVisitBlock(id: id, it: it)
+        StopPlaceCard(it: it) {
+            driver = true
+        }
+        StopEditBlock(
+            id: id, it: it, trip: trip,
+            onSwap: { pane = .swap })
+        StopOtherMaps(it: it)
+    }
+
+    /// 右上角「不想去這一站」。跟移到別的時段、換一個分開放（.uiux/03-線框/方向說明-暫定.md：A5 畫的時候定的）
+    private var removeButton: some View {
+        Button {
+            if choices.isEmpty {
+                // 自己加的、AI 加的站沒有東西可以記成「以後不排」，直接放到下次再來，提示條上有復原
+                drop(nil)
+            } else {
+                pane = .drop
+            }
+        } label: {
+            DomyText("不想去這一站", .body, tone: .strong, lines: 1)
+                .frame(minHeight: T.Size.touch)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("stop-remove")
+    }
+
+    @ViewBuilder
+    private func paneView(_ p: StopPane) -> some View {
+        switch p {
+        case .swap:
+            StopSwapPane(
+                it: it, trip: trip,
+                onPick: { (place: Place) -> Void in later { swap(place) } },
+                onClose: { pane = nil })
+        case .drop:
+            StopDropPane(
+                it: it, choices: choices,
+                onPick: { (choice: LearnChoice?) -> Void in later { drop(choice) } },
+                onClose: { pane = nil })
+        case .allergy:
+            SheetScaffold("過敏告知卡", onClose: { pane = nil }) {
+                AllergyCardView(list: tripSettings(store.s.settings, trip.tweaks).allergy)
+            }
+            // 半頁，上面還看得到這一站（線框 A13）。韓文五行要一次看完，比系統的半頁高一點
+            .presentationDetents([.fraction(0.75), .large])  // domy-ignore: 半頁高度照 A13
+        }
+    }
+
+    /// 先收半頁，收完再做
+    private func later(_ f: @escaping () -> Void) {
+        afterPane = f
+        pane = nil
+    }
+
+    private func runAfterPane() {
+        let f: (() -> Void)? = afterPane
+        afterPane = nil
+        f?()
+    }
+
+    /// 拿掉這一站。choice 有給的話，順便記成「以後都不排」；兩件事算同一步，可以一起復原
+    private func drop(_ choice: LearnChoice?) {
+        Haptic.impact(.light)
+        let stopId: String = id
+        let name: String = it.n
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            guard var trip = d.trip else { return nil }
+            guard let choice else {
+                var seeds: [Seed] = d.seeds
+                _ = seedOut(&trip, &seeds, stopId, "你說這次不去")
+                d.trip = trip
+                d.seeds = seeds
+                return "「\(name)」放到下次再來了。"
+            }
+            guard let x = findItem(trip, stopId) else { return nil }
+            trip.slots[x.si].items.remove(at: x.ii)
+            if trip.slots[x.si].items.isEmpty {
+                trip.slots[x.si].rest = true
+            }
+            d.trip = trip
+            var settings: Settings = d.settings
+            _ = learn(&settings, choice, "\(tripTitle(trip))：你拿掉了\(name)")
+            d.settings = settings
+            let tail: String = choice.kind == .place ? "" : "這趟已經排的其他站沒動。"
+            return "「\(name)」拿掉了。以後\(learnedText(choice))，在「平常的我」可以拿掉這一條。\(tail)"
+        }
+    }
+
+    /// 換成候選的那一個。換完這一站的代號會變，這一頁會自己回上一頁
+    private func swap(_ p: Place) {
+        let stopId: String = id
+        let name: String = it.n
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            guard var trip = d.trip else { return nil }
+            let err: String? = replaceWith(&trip, stopId, p)
+            d.trip = trip
+            return err ?? "「\(name)」換成「\(p.n)」了。"
+        }
+    }
+}

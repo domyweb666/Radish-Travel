@@ -169,6 +169,7 @@ struct TripDayCard: View {
 
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
 
     var body: some View {
         let plan: (rows: [TripDayRow], stops: Int, total: Int) = tripDayRows(trip, store.s.settings, day)
@@ -201,7 +202,7 @@ struct TripDayCard: View {
                 .padding(.vertical, T.Space.s2)
         case .stop(let it, let slot):
             TripStopRow(it: it, slot: slot) {
-                sheets.open(.stop(id: it.id))
+                nav.push(.stop(id: it.id))
             }
             .spotTarget("stop-row-\(it.id)", in: frames)
         case .blank(let part):
@@ -218,25 +219,42 @@ private struct PulledStop: Identifiable {
     let line: String
 }
 
+/// 旅途中的下一站卡（線框 A2）。「這站不去」在卡的右上角，跟「去過了，拔起來」拉開（02-流程 9-1）；
+/// 點站名進一站；中間是找路、給司機看，最下面是拔起來。卡外面是之後那一站和附近還有什麼
 struct TripNextStop: View {
     let trip: Trip
     let day: Int
 
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     // 剛拔起來的那一站。有值的時候整個畫面是拔蘿蔔的那一下
     @State private var pulled: PulledStop? = nil
+    /// 給司機看的那一站。有值的時候是全螢幕的韓文名稱
+    @State private var driver: Stop? = nil
 
     var body: some View {
         let all: [Found] = dayStops(trip, day)
         let left: [Found] = all.filter { (x: Found) -> Bool in x.it.status == .kept }
-        return Card {
-            if let next = left.first {
-                nextStop(next.it, next.s)
-            } else {
-                DomyText("今天的都拔完了", .title2)
-                DomyText("剩下的時間是你的。", .body, tone: .secondary)
+        return VStack(alignment: .leading, spacing: T.Space.s3) {
+            Card {
+                if let next = left.first {
+                    nextStop(next, all)
+                } else {
+                    DomyText("今天的都拔完了", .title2)
+                    DomyText("剩下的時間是你的。", .body, tone: .secondary)
+                }
             }
+            .fullScreenCover(item: $driver) { (it: Stop) in
+                DriverView(name: it.n, kr: it.kr)
+            }
+            if left.count > 1 {
+                afterRow(left[1])
+            }
+            DomyButton("附近還有什麼", variant: .secondary, size: .compact) {
+                sheets.open(.nearby(day: day))
+            }
+            .accessibilityIdentifier("next-nearby")
         }
         .fullScreenCover(item: $pulled) { (p: PulledStop) in
             PullMoment(name: p.name, size: p.size, line: p.line) {
@@ -256,36 +274,96 @@ struct TripNextStop: View {
     }
 
     @ViewBuilder
-    private func nextStop(_ it: Stop, _ slot: Slot) -> some View {
-        DomyText("下一站・\(PART[need: slot.part])・\(areaOf(it))", .footnote, tone: .secondary)
-        HStack(spacing: T.Space.s3) {
-            CatIcon(it)
-            VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
-                DomyText(it.n, .title2)
-                if !it.kr.isEmpty {
-                    DomyText(it.kr, .subheadline, tone: .secondary)
-                }
+    private func nextStop(_ next: Found, _ all: [Found]) -> some View {
+        let it: Stop = next.it
+        HStack(alignment: .center, spacing: T.Space.s2) {
+            DomyText("下一站・\(PART[need: next.s.part])・\(areaOf(it))", .footnote, tone: .secondary)
+                .fillLeading()
+            Button {
+                skip(it)
+            } label: {
+                DomyText("這站不去", .subheadline, tone: .strong, lines: 1)
+                    .frame(minHeight: T.Size.touch)
+                    .contentShape(Rectangle())
             }
-            .fillLeading()
-            Radish(size: it.s, scale: 1.4)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("next-skip")
         }
-        if let tip = it.tip, !tip.isEmpty {
-            DomyText("\(tip)。", .subheadline, tone: .secondary)
+        .padding(.vertical, -T.Space.s2)
+        titleButton(it)
+        DomyText(legText(next, all), .subheadline, tone: .secondary)
+        if !it.kr.isEmpty {
+            HStack(spacing: T.Space.s2) {
+                DomyButton("用 Naver 找路", variant: .secondary, size: .compact, fullWidth: true) {
+                    openNaver(it.kr)
+                }
+                .accessibilityIdentifier("next-naver")
+                DomyButton("給司機看", variant: .secondary, size: .compact, fullWidth: true) {
+                    driver = it
+                }
+                .accessibilityIdentifier("next-driver")
+            }
         }
         DomyButton("去過了，拔起來", fullWidth: true, haptic: false) {
             pull(it)
         }
         .accessibilityIdentifier("next-pull")
-        HStack(spacing: T.Space.s2) {
-            DomyButton("地圖與韓文", variant: .secondary, size: .compact) {
-                sheets.open(.stop(id: it.id))
+    }
+
+    /// 站名那一塊，點了進一站（S06）
+    private func titleButton(_ it: Stop) -> some View {
+        Button {
+            nav.push(.stop(id: it.id))
+        } label: {
+            HStack(spacing: T.Space.s3) {
+                CatIcon(it)
+                VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
+                    DomyText(it.n, .title2)
+                    if !it.kr.isEmpty {
+                        DomyText(it.kr, .subheadline, tone: .secondary)
+                    }
+                }
+                .fillLeading()
+                Radish(size: it.s, scale: 1.4)
+                Chevron()
             }
-            .accessibilityIdentifier("next-detail")
-            DomyButton("這站不去", variant: .secondary, size: .compact) {
-                skip(it)
-            }
-            .accessibilityIdentifier("next-skip")
+            .contentShape(Rectangle())
         }
+        .buttonStyle(PressStyle())
+        .accessibilityLabel("下一站，\(it.n)，看這一站")
+        .accessibilityIdentifier("next-detail")
+    }
+
+    /// 從上一站（第一站是從住的地方）過來怎麼去、大概多久。手機算的，一律帶（估）
+    private func legText(_ next: Found, _ all: [Found]) -> String {
+        let legs: [Leg?] = dayLegs(trip, store.s.settings, day)
+        let found: Int? = all.firstIndex { (x: Found) -> Bool in x.it.id == next.it.id }
+        let at: Int = found ?? 0
+        let from: String = at == 0 ? "住的地方" : all[at - 1].it.n
+        if at < legs.count, let l = legs[at] {
+            return "從\(from)・\(l.mode)・\(l.min) 分鐘（估）"
+        }
+        return "從\(from)過去的距離不明，到時候查地圖"
+    }
+
+    /// 下一站之後的那一站，點了進一站
+    private func afterRow(_ x: Found) -> some View {
+        Button {
+            nav.push(.stop(id: x.it.id))
+        } label: {
+            HStack(spacing: T.Space.s3) {
+                DomyText("之後・\(PART[need: x.s.part])・\(x.it.n)", .subheadline)
+                    .fillLeading()
+                Chevron()
+            }
+            .padding(.vertical, T.Space.s3)
+            .padding(.horizontal, T.Space.s4)
+            .frame(minHeight: T.Size.touch)
+            .background(C.surface, in: RoundedRectangle(cornerRadius: T.Radius.lg, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityIdentifier("next-after")
     }
 
     private func pull(_ it: Stop) {

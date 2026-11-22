@@ -7,6 +7,8 @@ enum MeEditing: String, Identifiable {
     case purposes, pace, wake, move, base, stay, budget, food, avoid, play, walk, body, learned
     case importBackup = "import"
     case reset
+    /// 送給 AI 的資料：看送了什麼、收回同意
+    case ai
 
     var id: String { rawValue }
 }
@@ -172,6 +174,8 @@ struct MeEditorSheet: View {
             MeImportSheet(backup: $backup, importErr: $importErr, close: close)
         case .reset:
             MeResetSheet(close: close)
+        case .ai:
+            MeAiSheet(close: close)
         case .pace, .wake, .walk, .move:
             habitPick
         case .base, .stay, .budget:
@@ -605,6 +609,39 @@ private struct MeResetSheet: View {
                 close()
             }
             .accessibilityIdentifier("me-reset-cancel")
+        }
+    }
+}
+
+/* ---------- 送給 AI 的資料（線框 A17） ---------- */
+
+private struct MeAiSheet: View {
+    @Environment(AppStore.self) private var store
+    let close: () -> Void
+
+    var body: some View {
+        SheetScaffold("送給 AI 的資料", onClose: close) {
+            DomyText("要 AI 幫忙的句子，會連同下面這些一起送出去。\(AI_WHERE)", .body)
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                ForEach(Array(AI_SENDS.enumerated()), id: \.offset) { _, line in
+                    DomyText("・\(line)", .body)
+                }
+            }
+            DomyText(AI_NOT_SENT, .body)
+            DomyText("手機自己答得出的（例如還剩幾站、有哪些要先訂），不會送出去。", .footnote, tone: .secondary)
+            if store.s.aiConsent {
+                DomyButton("收回同意", variant: .destructive, fullWidth: true) {
+                    store.mutate { (d: inout AppState) in
+                        d.aiConsent = false
+                    }
+                    close()
+                    store.say("收回了。下次要送給 AI 之前，會再問你一次。")
+                }
+                .accessibilityIdentifier("me-ai-revoke")
+                DomyText("收回之後，之後的句子不會再送出去；已經送過的，這裡收不回來。", .footnote, tone: .secondary)
+            } else {
+                DomyText("還沒同意過。第一次要送給 AI 的時候，會先跟你講清楚，同意了才送。", .body, tone: .secondary)
+            }
         }
     }
 }

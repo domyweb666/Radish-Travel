@@ -414,6 +414,121 @@ func nearbyPool(_ t: Trip, _ day: Int, _ st: Settings? = nil) -> [String] {
     return out
 }
 
+/* ---------- 附近還有什麼（S10，線框 A12）：iOS 版才有，mobile/ 沒有對應的 TS ---------- */
+
+/// 附近只看這麼遠以內（公里，直線加三成之後）。再遠就不算附近了
+let NEARBY_MAX_KM: Double = 3
+/// 一次給幾個
+let NEARBY_PAGE: Int = 3
+
+/// 從哪裡算附近
+enum NearbyFrom: Equatable, Sendable {
+    /// 這一天還沒拔的下一站
+    case next
+    /// 這一天的站都拔完了：最後拔起來的那一站
+    case pulled
+    /// 這一天沒有排站：住的地方
+    case home
+}
+
+struct NearbyOrigin: Equatable, Sendable {
+    var from: NearbyFrom
+    /// 給人看的名字：站名，或「住的地方（明洞）」
+    var name: String
+    /// 起點是一站時才有
+    var stopId: String?
+    /// 起點那一站在哪個時段；住的地方是 nil
+    var part: Part?
+    var pt: GeoPt
+
+    /// 起點有沒有座標。自己加的、AI 加的站可能沒有，就算不出附近
+    var known: Bool {
+        return pt.lat != nil && pt.lng != nil
+    }
+}
+
+/// 附近的一個地方，和從起點怎麼去（估）
+struct NearbyPick: Hashable, Sendable {
+    var place: Place
+    var leg: Leg
+}
+
+/// 附近要從哪裡算：這一天還沒拔的下一站；都拔完了就是最後一站；這天沒排站就是住的地方
+func nearbyOrigin(_ t: Trip, _ base: Settings, _ day: Int) -> NearbyOrigin {
+    let stops: [Found] = dayStops(t, day)
+    let kept: Found? = stops.first { (x: Found) -> Bool in x.it.status == .kept }
+    if let x = kept {
+        return NearbyOrigin(from: .next, name: x.it.n, stopId: x.it.id, part: x.s.part, pt: GeoPt(x.it))
+    }
+    if let x = stops.last {
+        return NearbyOrigin(from: .pulled, name: x.it.n, stopId: x.it.id, part: x.s.part, pt: GeoPt(x.it))
+    }
+    let h: HotelPt = hotelPt(tripSettings(base, t.tweaks), t)
+    return NearbyOrigin(from: .home, name: "住的地方（\(h.n)）", stopId: nil, part: nil, pt: GeoPt(h))
+}
+
+/// 這趟還沒排的地方，照離起點的距離排（近的在前）。每一個都帶怎麼去：
+/// 超過平常的我「一天能走多少」的走路上限，就是地鐵或公車（照 leg()）。
+/// 跟 alternatives 一樣跳過不排的、要爬坡的；這天已經有 2 個大站就不給大站。起點沒有座標回空的
+func nearbyRanked(_ t: Trip, _ base: Settings, _ day: Int) -> [NearbyPick] {
+    let st: Settings = tripSettings(base, t.tweaks)
+    let origin: NearbyOrigin = nearbyOrigin(t, base, day)
+    if !origin.known { return [] }
+    let used: Set<String> = usedIds(t)
+    let noUp: Bool = st.body.contains(.stairs)
+    let bigFull: Bool = bigCount(t, day) >= 2
+    var picks: [NearbyPick] = []
+    for p in PLACES {
+        if used.contains(p.id) { continue }
+        if banned(p, st) { continue }
+        if noUp && p.up == true { continue }
+        if bigFull && p.s == .L { continue }
+        guard let l = leg(origin.pt, GeoPt(p), st) else { continue }
+        if l.km > NEARBY_MAX_KM { continue }
+        picks.append(NearbyPick(place: p, leg: l))
+    }
+    return planStableSorted(picks) { (a: NearbyPick, b: NearbyPick) -> Bool in
+        return a.leg.km < b.leg.km
+    }
+}
+
+/// 第幾組三個（「再看三個」）。看完了從頭再來
+func nearbyPage(_ ranked: [NearbyPick], _ page: Int) -> [NearbyPick] {
+    if ranked.isEmpty { return [] }
+    let pages: Int = (ranked.count + NEARBY_PAGE - 1) / NEARBY_PAGE
+    let k: Int = ((page % pages) + pages) % pages
+    let start: Int = k * NEARBY_PAGE
+    let end: Int = min(start + NEARBY_PAGE, ranked.count)
+    return Array(ranked[start..<end])
+}
+
+/// 排進這一天的哪個時段：起點那一站的時段；不行就現在這個時段；再不行就這天第一個還能排的。
+/// 在路上的、已經過了的時段不排。都不行回 nil
+func nearbyPart(_ t: Trip, _ day: Int, _ origin: NearbyOrigin, _ now: TripNow? = nil) -> Part? {
+    let open: [Part] = PARTS.filter { (p: Part) -> Bool in
+        return slotAt(t, day, p) != nil && !slotPast(now, day, p)
+    }
+    if let p = origin.part, open.contains(p) { return p }
+    if let n = now, n.day == day, open.contains(n.part) { return n.part }
+    return open.first
+}
+
+/// 把附近的一個地方排進第 day 天的 part。afterId 有給、而且在同一個時段，就排在它後面；不然排在最後。
+/// 排好回 nil，排不進去回原因
+func addNearby(_ t: inout Trip, _ p: Place, _ day: Int, _ part: Part, _ afterId: String? = nil) -> String? {
+    if usedIds(t).contains(p.id) { return "「\(p.n)」已經排在這趟裡了" }
+    guard let to = slotAt(t, day, part) else { return "第 \(day) 天\(PART[need: part])你在路上，放不進去" }
+    let it: Stop = planToStop(p, "你從「附近還有什麼」排進來的")
+    var at: Int = t.slots[to].items.count
+    if let id = afterId {
+        let hit: Int? = t.slots[to].items.firstIndex { (x: Stop) -> Bool in x.id == id }
+        if let i = hit { at = i + 1 }
+    }
+    t.slots[to].items.insert(it, at: at)
+    if part != .eve { t.slots[to].rest = false }
+    return nil
+}
+
 /* ---------- 怎麼去、多遠、多久（估算） ---------- */
 
 /// 地圖上的一個點。住的地方、候選地點、行程裡的站都可以轉成它

@@ -1,49 +1,24 @@
-// 「這趟」分頁。沒有行程時是開一趟；有行程時上面一排是每一天的分頁，一次只看一天。
-// 右上角是更多和平常的我；標題下面兩個常駐入口：檢查這趟、須知（推進）。
-// 旅途中最上面多一張「下一站」。不常用的動作收在「更多」。
-// 對應 mobile/src/screens/TripScreen.tsx。子元件（每天的分頁、一站的列、行程卡、下一站）在 TripScreenParts.swift。
+// 「這趟」分頁（S01，線框 A1、A2、A4、A9）。沒有行程時是開一趟；有行程時上面一排是每一天的分頁，一次只看一天。
+// 右上角是更多和平常的我；標題下面一行日期，再來兩個常駐入口：檢查這趟、須知（推進）。
+// 旅途中最上面多一張「下一站」。最下面一直有一列跟 AI 講（TalkBar），左邊小標寫在看第幾天或今天。
+// 第一趟排好後的三步操作說明拿掉了（02-流程 1-4、❓38 建議刪，方向說明 A17「跟著 1-4 刪操作說明」）。
+// 對應 mobile/src/screens/TripScreen.tsx。子元件（每天的分頁、一站的列、下一站）在 TripScreenParts.swift，
+// 剛排好那張卡、回來後那張卡在 Components/TripCards.swift。
 import SwiftUI
-
-/// 操作說明的三步，順序對應：第一站、用講的改行程、每天的分頁
-private let GUIDE: [String] = [
-    "每一站都可以點。點進去有韓文名稱、大概花多少、怎麼去，也可以移到別的時段、換一個，或這次不去。",
-    "想改行程，用講的就可以。例如「第二天輕鬆一點」。改了不滿意，按提示上的「復原」就回到原本的樣子。",
-    "一次只看一天。要看別天，點上面這一排。",
-]
-
-/// 操作說明要照亮的那幾塊的名字（也是捲動用的 id）
-private enum SpotKey {
-    static let top: String = "trip-top"
-    static let talk: String = "spot-talk"
-    static let tabs: String = "spot-tabs"
-    /// 這天沒有排站的時候，第一步用這個不存在的名字，說明會自己跳過那一步
-    static let none: String = "spot-none"
-}
 
 struct TripScreen: View {
     @Environment(AppStore.self) private var store
-    @Environment(Sheets.self) private var sheets
     @Environment(Nav.self) private var nav
-    // 操作說明要用的：要捲到哪一塊、要照亮的三塊現在在哪、說明是不是開著
-    @State private var scrollTarget: String? = nil
+    @Environment(Sheets.self) private var sheets
+    /// 這一天每一站在畫面上的位置。原本給操作說明照亮第一站用，說明拿掉了，TripDayCard 還要這個參數
     @State private var frames: SpotFrames = SpotFrames()
-    @State private var guideOn: Bool = false
 
     init() {}
-
-    /// 使用者點了哪一天（記在 Nav，切分頁回來還在）。還沒點過就跟著今天（旅途中）或第 1 天
-    private var day: Int? { nav.tripDay }
 
     /// 旅途中的今天是第幾天。不在旅途中就是 nil
     private var today: Int? {
         if case .trip(let d)? = store.phase { return d }
         return nil
-    }
-
-    // 第一趟排好之後帶一次，只帶一次。回來之後的畫面沒有這三塊，不帶
-    private var guide: Bool {
-        guard store.s.trip != nil, let phase = store.phase else { return false }
-        return !store.s.guideSeen && phase != Phase.done
     }
 
     var body: some View {
@@ -60,125 +35,79 @@ struct TripScreen: View {
                 nav.tripDay = now
             }
         }
-        .onChange(of: guide, initial: true) { _, on in
-            setGuide(on)
-        }
-        .fullScreenCover(isPresented: $guideOn) {
-            Spotlight(
-                steps: guideSteps,
-                frames: frames,
-                onScroll: { (key: String?) in scrollTarget = key },
-                onDone: { guideDone() }
-            )
-            .presentationBackground(Color.clear)
-        }
     }
 
-    /// 說明自己淡入淡出，所以開和關都不要系統的滑入動畫
-    private func setGuide(_ on: Bool) {
-        if on {
-            scrollTarget = nil
-        }
-        var quiet: Transaction = Transaction()
-        quiet.disablesAnimations = true
-        withTransaction(quiet) {
-            guideOn = on
-        }
-    }
-
-    private func guideDone() {
-        store.mutate { (d: inout AppState) in
-            d.guideSeen = true
-        }
-        scrollTarget = SpotKey.top
-    }
-
-    private var guideSteps: [SpotStep] {
-        var first: String = SpotKey.none
-        if let trip = store.s.trip {
-            let stops: [Found] = dayStops(trip, shownDay(trip))
-            if let x = stops.first {
-                first = "stop-row-\(x.it.id)"
-            }
-        }
-        let keys: [String] = [first, SpotKey.talk, SpotKey.tabs]
-        var out: [SpotStep] = []
-        for i in 0..<GUIDE.count {
-            out.append(SpotStep(key: i < keys.count ? keys[i] : SpotKey.none, text: GUIDE[i]))
-        }
-        return out
-    }
-
-    /// 現在看的是第幾天
+    /// 現在看的是第幾天：使用者點了哪一天（記在 Nav，切分頁回來還在）；還沒點過就跟著今天（旅途中）或第 1 天
     private func shownDay(_ trip: Trip) -> Int {
-        return max(1, min(day ?? today ?? 1, trip.days))
+        return max(1, min(nav.tripDay ?? today ?? 1, trip.days))
+    }
+
+    /// 講的那一列左邊的小標：旅途中看的是今天就寫「今天」
+    private func talkLabel(_ day: Int) -> String {
+        return day == today ? "今天" : "第 \(day) 天"
     }
 
     private func tripBody(_ trip: Trip, _ phase: Phase) -> some View {
         let shown: Int = shownDay(trip)
         return Screen(
-            tripTitle(trip), scrollTo: scrollTarget,
+            tripTitle(trip),
             actions: {
                 TopActions(more: { sheets.open(.more(day: shown)) })
             }
         ) {
             header(trip, phase)
             if phase == Phase.done {
-                doneCard(trip)
+                DoneCard(trip: trip)
             }
             if let now = today {
                 TripNextStop(trip: trip, day: now)
-                DomyButton("換算、記一筆花費", variant: .secondary, fullWidth: true) {
-                    nav.push(.cost)
-                }
-                .accessibilityIdentifier("open-cost")
             }
             banners(trip, phase)
-            VStack(alignment: .leading, spacing: T.Space.s3) {
-                TripDayTabs(trip: trip, value: shown, today: today) { (d: Int) in
-                    nav.tripDay = d
-                }
-                .spotTarget(SpotKey.tabs, in: frames)
-                TripDayCard(trip: trip, day: shown, frames: frames)
-            }
-            if phase != Phase.done {
-                talkButtons(shown)
-            }
+            dayBlock(trip, phase, shown)
             DomyText("這一版的地點是範例資料，還沒核對過。營業時間、休館日、票價要自己查。", .footnote, tone: .secondary, align: .center)
                 .frame(maxWidth: .infinity)
         }
+        .talkBar(talkLabel(shown), target: .day(shown))
     }
 
-    /// 標題下面那幾行：日期、現在在哪個階段、住哪、這趟的調整
+    /// 天數那一排、剛排好那張卡（A4，自己決定要不要顯示）、這一天的清單。回來後多一行小字（A9）
+    private func dayBlock(_ trip: Trip, _ phase: Phase, _ shown: Int) -> some View {
+        VStack(alignment: .leading, spacing: T.Space.s3) {
+            TripDayTabs(trip: trip, value: shown, today: today) { (d: Int) in
+                nav.tripDay = d
+            }
+            if phase == Phase.done {
+                DomyText("有去過但沒按到的，點那一站可以補。", .footnote, tone: .secondary)
+            } else {
+                PlannedCard(trip: trip)
+            }
+            TripDayCard(trip: trip, day: shown, frames: frames)
+        }
+    }
+
+    /// 標題下面一行（線框 A1、A2、A9）：
+    /// 出發前「12/16（三）出發・還有 24 天・住明洞一帶」、旅途中「今天第 2 天・12/17（四）・住明洞一帶」、
+    /// 回來後「12/16（三）– 12/20（日）・已經回來」。住宿名字、這趟的調整在更多的「行程設定」
     private func subtitle(_ trip: Trip, _ phase: Phase) -> String {
-        let end: String = addDays(trip.start, trip.days - 1)
-        var text: String = "\(fmtDay(trip.start))–\(fmtDay(end))"
+        let hotel: HotelPt = HOTEL[need: baseOf(trip, store.s.settings)]
+        let stay: String = "住\(hotel.n)一帶"
         switch phase {
         case .plan(let daysToGo):
-            text += "・還有 \(daysToGo) 天出發"
+            return "\(fmtDay(trip.start))出發・還有 \(daysToGo) 天・\(stay)"
         case .trip(let d):
-            text += "・今天是第 \(d) 天"
+            return "今天第 \(d) 天・\(tripDayLabel(trip, d))・\(stay)"
         case .done:
-            text += "・已經回來了"
+            let end: String = addDays(trip.start, trip.days - 1)
+            return "\(fmtDay(trip.start))– \(fmtDay(end))・已經回來"
         }
-        let hotel: HotelPt = HOTEL[need: baseOf(trip, store.s.settings)]
-        text += "\n住\(hotel.n)一帶"
-        if let stay = trip.stayName, !stay.isEmpty {
-            text += "・" + stay
-        }
-        if let tweaks = trip.tweaks, !tweaks.isEmpty {
-            text += "\n這趟：\(tweakSummary(trip))"
-        }
-        return text
     }
 
-    /// 標題下面：日期那幾行，再來是檢查這趟、須知兩個常駐入口（每一天都在，不靠提醒條才出現）。
-    /// 改日期、住哪收進更多的「行程設定」
+    /// 標題下面：日期那一行，再來是檢查這趟、須知兩個常駐入口（每一天都在，不靠提醒條才出現）
     @ViewBuilder
     private func header(_ trip: Trip, _ phase: Phase) -> some View {
         DomyText(subtitle(trip, phase), .subheadline, tone: .secondary)
             .padding(.top, -T.Space.s4)
-            .id(SpotKey.top)
+            .id("trip-top")
         HStack(spacing: T.Space.s2) {
             EntryChip("檢查這趟", icon: IconPaths.check) {
                 nav.push(.check)
@@ -190,29 +119,6 @@ struct TripScreen: View {
             .accessibilityIdentifier("open-notes")
         }
         .padding(.top, -T.Space.s2)
-    }
-
-    private func doneCard(_ trip: Trip) -> some View {
-        let all: [Found] = allItems(trip)
-        let pulled: Int = all.filter { (x: Found) -> Bool in x.it.status == .pulled }.count
-        return Card {
-            HStack(spacing: T.Space.s3) {
-                VStack(alignment: .leading, spacing: T.Space.s1) {
-                    DomyText("這趟走完了", .title2)
-                    DomyText(
-                        "這趟去了 \(pulled) 個地方。有去過但沒按到的，點那一站可以補。在「旅行」可以把它做成地圖網頁，傳給沒去的人看。",
-                        .body, tone: .secondary)
-                }
-                .fillLeading()
-                RadishBuddy(action: .bow)
-            }
-            DomyButton("收起來，開新的一趟", fullWidth: true) {
-                store.act(undoable: true) { (d: inout AppState) -> String? in
-                    return archiveTrip(&d)
-                }
-            }
-            .accessibilityIdentifier("trip-archive")
-        }
     }
 
     /// 要先訂、還沒在「檢查這趟」打勾的站。全部勾完這一條就不見
@@ -254,14 +160,5 @@ struct TripScreen: View {
             d.settingsDirty = false
             return "照新的設定重排了。手動改過的地方也一起重排了。"
         }
-    }
-
-    /// 用講的改行程。片 2 會換成每一天最下面常駐的輸入列；更多已經搬到右上角
-    private func talkButtons(_ shown: Int) -> some View {
-        DomyButton("用講的改行程", variant: today != nil ? .secondary : .primary, fullWidth: true) {
-            sheets.open(.chat)
-        }
-        .accessibilityIdentifier("open-chat")
-        .spotTarget(SpotKey.talk, in: frames)
     }
 }

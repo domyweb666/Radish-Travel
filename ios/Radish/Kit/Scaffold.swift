@@ -193,7 +193,10 @@ struct DomyTabBar: View {
     }
 }
 
-/// 提示條：做完一個動作後告訴你發生了什麼，可以復原的會帶一顆「復原」。浮在分頁列上方。
+/// 這一天、一站最下面常駐講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
+let talkBarClearance: CGFloat = T.Size.touch + T.Size.field + T.Space.s4
+
+/// 提示條：做完一個動作後告訴你發生了什麼，可以復原的會帶一顆「復原」。浮在分頁列和講的那一列上方。
 struct NoticeBar: View {
     @Environment(AppStore.self) private var store
 
@@ -219,7 +222,7 @@ struct NoticeBar: View {
             .background(C.textPrimary, in: RoundedRectangle(cornerRadius: T.Radius.lg, style: .continuous))
             .domyElevation(T.Elevation.level2)
             .padding(.horizontal, T.Size.screenMargin)
-            .padding(.bottom, tabBarClearance)
+            .padding(.bottom, tabBarClearance + talkBarClearance)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("notice-bar")
             .transition(.opacity)

@@ -1,6 +1,6 @@
 // 彈出卡的總管：畫面只要說「打開哪一張」，同一時間只會有一張。
 // 對應 mobile/src/sheets/host.tsx。
-// 用法：`@Environment(Sheets.self) private var sheets`，然後 `sheets.open(.stop(id: it.id))`、`sheets.close()`。
+// 用法：`@Environment(Sheets.self) private var sheets`，然後 `sheets.open(.more(day: 1))`、`sheets.close()`。一站、去過的那一趟是推進頁，用 `nav.push`。
 import Observation
 import SwiftUI
 
