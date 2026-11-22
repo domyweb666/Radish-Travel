@@ -569,8 +569,27 @@ func applyOps(
 /// 後端的網址。TS 是讀環境變數，這裡由 app 啟動時設
 var AI_ENDPOINT: String = ""
 
+/// 使用者在「平常的我」自己填的 Claude API 金鑰。app 啟動和改設定時從鑰匙圈讀進來，不進存檔、不進備份。
+/// 有填就直接問 Anthropic，不經過蘿蔔旅行的後端
+var CLAUDE_KEY: String = ""
+
+/// 直接問 Claude 用的模型
+let CLAUDE_MODEL: String = "claude-opus-5-5"
+let CLAUDE_URL: String = "https://api.anthropic.com/v1/messages"
+let CLAUDE_VERSION: String = "2026-10-21"
+/// 被安全檢查擋下來時，由 Anthropic 那邊自動換一個模型再答一次
+let CLAUDE_FALLBACK_BETA: String = "server-side-fallback-2026-07-01"
+
 func aiReady() -> Bool {
-    return AI_ENDPOINT.count > 0
+    return CLAUDE_KEY.count > 0 || AI_ENDPOINT.count > 0
+}
+
+/// 有填金鑰就直接問 Claude，沒有就送到自己的後端
+func askAI(_ prompt: String) async throws -> BrainOut {
+    if !CLAUDE_KEY.isEmpty {
+        return try await askClaude(prompt, CLAUDE_KEY)
+    }
+    return try await askRemote(prompt, AI_ENDPOINT)
 }
 
 /// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期。
@@ -660,11 +679,19 @@ ops 可用的動作：
     return head + rules + mid + tail
 }
 
-/// 送去後端時會出的錯。TS 是丟 Error('HTTP 500') 這種
+/// 送去後端或 Claude 時會出的錯。TS 是丟 Error('HTTP 500') 這種
 enum AskError: Error, Equatable, CustomStringConvertible {
     case badURL
     case http(Int)
     case badReply
+    /// 401、403：金鑰不對、被停用，或沒有權限
+    case badKey(Int)
+    /// 帳戶沒有額度、要先儲值
+    case noCredit
+    /// 429、500、529：太多人在用或 Anthropic 那邊出狀況，等一下再試
+    case busy(Int)
+    /// Claude 的安全檢查不回答這一句
+    case refused
 
     var description: String {
         switch self {
@@ -674,22 +701,31 @@ enum AskError: Error, Equatable, CustomStringConvertible {
             return "HTTP \(status)"
         case .badReply:
             return "後端回的不是看得懂的 JSON"
+        case .badKey(let status):
+            return "Claude API 金鑰不能用（HTTP \(status)），到平常的我重新填"
+        case .noCredit:
+            return "這把金鑰的 Anthropic 帳戶沒有額度了"
+        case .busy(let status):
+            return "Claude 現在太忙（HTTP \(status)），等一下再送一次"
+        case .refused:
+            return "Claude 不回答這一句"
         }
     }
 }
 
-/// 送到自己的後端。後端要回 {reply, ops}，或是 {text: "…含 JSON 的文字…"}
-func askRemote(_ prompt: String, _ endpoint: String = AI_ENDPOINT) async throws -> BrainOut {
-    guard let url = URL(string: endpoint) else { throw AskError.badURL }
+/// POST 一份 JSON，拿回內容和狀態碼。
+/// 用 completion handler 包一層：Linux 的 URLSession 不一定有 async 版的 data(for:)
+private func postJSON(_ url: URL, _ headers: [String: String], _ payload: [String: Any]) async throws -> (body: Data, status: Int?) {
     var req: URLRequest = URLRequest(url: url)
     req.httpMethod = "POST"
+    req.timeoutInterval = 120
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    let payload: [String: Any] = ["prompt": prompt]
+    for (k, v) in headers {
+        req.setValue(v, forHTTPHeaderField: k)
+    }
     req.httpBody = try JSONSerialization.data(withJSONObject: payload, options: [])
     let request: URLRequest = req
-
-    // 用 completion handler 包一層：Linux 的 URLSession 不一定有 async 版的 data(for:)
-    let got: (body: Data, status: Int?) = try await withCheckedThrowingContinuation {
+    return try await withCheckedThrowingContinuation {
         (cont: CheckedContinuation<(body: Data, status: Int?), Error>) -> Void in
         let task: URLSessionDataTask = URLSession.shared.dataTask(with: request) {
             (data: Data?, res: URLResponse?, error: Error?) -> Void in
@@ -702,25 +738,101 @@ func askRemote(_ prompt: String, _ endpoint: String = AI_ENDPOINT) async throws 
         }
         task.resume()
     }
+}
 
+/// 一段含 JSON 的文字 → {reply, ops}。第一個 { 到最後一個 } 當成 JSON；找不到就當成空物件
+func brainFromText(_ text: String) throws -> BrainOut {
+    var json: String = "{}"
+    if let m = chatMatch("\\{[\\s\\S]*\\}", text), let whole = chatGroup(m, 0) { json = whole }
+    let parsed: Any = try JSONSerialization.jsonObject(with: Data(json.utf8), options: [.allowFragments])
+    return brainFromDict((parsed as? [String: Any]) ?? [:])
+}
+
+private func brainFromDict(_ dict: [String: Any]) -> BrainOut {
+    var reply: String = "好了。"
+    if let r = dict["reply"], !(r is NSNull) { reply = chatText(r) }
+    let ops: [Any] = (dict["ops"] as? [Any]) ?? []
+    return BrainOut(reply: chatSlice(reply, 600), ops: ops)
+}
+
+/// 直接問 Claude 的 HTTP 標頭
+private func claudeHeaders(_ key: String, fallback: Bool) -> [String: String] {
+    var h: [String: String] = ["x-api-key": key, "anthropic-version": CLAUDE_VERSION]
+    if fallback { h["anthropic-beta"] = CLAUDE_FALLBACK_BETA }
+    return h
+}
+
+/// 狀態碼不是 2xx 時換成看得懂的錯
+private func claudeError(_ status: Int, _ body: Data) -> AskError {
+    var type: String = ""
+    var message: String = ""
+    if let obj = try? JSONSerialization.jsonObject(with: body, options: []) as? [String: Any],
+        let err = obj["error"] as? [String: Any]
+    {
+        type = (err["type"] as? String) ?? ""
+        message = (err["message"] as? String) ?? ""
+    }
+    if status == 401 || status == 403 { return .badKey(status) }
+    if status == 402 || type == "billing_error" || message.lowercased().contains("credit balance") { return .noCredit }
+    if status == 429 || status == 529 || status >= 500 { return .busy(status) }
+    return .http(status)
+}
+
+/// 直接問 Claude（Messages API）。提示詞跟送後端的一樣，Claude 回的文字裡有一個 {reply, ops} 的 JSON。
+/// 這是聊天用的短回覆，effort 用 low；被安全檢查擋下時讓 Anthropic 自動換模型（fallbacks: default）
+func askClaude(_ prompt: String, _ key: String) async throws -> BrainOut {
+    guard let url = URL(string: CLAUDE_URL) else { throw AskError.badURL }
+    let payload: [String: Any] = [
+        "model": CLAUDE_MODEL,
+        "max_tokens": 16000,
+        "output_config": ["effort": "low"],
+        "fallbacks": "default",
+        "messages": [["role": "user", "content": prompt]],
+    ]
+    let got: (body: Data, status: Int?) = try await postJSON(url, claudeHeaders(key, fallback: true), payload)
+    let status: Int = got.status ?? 0
+    if !(status >= 200 && status < 300) { throw claudeError(status, got.body) }
+    guard let obj = try JSONSerialization.jsonObject(with: got.body, options: []) as? [String: Any] else {
+        throw AskError.badReply
+    }
+    if (obj["stop_reason"] as? String) == "refusal" { throw AskError.refused }
+    let blocks: [[String: Any]] = (obj["content"] as? [[String: Any]]) ?? []
+    var text: String = ""
+    for b in blocks where (b["type"] as? String) == "text" {
+        text += (b["text"] as? String) ?? ""
+    }
+    if text.isEmpty { throw AskError.badReply }
+    return try brainFromText(text)
+}
+
+/// 填金鑰時試一次：送一句很短的，看 Anthropic 認不認得這把金鑰。只看狀態碼，不看內容
+func checkClaudeKey(_ key: String) async throws {
+    guard let url = URL(string: CLAUDE_URL) else { throw AskError.badURL }
+    let payload: [String: Any] = [
+        "model": CLAUDE_MODEL,
+        "max_tokens": 64,
+        "output_config": ["effort": "low"],
+        "messages": [["role": "user", "content": "回一個字：好"]],
+    ]
+    let got: (body: Data, status: Int?) = try await postJSON(url, claudeHeaders(key, fallback: false), payload)
+    let status: Int = got.status ?? 0
+    if !(status >= 200 && status < 300) { throw claudeError(status, got.body) }
+}
+
+/// 送到自己的後端。後端要回 {reply, ops}，或是 {text: "…含 JSON 的文字…"}
+func askRemote(_ prompt: String, _ endpoint: String = AI_ENDPOINT) async throws -> BrainOut {
+    guard let url = URL(string: endpoint) else { throw AskError.badURL }
+    let got: (body: Data, status: Int?) = try await postJSON(url, [:], ["prompt": prompt])
     if let status = got.status, !(status >= 200 && status < 300) {
         throw AskError.http(status)
     }
     let data: Any = try JSONSerialization.jsonObject(with: got.body, options: [.allowFragments])
     // TS 對 null 讀 .text 會丟例外
     if data is NSNull { throw AskError.badReply }
-    var parsed: Any = data
     if let obj = data as? [String: Any], let text = obj["text"] as? String {
-        // 文字裡第一個 { 到最後一個 } 當成 JSON；找不到就當成空物件
-        var json: String = "{}"
-        if let m = chatMatch("\\{[\\s\\S]*\\}", text), let whole = chatGroup(m, 0) { json = whole }
-        parsed = try JSONSerialization.jsonObject(with: Data(json.utf8), options: [.allowFragments])
+        return try brainFromText(text)
     }
-    let dict: [String: Any] = (parsed as? [String: Any]) ?? [:]
-    var reply: String = "好了。"
-    if let r = dict["reply"], !(r is NSNull) { reply = chatText(r) }
-    let ops: [Any] = (dict["ops"] as? [Any]) ?? []
-    return BrainOut(reply: chatSlice(reply, 600), ops: ops)
+    return brainFromDict((data as? [String: Any]) ?? [:])
 }
 
 private func chatOpHasAiPlace(_ o: Op) -> Bool {

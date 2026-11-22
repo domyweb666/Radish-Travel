@@ -18,6 +18,8 @@ struct RadishApp: App {
         if let endpoint = Bundle.main.object(forInfoDictionaryKey: "RadishAIEndpoint") as? String {
             AI_ENDPOINT = endpoint
         }
+        // 平常的我裡填的 Claude API 金鑰（存在鑰匙圈）。UI 測試從空白開始，不讀
+        CLAUDE_KEY = args.contains("-uitest-reset") ? "" : ClaudeKeyStore.load()
         _store = State(initialValue: AppStore())
     }
 

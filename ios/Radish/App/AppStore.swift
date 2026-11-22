@@ -46,6 +46,8 @@ final class AppStore {
     var drafts: [TalkTarget: String] = [:]
     /// 今天（裝置當地），YYYY-MM-DD。app 回到前景時會更新
     private(set) var today: String = todayISO()
+    /// 平常的我裡有沒有填 Claude API 金鑰。金鑰本身在鑰匙圈和 CLAUDE_KEY，這裡只是讓畫面知道要重畫
+    private(set) var claudeKeySet: Bool = !CLAUDE_KEY.isEmpty
 
     @ObservationIgnored private var undoStack: [Snapshot] = []
     @ObservationIgnored private var noticeId = 0
@@ -63,6 +65,24 @@ final class AppStore {
 
     init(fileURL: URL = AppStore.defaultURL()) {
         self.fileURL = fileURL
+    }
+
+    /// 接上 AI 了沒：有填 Claude API 金鑰，或建置時設了後端網址。畫面讀這個才會在填金鑰後跟著變
+    var aiOn: Bool {
+        return claudeKeySet || aiReady()
+    }
+
+    /// 存或清掉 Claude API 金鑰（nil 或空字串是清掉）。存進鑰匙圈，不進存檔、不進備份
+    func setClaudeKey(_ key: String?) {
+        let clean: String = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.isEmpty {
+            ClaudeKeyStore.clear()
+            CLAUDE_KEY = ""
+        } else {
+            ClaudeKeyStore.save(clean)
+            CLAUDE_KEY = clean
+        }
+        claudeKeySet = !CLAUDE_KEY.isEmpty
     }
 
     nonisolated static func defaultURL() -> URL {
@@ -313,7 +333,7 @@ extension AppStore {
 
     /// 要 AI 的句子現在送不送得出去。nil 是送得出去，或根本沒接 AI（全部本機指令，不用網路）
     var talkHold: TalkHold? {
-        if !aiReady() { return nil }
+        if !aiOn { return nil }
         if !NetWatch.shared.online { return .offline }
         if let left = talkLeft, left <= 0 { return .quota }
         return nil
@@ -346,14 +366,14 @@ extension AppStore {
 
     /// 這句要不要送給 AI：手機答不出、又有接 AI。沒網路、句數用完時，這種句子送不出去
     func talkNeedsAI(_ text: String, target: TalkTarget) -> Bool {
-        if !aiReady() { return false }
+        if !aiOn { return false }
         return talkPhone(text, target: target) == nil
     }
 
     /// 講的那一列上面那排說法，照這趟走到哪換（02-流程 5-3）。
     /// 沒接 AI 的時候，換成本機指令聽得懂的
     func talkHints(_ target: TalkTarget) -> [String] {
-        let remote: Bool = aiReady()
+        let remote: Bool = aiOn
         switch target {
         case .stop:
             // 線框 A5
@@ -403,7 +423,7 @@ extension AppStore {
             }
             return true
         }
-        let remote: Bool = aiReady()
+        let remote: Bool = aiOn
         if remote {
             if let hold = talkHold {
                 keepDraft(msg, target)
@@ -433,7 +453,7 @@ extension AppStore {
             Haptic.notify(.error)
             return
         }
-        talkSend(text, target, aiReady(), retry: nil)
+        talkSend(text, target, aiOn, retry: nil)
     }
 
     /// 第一次的說明按「先不要」：什麼都不送，講的字放回那一列
@@ -466,7 +486,7 @@ extension AppStore {
             Haptic.notify(.error)
             return
         }
-        talkSend(m.t, target, aiReady(), retry: index)
+        talkSend(m.t, target, aiOn, retry: index)
     }
 
     /// 那一列是空的才把字放回去，不蓋掉他後來打的
@@ -508,7 +528,7 @@ extension AppStore {
             if remote {
                 do {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
-                    let out: BrainOut = try await askRemote(prompt, AI_ENDPOINT)
+                    let out: BrainOut = try await askAI(prompt)
                     self.talkFinish(out, local: false, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {
                     // 沒回好、讀不懂：這趟不動，不退回本機指令（線框 A21）

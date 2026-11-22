@@ -82,4 +82,30 @@ final class TalkTests: XCTestCase {
         XCTAssertNil(m.undo)
         XCTAssertNil(m.day)
     }
+
+    func test直接問Claude_回的文字裡夾著JSON也讀得出來() throws {
+        let text: String = "好的。
+{\"reply\":\"第 3 天少排一站。\",\"ops\":[{\"op\":\"remove\",\"id\":\"p3\"}]}"
+        let out: BrainOut = try brainFromText(text)
+        XCTAssertEqual(out.reply, "第 3 天少排一站。")
+        XCTAssertEqual(out.ops.count, 1)
+        let none: BrainOut = try brainFromText("沒有 JSON")
+        XCTAssertEqual(none.reply, "好了。")
+        XCTAssertTrue(none.ops.isEmpty)
+    }
+
+    func test有填金鑰就算接上AI() {
+        let oldKey: String = CLAUDE_KEY
+        let oldEnd: String = AI_ENDPOINT
+        defer {
+            CLAUDE_KEY = oldKey
+            AI_ENDPOINT = oldEnd
+        }
+        CLAUDE_KEY = ""
+        AI_ENDPOINT = ""
+        XCTAssertFalse(aiReady())
+        CLAUDE_KEY = "sk-ant-test"
+        XCTAssertTrue(aiReady())
+        XCTAssertEqual(AskError.badKey(401).description, "Claude API 金鑰不能用（HTTP 401），到平常的我重新填")
+    }
 }

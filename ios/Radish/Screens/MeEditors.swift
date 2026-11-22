@@ -9,6 +9,8 @@ enum MeEditing: String, Identifiable {
     case reset
     /// 送給 AI 的資料：看送了什麼、收回同意
     case ai
+    /// 自己填的 Claude API 金鑰
+    case claude
 
     var id: String { rawValue }
 }
@@ -176,6 +178,8 @@ struct MeEditorSheet: View {
             MeResetSheet(close: close)
         case .ai:
             MeAiSheet(close: close)
+        case .claude:
+            MeClaudeSheet(close: close)
         case .pace, .wake, .walk, .move:
             habitPick
         case .base, .stay, .budget:
@@ -641,6 +645,99 @@ private struct MeAiSheet: View {
                 DomyText("收回之後，之後的句子不會再送出去；已經送過的，這裡收不回來。", .footnote, tone: .secondary)
             } else {
                 DomyText("還沒同意過。第一次要送給 AI 的時候，會先跟你講清楚，同意了才送。", .body, tone: .secondary)
+            }
+        }
+    }
+}
+
+/* ---------- Claude API 金鑰 ---------- */
+
+/// 自己填 Claude API 金鑰：填了之後要 AI 的句子直接問 Anthropic。金鑰存在鑰匙圈，不進備份
+private struct MeClaudeSheet: View {
+    @Environment(AppStore.self) private var store
+    let close: () -> Void
+    @State private var draft: String = ""
+    @State private var checking: Bool = false
+    @State private var err: String?
+
+    private var typed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        SheetScaffold("Claude API 金鑰", onClose: close) {
+            DomyText("填了之後，要 AI 幫忙的句子會用這把金鑰直接問 Anthropic 的 Claude（\(CLAUDE_MODEL)），不經過蘿蔔旅行。費用算在這把金鑰的 Anthropic 帳戶，app 不另外收錢。", .body)
+            DomyText("金鑰只存在這支手機的鑰匙圈裡，不會進「複製備份」；換手機要重新填。金鑰到 console.anthropic.com 的 API Keys 建一把。", .footnote, tone: .secondary)
+            if store.claudeKeySet {
+                DomySection {
+                    SettingsRow("現在用的", value: maskedClaudeKey(CLAUDE_KEY))
+                }
+            }
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                DomyText(store.claudeKeySet ? "換一把" : "貼上金鑰", .subheadline, weight: .semibold)
+                SecureField("", text: $draft, prompt: Text("sk-ant-…").foregroundStyle(C.textSecondary))
+                    .font(T.TypeScale.body.font)
+                    .foregroundStyle(C.textPrimary)
+                    .tint(C.accent)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, T.Space.s4)
+                    .padding(.vertical, T.Space.s3)
+                    .frame(minHeight: T.Size.field)
+                    .background(C.surface, in: RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
+                            .strokeBorder(err != nil ? C.destructive : C.fieldBorder, lineWidth: T.Size.hairline)
+                    )
+                    .onChange(of: draft) { _, _ in err = nil }
+                    .accessibilityLabel("Claude API 金鑰")
+                    .accessibilityIdentifier("me-claude-input")
+                if let err {
+                    DomyText(err, .footnote, tone: .destructive)
+                }
+            }
+            DomyButton(checking ? "試試看能不能用…" : "存起來，試一次", disabled: typed.isEmpty || checking, fullWidth: true) {
+                check()
+            }
+            .accessibilityIdentifier("me-claude-save")
+            DomyText("按了會送一句很短的話給 Claude 試試這把金鑰，大概用掉不到一塊台幣。", .footnote, tone: .secondary)
+            if store.claudeKeySet {
+                DomyButton("清掉金鑰", variant: .destructive, fullWidth: true) {
+                    store.setClaudeKey(nil)
+                    close()
+                    store.say("金鑰清掉了。之後只用手機答得出的和內建的幾種說法。")
+                }
+                .accessibilityIdentifier("me-claude-clear")
+            }
+        }
+    }
+
+    private func check() {
+        let key: String = typed
+        checking = true
+        err = nil
+        Task { @MainActor in
+            do {
+                try await checkClaudeKey(key)
+                store.setClaudeKey(key)
+                checking = false
+                draft = ""
+                close()
+                store.say("金鑰可以用。之後要 AI 的句子會直接問 Claude。")
+            } catch let e as AskError {
+                checking = false
+                switch e {
+                case .badKey:
+                    err = "Anthropic 不認得這把金鑰。確認有沒有整段貼完、是不是被停用了。"
+                case .noCredit:
+                    // 金鑰是對的，只是沒額度：先存起來，儲值之後就能用
+                    store.setClaudeKey(key)
+                    draft = ""
+                    err = "金鑰存起來了，但這個 Anthropic 帳戶現在沒有額度，到 console.anthropic.com 儲值之後才問得到。"
+                default:
+                    err = "沒試成功：\(e.description)。等一下再按一次。"
+                }
+            } catch {
+                checking = false
+                err = "連不上 Anthropic，看一下網路，等一下再按一次。"
             }
         }
     }

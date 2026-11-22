@@ -121,6 +121,8 @@ struct MeScreen: View {
             "資料",
             footer: "行程、去過的旅行、照片、設定都只存在這支手機裡，沒有網路也看得到。換手機前先複製備份；備份裡沒有照片，照片要另外留。"
         ) {
+            // 填了就直接問 Claude；金鑰存在鑰匙圈，不進備份
+            row("Claude API 金鑰", store.claudeKeySet ? maskedClaudeKey(CLAUDE_KEY) : "沒有填", .claude)
             // 線框 A17：同意過才寫「可以收回」。收回之後下次要送給 AI 前會再問一次
             row("送給 AI 的資料", store.s.aiConsent ? "已同意・可以收回" : "還沒同意", .ai)
             SettingsRow("複製備份") {

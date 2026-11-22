@@ -13,7 +13,13 @@ let AI_SENDS: [String] = [
     "前面幾句你跟 AI 說的話",
 ]
 let AI_NOT_SENT: String = "不會送：手機的定位、名字、聯絡方式、照片。"
-let AI_WHERE: String = "這些會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）。"
+/// 送去哪裡：平常的我填了 Claude API 金鑰就直接送 Anthropic，沒填就經過蘿蔔旅行的後端
+var AI_WHERE: String {
+    if !CLAUDE_KEY.isEmpty {
+        return "這些會用你在平常的我填的 Claude API 金鑰，直接送到 Anthropic 的 Claude，不經過蘿蔔旅行。費用算在那把金鑰的 Anthropic 帳戶。"
+    }
+    return "這些會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）。"
+}
 
 /// 幾點說的：兩分鐘內寫「剛剛」，今天寫幾點幾分，更早的加日期
 private func talkWhen(_ at: Double) -> String {
@@ -218,7 +224,7 @@ struct TalkConsent: View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             DomyText("送出之前，先講清楚", .title2)
                 .accessibilityAddTraits(.isHeader)
-            DomyText("按「同意並送出」之後，下面這些會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）：", .body)
+            DomyText("按「同意並送出」之後，會送出下面這些。\(AI_WHERE)", .body)
             VStack(alignment: .leading, spacing: T.Space.s2) {
                 TalkBullet(text: "你講的這句：「\(text)」")
                 ForEach(Array(AI_SENDS.enumerated()), id: \.offset) { _, line in

@@ -23,7 +23,7 @@ struct AskScreen: View {
 
     /// 上面那排說法（線框 A14）。沒接 AI 的時候換成本機指令聽得懂的
     private var hints: [String] {
-        if aiReady() { return ["上午下午對調", "多排一間咖啡廳", "有哪些要先訂"] }
+        if store.aiOn { return ["上午下午對調", "多排一間咖啡廳", "有哪些要先訂"] }
         return ["這趟想輕鬆一點", "上午下午對調", "有哪些要先訂"]
     }
 
@@ -135,8 +135,8 @@ struct AskScreen: View {
     /// 最上面一行小字：講什麼都可以；還沒接 AI 時老實說只聽得懂幾種說法
     private var intro: some View {
         let remote: String = "想改、想問，直接講。改完會列出動了哪幾站，可以復原。AI 不知道即時的營業時間和票價，去之前查一下。"
-        let local: String = "這一版還沒接上 AI，只聽得懂幾種說法，例如「第 3 天上午下午對調」「不要樂天世界」「這趟想輕鬆一點」。"
-        return TalkNote(text: aiReady() ? remote : local)
+        let local: String = "這一版還沒接上 AI，只聽得懂幾種說法，例如「第 3 天上午下午對調」「不要樂天世界」「這趟想輕鬆一點」。到右上角「平常的我」填 Claude API 金鑰，就能直接問 AI。"
+        return TalkNote(text: store.aiOn ? remote : local)
     }
 
     @ViewBuilder private func line(_ index: Int, _ m: ChatMsg) -> some View {
