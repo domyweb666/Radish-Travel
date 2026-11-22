@@ -15,6 +15,9 @@ let AI_SENDS: [String] = [
 let AI_NOT_SENT: String = "不會送：手機的定位、名字、聯絡方式、照片。"
 /// 送去哪裡：平常的我填了 Claude API 金鑰就直接送 Anthropic，沒填就經過蘿蔔旅行的後端
 var AI_WHERE: String {
+    if !BRIDGE_URL.isEmpty {
+        return "這些會送到你自己電腦（\(maskedBridge(BRIDGE_URL))）上的 Claude CLI，用那台電腦登入的 Claude 帳號回答，不經過蘿蔔旅行。"
+    }
     if !CLAUDE_KEY.isEmpty {
         return "這些會用你在平常的我填的 Claude API 金鑰，直接送到 Anthropic 的 Claude，不經過蘿蔔旅行。費用算在那把金鑰的 Anthropic 帳戶。"
     }

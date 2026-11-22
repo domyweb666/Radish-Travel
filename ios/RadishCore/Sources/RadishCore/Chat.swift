@@ -573,6 +573,10 @@ var AI_ENDPOINT: String = ""
 /// 有填就直接問 Anthropic，不經過蘿蔔旅行的後端
 var CLAUDE_KEY: String = ""
 
+/// 連到自己電腦的 Claude CLI（ios/tools/claude-bridge 印的 QR code，http://<IP>:<埠>/ask?t=<密碼>）。
+/// 開發測試用：有設就最優先，用那台電腦的 Claude 訂閱回答
+var BRIDGE_URL: String = ""
+
 /// 直接問 Claude 用的模型
 let CLAUDE_MODEL: String = "claude-opus-5-5"
 let CLAUDE_URL: String = "https://api.anthropic.com/v1/messages"
@@ -581,11 +585,39 @@ let CLAUDE_VERSION: String = "2026-10-21"
 let CLAUDE_FALLBACK_BETA: String = "server-side-fallback-2026-07-01"
 
 func aiReady() -> Bool {
-    return CLAUDE_KEY.count > 0 || AI_ENDPOINT.count > 0
+    return BRIDGE_URL.count > 0 || CLAUDE_KEY.count > 0 || AI_ENDPOINT.count > 0
 }
 
-/// 有填金鑰就直接問 Claude，沒有就送到自己的後端
+/* ---------- 句數（❓28，2026-11-23 多米說「幫我設定好」，Agent 先定的） ---------- */
+
+/// 一趟可以問 AI 幾句。照 HANDOFF：第一趟 20 句、之後每趟 100 句
+let AI_FIRST_TRIP_LIMIT: Int = 20
+let AI_NEXT_TRIP_LIMIT: Int = 100
+
+/// 只有走蘿蔔旅行後端的才算句數（那是 app 出的錢）。
+/// 自己填 Claude API 金鑰、連自己電腦的 Claude CLI，費用是自己的，不限句數
+func aiMetered() -> Bool {
+    return BRIDGE_URL.isEmpty && CLAUDE_KEY.isEmpty && !AI_ENDPOINT.isEmpty
+}
+
+/// 這趟還剩幾句。nil 是不限。
+/// 算法：AI 有回的才算一句（改了、沒改、只是回答都算）；手機答的、本機指令、沒網路沒送、
+/// 沒回好、被結束沒收到、Claude 不回答的都不算；復原不退句數
+func aiLeft(_ trip: Trip, firstTrip: Bool, metered: Bool) -> Int? {
+    if !metered { return nil }
+    let limit: Int = firstTrip ? AI_FIRST_TRIP_LIMIT : AI_NEXT_TRIP_LIMIT
+    return max(0, limit - (trip.aiUsed ?? 0))
+}
+
+/// 有連電腦的 CLI 就用它，再來是自己填的金鑰，最後才是後端
 func askAI(_ prompt: String) async throws -> BrainOut {
+    if !BRIDGE_URL.isEmpty {
+        do {
+            return try await askRemote(prompt, BRIDGE_URL)
+        } catch AskError.http(401) {
+            throw AskError.bridgeAuth
+        }
+    }
     if !CLAUDE_KEY.isEmpty {
         return try await askClaude(prompt, CLAUDE_KEY)
     }
@@ -692,6 +724,8 @@ enum AskError: Error, Equatable, CustomStringConvertible {
     case busy(Int)
     /// Claude 的安全檢查不回答這一句
     case refused
+    /// 電腦上的轉接程式不認這組密碼（重開過會換密碼）
+    case bridgeAuth
 
     var description: String {
         switch self {
@@ -709,6 +743,8 @@ enum AskError: Error, Equatable, CustomStringConvertible {
             return "Claude 現在太忙（HTTP \(status)），等一下再送一次"
         case .refused:
             return "Claude 不回答這一句"
+        case .bridgeAuth:
+            return "電腦上的轉接程式重開過了，到平常的我重掃一次 QR code"
         }
     }
 }
@@ -718,7 +754,7 @@ enum AskError: Error, Equatable, CustomStringConvertible {
 private func postJSON(_ url: URL, _ headers: [String: String], _ payload: [String: Any]) async throws -> (body: Data, status: Int?) {
     var req: URLRequest = URLRequest(url: url)
     req.httpMethod = "POST"
-    req.timeoutInterval = 120
+    req.timeoutInterval = 180
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
     for (k, v) in headers {
         req.setValue(v, forHTTPHeaderField: k)
@@ -803,6 +839,43 @@ func askClaude(_ prompt: String, _ key: String) async throws -> BrainOut {
     }
     if text.isEmpty { throw AskError.badReply }
     return try brainFromText(text)
+}
+
+/// 連電腦的 CLI 時試一次：把網址的 /ask 換成 /ping，拿回那台電腦的名字
+func checkBridge(_ askURL: String) async throws -> String {
+    guard let ask = URL(string: askURL), var parts = URLComponents(url: ask, resolvingAgainstBaseURL: false),
+        parts.path.hasSuffix("/ask")
+    else { throw AskError.badURL }
+    parts.path = String(parts.path.dropLast(4)) + "/ping"
+    guard let ping = parts.url else { throw AskError.badURL }
+    var req: URLRequest = URLRequest(url: ping)
+    req.timeoutInterval = 8
+    let request: URLRequest = req
+    let got: (body: Data, status: Int?) = try await withCheckedThrowingContinuation {
+        (cont: CheckedContinuation<(body: Data, status: Int?), Error>) -> Void in
+        let task: URLSessionDataTask = URLSession.shared.dataTask(with: request) {
+            (data: Data?, res: URLResponse?, error: Error?) -> Void in
+            if let error = error {
+                cont.resume(throwing: error)
+                return
+            }
+            cont.resume(returning: (body: data ?? Data(), status: (res as? HTTPURLResponse)?.statusCode))
+        }
+        task.resume()
+    }
+    let status: Int = got.status ?? 0
+    if status == 401 { throw AskError.badKey(401) }
+    if !(status >= 200 && status < 300) { throw AskError.http(status) }
+    let obj: [String: Any] = (try? JSONSerialization.jsonObject(with: got.body, options: []) as? [String: Any]) ?? [:]
+    return (obj["name"] as? String) ?? "電腦"
+}
+
+/// 掃到或貼上的是不是轉接程式的網址：http(s)://…/ask?t=…
+func looksLikeBridge(_ raw: String) -> Bool {
+    guard let u = URLComponents(string: raw.trimmingCharacters(in: .whitespacesAndNewlines)),
+        let scheme = u.scheme, scheme == "http" || scheme == "https", u.host != nil, u.path.hasSuffix("/ask")
+    else { return false }
+    return (u.queryItems ?? []).contains { (q: URLQueryItem) -> Bool in q.name == "t" && !(q.value ?? "").isEmpty }
 }
 
 /// 填金鑰時試一次：送一句很短的，看 Anthropic 認不認得這把金鑰。只看狀態碼，不看內容

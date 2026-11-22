@@ -19,7 +19,8 @@ struct RadishApp: App {
             AI_ENDPOINT = endpoint
         }
         // 平常的我裡填的 Claude API 金鑰（存在鑰匙圈）。UI 測試從空白開始，不讀
-        CLAUDE_KEY = args.contains("-uitest-reset") ? "" : ClaudeKeyStore.load()
+        CLAUDE_KEY = args.contains("-uitest-reset") ? "" : SecretStore.load(.claudeKey)
+        BRIDGE_URL = args.contains("-uitest-reset") ? "" : SecretStore.load(.bridge)
         _store = State(initialValue: AppStore())
     }
 

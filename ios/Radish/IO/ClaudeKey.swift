@@ -1,23 +1,28 @@
-// 使用者自己填的 Claude API 金鑰，存在這支手機的鑰匙圈（Keychain）。
-// 不放進存檔的 JSON，所以「複製備份」不會帶走它；設成只在這支手機、開機解鎖過後讀得到，不跟著 iCloud 走。
+// 使用者自己填的 Claude API 金鑰、連電腦 Claude CLI 的網址，存在這支手機的鑰匙圈（Keychain）。
+// 不放進存檔的 JSON，所以「複製備份」不會帶走它們；設成只在這支手機、開機解鎖過後讀得到，不跟著 iCloud 走。
 import Foundation
 import Security
 
-enum ClaudeKeyStore {
-    private static let service: String = "org.domyweb.radish.claude-api-key"
-    private static let account: String = "default"
+/// 鑰匙圈裡的一格
+enum SecretSlot: String {
+    /// Claude API 金鑰
+    case claudeKey = "org.domyweb.radish.claude-api-key"
+    /// 連電腦 Claude CLI 的網址（含密碼）
+    case bridge = "org.domyweb.radish.claude-bridge"
+}
 
-    private static var base: [String: Any] {
+enum SecretStore {
+    private static func base(_ slot: SecretSlot) -> [String: Any] {
         return [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrService as String: slot.rawValue,
+            kSecAttrAccount as String: "default",
         ]
     }
 
     /// 讀出來；沒有就是空字串
-    static func load() -> String {
-        var query: [String: Any] = base
+    static func load(_ slot: SecretSlot) -> String {
+        var query: [String: Any] = base(slot)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: AnyObject?
@@ -28,16 +33,16 @@ enum ClaudeKeyStore {
 
     /// 存起來（蓋掉舊的）。存成功回 true
     @discardableResult
-    static func save(_ key: String) -> Bool {
-        clear()
-        var item: [String: Any] = base
-        item[kSecValueData as String] = Data(key.utf8)
+    static func save(_ slot: SecretSlot, _ value: String) -> Bool {
+        clear(slot)
+        var item: [String: Any] = base(slot)
+        item[kSecValueData as String] = Data(value.utf8)
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
-    static func clear() {
-        SecItemDelete(base as CFDictionary)
+    static func clear(_ slot: SecretSlot) {
+        SecItemDelete(base(slot) as CFDictionary)
     }
 }
 
@@ -45,4 +50,11 @@ enum ClaudeKeyStore {
 func maskedClaudeKey(_ key: String) -> String {
     guard key.count > 12 else { return "已填" }
     return "\(key.prefix(7))…\(key.suffix(4))"
+}
+
+/// 畫面上顯示轉接網址時只露位址，不露密碼，例：192.168.1.23:8787
+func maskedBridge(_ url: String) -> String {
+    guard let u = URLComponents(string: url), let host = u.host else { return "已連" }
+    if let port = u.port { return "\(host):\(port)" }
+    return host
 }

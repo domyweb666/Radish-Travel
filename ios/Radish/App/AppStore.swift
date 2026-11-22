@@ -39,15 +39,14 @@ final class AppStore {
     private(set) var undoTop: String?
     /// 跟 AI 講的那一句現在怎樣：沒事、等同意、沒送出去（沒網路、句數用完）、送出中
     private(set) var talkStage: TalkStage = .idle
-    /// 這趟還剩幾句可以問 AI。nil 是不限。
-    /// ❓28 句數怎麼算還沒定、app 裡也還沒有計句數的程式，所以現在一律 nil：句數用完（線框 A20）的樣子做好了，但不會出現
-    private(set) var talkLeft: Int? = nil
     /// 每個講的地方打到一半的字（每一天、每一站各一份），切分頁再回來還在。只放在記憶體，app 被關掉就沒了（❓39）
     var drafts: [TalkTarget: String] = [:]
     /// 今天（裝置當地），YYYY-MM-DD。app 回到前景時會更新
     private(set) var today: String = todayISO()
     /// 平常的我裡有沒有填 Claude API 金鑰。金鑰本身在鑰匙圈和 CLAUDE_KEY，這裡只是讓畫面知道要重畫
     private(set) var claudeKeySet: Bool = !CLAUDE_KEY.isEmpty
+    /// 有沒有連電腦的 Claude CLI（開發測試用）。網址在鑰匙圈和 BRIDGE_URL
+    private(set) var bridgeSet: Bool = !BRIDGE_URL.isEmpty
 
     @ObservationIgnored private var undoStack: [Snapshot] = []
     @ObservationIgnored private var noticeId = 0
@@ -69,20 +68,50 @@ final class AppStore {
 
     /// 接上 AI 了沒：有填 Claude API 金鑰，或建置時設了後端網址。畫面讀這個才會在填金鑰後跟著變
     var aiOn: Bool {
-        return claudeKeySet || aiReady()
+        return claudeKeySet || bridgeSet || aiReady()
+    }
+
+    /// 這趟還剩幾句可以問 AI。nil 是不限（自己的金鑰、自己電腦的 CLI、沒接 AI）。規則在 Chat.swift 的 aiLeft
+    var talkLeft: Int? {
+        guard let trip = s.trip else { return nil }
+        _ = claudeKeySet
+        _ = bridgeSet
+        return aiLeft(trip, firstTrip: s.baskets.isEmpty && s.shelf.isEmpty, metered: aiMetered())
+    }
+
+    /// AI 有回一句：這趟的句數加一。不留復原，復原行程也不退句數
+    func countAISentence() {
+        mutate { (d: inout AppState) -> Void in
+            guard var trip = d.trip else { return }
+            trip.aiUsed = (trip.aiUsed ?? 0) + 1
+            d.trip = trip
+        }
     }
 
     /// 存或清掉 Claude API 金鑰（nil 或空字串是清掉）。存進鑰匙圈，不進存檔、不進備份
     func setClaudeKey(_ key: String?) {
         let clean: String = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.isEmpty {
-            ClaudeKeyStore.clear()
+            SecretStore.clear(.claudeKey)
             CLAUDE_KEY = ""
         } else {
-            ClaudeKeyStore.save(clean)
+            SecretStore.save(.claudeKey, clean)
             CLAUDE_KEY = clean
         }
         claudeKeySet = !CLAUDE_KEY.isEmpty
+    }
+
+    /// 存或清掉連電腦 Claude CLI 的網址（nil 或空字串是中斷連線）
+    func setBridge(_ url: String?) {
+        let clean: String = (url ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.isEmpty {
+            SecretStore.clear(.bridge)
+            BRIDGE_URL = ""
+        } else {
+            SecretStore.save(.bridge, clean)
+            BRIDGE_URL = clean
+        }
+        bridgeSet = !BRIDGE_URL.isEmpty
     }
 
     nonisolated static func defaultURL() -> URL {
@@ -529,6 +558,7 @@ extension AppStore {
                 do {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
                     let out: BrainOut = try await askAI(prompt)
+                    self.countAISentence()
                     self.talkFinish(out, local: false, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {
                     // 沒回好、讀不懂：這趟不動，不退回本機指令（線框 A21）

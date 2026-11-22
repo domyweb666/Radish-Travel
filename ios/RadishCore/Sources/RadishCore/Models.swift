@@ -179,6 +179,7 @@ struct Trip: Codable, Hashable, Sendable {
     var planBy: PlanBy?  // 這一版是誰排的。nil 當成 app 內建的排法（舊檔、現在的開一趟都是）
     var planAt: String?  // AI 排好的那一天，YYYY-MM-DD。內建的排法不寫
     var planMark: String?  // 剛排好那張卡第一次出現時，這一版的樣子（planMarkOf）。之後對不上就是改過了
+    var aiUsed: Int?  // 這趟問了 AI 幾句（AI 有回的才算，見 Chat.swift 的 aiLeft）
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的

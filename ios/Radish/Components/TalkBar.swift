@@ -104,6 +104,10 @@ struct TalkBar: View {
         case .quota?:
             return "這趟的 AI 句數用完了。手機答得出的照樣答，打的字留著。"
         case nil:
+            // 走後端、算句數的時候，剩 5 句以內才講（❓29 先這樣定）
+            if let left = store.talkLeft, left <= 5 {
+                return "這趟還能問 AI \(left) 句。手機答得出的不算。"
+            }
             return nil
         }
     }

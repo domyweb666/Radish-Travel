@@ -11,6 +11,8 @@ enum MeEditing: String, Identifiable {
     case ai
     /// 自己填的 Claude API 金鑰
     case claude
+    /// 連電腦的 Claude CLI（開發測試用）
+    case bridge
 
     var id: String { rawValue }
 }
@@ -180,6 +182,8 @@ struct MeEditorSheet: View {
             MeAiSheet(close: close)
         case .claude:
             MeClaudeSheet(close: close)
+        case .bridge:
+            MeBridgeSheet(close: close)
         case .pace, .wake, .walk, .move:
             habitPick
         case .base, .stay, .budget:
@@ -738,6 +742,119 @@ private struct MeClaudeSheet: View {
             } catch {
                 checking = false
                 err = "連不上 Anthropic，看一下網路，等一下再按一次。"
+            }
+        }
+    }
+}
+
+/* ---------- 連電腦的 Claude CLI（開發測試用） ---------- */
+
+/// 掃電腦上 ios/tools/claude-bridge 印的 QR code，之後要 AI 的句子都交給那台電腦的 Claude CLI 回答
+private struct MeBridgeSheet: View {
+    @Environment(AppStore.self) private var store
+    let close: () -> Void
+    @State private var draft: String = ""
+    @State private var scanning: Bool = false
+    @State private var checking: Bool = false
+    @State private var err: String?
+
+    private var typed: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    var body: some View {
+        SheetScaffold("連電腦的 Claude CLI", onClose: close) {
+            DomyText("開發測試用。在電腦上跑 ios/tools/claude-bridge（npm start），螢幕會出現一個 QR code，用這裡掃。連上之後，要 AI 的句子會交給那台電腦的 Claude CLI 回答，用那台電腦登入的 Claude 帳號，不另外花 API 費用。", .body)
+            DomyText("手機跟電腦要連同一個 Wi-Fi，電腦要開著。第一次連的時候 iPhone 會問要不要讓蘿蔔旅行找區網裝置，要按允許。有連電腦的時候，會先用電腦，不用你填的 Claude API 金鑰。", .footnote, tone: .secondary)
+            if store.bridgeSet {
+                DomySection {
+                    SettingsRow("現在連的", value: maskedBridge(BRIDGE_URL))
+                }
+            }
+            if QRScanner.isAvailable {
+                DomyButton("掃 QR code", variant: store.bridgeSet ? .secondary : .primary, disabled: checking, fullWidth: true) {
+                    scanning = true
+                }
+                .accessibilityIdentifier("me-bridge-scan")
+            } else {
+                DomyText("這支手機（或模擬器）不能掃，把電腦上印的網址貼在下面。", .footnote, tone: .secondary)
+            }
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                DomyText("或貼上網址", .subheadline, weight: .semibold)
+                TextField("", text: $draft, prompt: Text("http://192.168.…:8787/ask?t=…").foregroundStyle(C.textSecondary))
+                    .font(T.TypeScale.body.font)
+                    .foregroundStyle(C.textPrimary)
+                    .tint(C.accent)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, T.Space.s4)
+                    .padding(.vertical, T.Space.s3)
+                    .frame(minHeight: T.Size.field)
+                    .background(C.surface, in: RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
+                            .strokeBorder(err != nil ? C.destructive : C.fieldBorder, lineWidth: T.Size.hairline)
+                    )
+                    .onChange(of: draft) { _, _ in err = nil }
+                    .accessibilityLabel("電腦的轉接網址")
+                    .accessibilityIdentifier("me-bridge-input")
+                if let err {
+                    DomyText(err, .footnote, tone: .destructive)
+                }
+            }
+            DomyButton(checking ? "連連看…" : "連線", variant: .secondary, disabled: typed.isEmpty || checking, fullWidth: true) {
+                connect(typed)
+            }
+            .accessibilityIdentifier("me-bridge-connect")
+            if store.bridgeSet {
+                DomyButton("中斷連線", variant: .destructive, fullWidth: true) {
+                    store.setBridge(nil)
+                    close()
+                    store.say("跟電腦斷開了。")
+                }
+                .accessibilityIdentifier("me-bridge-clear")
+            }
+        }
+        .fullScreenCover(isPresented: $scanning) {
+            ZStack(alignment: .topTrailing) {
+                QRScanner { (text: String) in
+                    scanning = false
+                    connect(text)
+                }
+                .ignoresSafeArea()
+                DomyIconButton(title: "關閉", label: "關閉", neutral: true) {
+                    scanning = false
+                }
+                .padding(T.Size.screenMargin)
+            }
+        }
+    }
+
+    private func connect(_ raw: String) {
+        let url: String = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard looksLikeBridge(url) else {
+            err = "這不是轉接程式的網址。要長得像 http://192.168.x.x:8787/ask?t=一串英數字。"
+            return
+        }
+        checking = true
+        err = nil
+        Task { @MainActor in
+            do {
+                let name: String = try await checkBridge(url)
+                store.setBridge(url)
+                checking = false
+                draft = ""
+                close()
+                store.say("連上「\(name)」了。之後要 AI 的句子會交給那台電腦的 Claude CLI。")
+            } catch let e as AskError {
+                checking = false
+                if case .badKey = e {
+                    err = "密碼對不上。電腦上的轉接程式重開過的話，密碼會換，要重新掃一次。"
+                } else {
+                    err = "連上了但回得怪怪的（\(e.description)）。看一下電腦上的轉接程式有沒有在跑。"
+                }
+            } catch {
+                checking = false
+                err = "連不到電腦。確認手機跟電腦連同一個 Wi-Fi、轉接程式有在跑、iPhone 設定裡蘿蔔旅行的「區域網路」有打開。"
             }
         }
     }

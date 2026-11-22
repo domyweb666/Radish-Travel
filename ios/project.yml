@@ -57,6 +57,11 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         LSApplicationQueriesSchemes: [nmap]
         NSLocationWhenInUseUsageDescription: 打開地圖按「我在哪」的時候，用來在地圖上標出你的位置。
+        # 平常的我 → 連電腦的 Claude CLI（開發測試用）：掃電腦上的 QR code、連區網裡的電腦
+        NSCameraUsageDescription: 掃電腦上的 QR code，連到你自己電腦的 Claude CLI。只在你按「掃 QR code」時用。
+        NSLocalNetworkUsageDescription: 連到同一個 Wi-Fi 裡你自己的電腦，用那台電腦的 Claude CLI 回答。
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         # 「用講的改行程」的 AI 後端網址。空的就只用本機指令
         RadishAIEndpoint: $(RADISH_AI_ENDPOINT)
 

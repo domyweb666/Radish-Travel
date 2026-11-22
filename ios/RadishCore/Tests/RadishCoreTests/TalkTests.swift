@@ -108,4 +108,34 @@ final class TalkTests: XCTestCase {
         XCTAssertTrue(aiReady())
         XCTAssertEqual(AskError.badKey(401).description, "Claude API 金鑰不能用（HTTP 401），到平常的我重新填")
     }
+
+    func test句數_只有走後端才算_第一趟20句之後100句() {
+        var t: Trip = trip()
+        XCTAssertNil(aiLeft(t, firstTrip: true, metered: false), "自己的金鑰或電腦 CLI 不限")
+        XCTAssertEqual(aiLeft(t, firstTrip: true, metered: true), 20)
+        XCTAssertEqual(aiLeft(t, firstTrip: false, metered: true), 100)
+        t.aiUsed = 25
+        XCTAssertEqual(aiLeft(t, firstTrip: true, metered: true), 0, "用超過也不會變負的")
+        let oldKey: String = CLAUDE_KEY
+        let oldEnd: String = AI_ENDPOINT
+        let oldBridge: String = BRIDGE_URL
+        defer {
+            CLAUDE_KEY = oldKey
+            AI_ENDPOINT = oldEnd
+            BRIDGE_URL = oldBridge
+        }
+        CLAUDE_KEY = ""
+        BRIDGE_URL = ""
+        AI_ENDPOINT = "https://example.com/ai"
+        XCTAssertTrue(aiMetered())
+        BRIDGE_URL = "http://192.168.1.2:8787/ask?t=abc"
+        XCTAssertFalse(aiMetered())
+    }
+
+    func test電腦CLI的網址要有ask和密碼() {
+        XCTAssertTrue(looksLikeBridge("http://192.168.1.23:8787/ask?t=0123abcd"))
+        XCTAssertFalse(looksLikeBridge("http://192.168.1.23:8787/ask"))
+        XCTAssertFalse(looksLikeBridge("http://192.168.1.23:8787/ping?t=0123"))
+        XCTAssertFalse(looksLikeBridge("隨便一串字"))
+    }
 }
