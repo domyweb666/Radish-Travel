@@ -16,6 +16,8 @@ private let CHAT_END: String = "chat-end"
 /// 一句對話。sys 是一行小字；我說的靠右、產品色；AI 說的靠左、白底，下面列這次改了什麼
 private struct Bubble: View {
     let m: ChatMsg
+    var onApply: (() -> Void)? = nil
+    var onSkip: (() -> Void)? = nil
 
     var body: some View {
         if m.r == .sys {
@@ -36,6 +38,9 @@ private struct Bubble: View {
             if !changes.isEmpty {
                 BubbleChanges(changes: changes)
             }
+            if let ask = m.ask, !ask.isEmpty {
+                BubbleAsk(m: m, lines: ask, onApply: onApply, onSkip: onSkip)
+            }
         }
         .padding(.vertical, T.Space.s3)
         .padding(.horizontal, T.Space.s4)
@@ -55,6 +60,39 @@ private struct BubbleChanges: View {
             DomyText("這次改了", .caption, tone: .secondary)
             ForEach(Array(changes.enumerated()), id: \.offset) { _, ch in
                 DomyText(ch, .subheadline, tone: .strong)
+            }
+        }
+        .padding(.top, T.Space.s2)
+        .overlay(alignment: .top) { Hairline() }
+    }
+}
+
+/// 泡泡裡的確認卡：這幾樣要按「套用」才改。按過了只留結果
+private struct BubbleAsk: View {
+    let m: ChatMsg
+    let lines: [String]
+    let onApply: (() -> Void)?
+    let onSkip: (() -> Void)?
+
+    private var head: String {
+        if m.askOps != nil { return "要你點頭才改" }
+        return m.asked == true ? "套用了" : "沒套用"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: T.Space.s2) {
+            DomyText(head, .caption, tone: .secondary)
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                DomyText(line, .subheadline, tone: m.askOps != nil ? .strong : .secondary)
+            }
+            if m.askOps != nil {
+                HStack(spacing: T.Space.s2) {
+                    DomyButton("套用", size: .compact, haptic: true) { onApply?() }
+                        .accessibilityIdentifier("chat-ask-apply")
+                    DomyButton("不要", variant: .secondary, size: .compact) { onSkip?() }
+                        .accessibilityIdentifier("chat-ask-skip")
+                }
+                .padding(.top, T.Space.s1)
             }
         }
         .padding(.top, T.Space.s2)
@@ -116,8 +154,8 @@ struct ChatSheet: View {
                         RadishBuddy(action: busy ? .think : .idle, size: BUDDY_SIZE.avatar, crop: .bust)
                         Bubble(m: ChatMsg(r: .ai, t: FIRST))
                     }
-                    ForEach(Array(store.s.chat.enumerated()), id: \.offset) { _, m in
-                        Bubble(m: m)
+                    ForEach(Array(store.s.chat.enumerated()), id: \.offset) { index, m in
+                        Bubble(m: m, onApply: { confirm(index) }, onSkip: { skip(index) })
                     }
                     if busy {
                         Bubble(m: ChatMsg(r: .ai, t: "想一下…"))
@@ -217,6 +255,11 @@ struct ChatSheet: View {
         busy = true
         text = ""
         store.mutate { (d: inout AppState) -> Void in
+            // 還沒按的確認卡過期：行程接下來會變，那幾步不一定還對
+            for i in d.chat.indices where d.chat[i].askOps != nil {
+                d.chat[i].askOps = nil
+                d.chat[i].asked = false
+            }
             d.chat.append(ChatMsg(r: .me, t: msg))
         }
         Task { @MainActor in
@@ -251,7 +294,10 @@ struct ChatSheet: View {
         // 旅途中不整趟重排：去過的站會被洗掉
         let blockRegen: Bool = out.regen == true && now != nil
         let regen: Bool = out.regen == true && !blockRegen
-        let willChange: Bool = regen || !out.ops.isEmpty
+        // 只有要確認的改動時，這一步還沒改到行程，不留復原
+        var direct: Int = out.ops.count
+        if let t = store.s.trip { direct = splitOps(t, out.ops).direct.count }
+        let willChange: Bool = regen || direct > 0
         store.act(undoable: willChange) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }
             if failed {
@@ -269,11 +315,19 @@ struct ChatSheet: View {
                 changes.append("整趟照現在的設定重排了")
             }
             var seeds: [Seed] = d.seeds
-            let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, out.ops, now)
+            // 權限表上要確認的先不改，放進確認卡
+            let split: (direct: [Any], confirm: [[String: Any]]) = splitOps(trip, out.ops)
+            let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, split.direct, now)
             d.trip = trip
             d.seeds = seeds
             changes.append(contentsOf: r.changes)
-            d.chat.append(ChatMsg(r: .ai, t: out.reply, changes: changes))
+            var said: ChatMsg = ChatMsg(r: .ai, t: out.reply, changes: changes)
+            if !split.confirm.isEmpty {
+                let after: Trip = trip
+                said.ask = split.confirm.map { (o: [String: Any]) -> String in opLine(after, o) }
+                said.askOps = packOps(split.confirm)
+            }
+            d.chat.append(said)
             if blockRegen {
                 d.chat.append(ChatMsg(r: .sys, t: NO_REGEN_ON_TRIP))
             }
@@ -286,6 +340,44 @@ struct ChatSheet: View {
             }
             d.chat = Array(d.chat.suffix(CHAT_KEEP))
             return nil
+        }
+    }
+
+    /// 確認卡按「套用」：照權限表放行要確認的那幾步，可以復原
+    @MainActor
+    private func confirm(_ index: Int) {
+        let now: TripNow? = tripNow(store.phase.map { (p: Phase) -> ChatClock in chatClock(p) })
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            guard var trip = d.trip, index < d.chat.count, let raw = d.chat[index].askOps else { return nil }
+            var seeds: [Seed] = d.seeds
+            let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, unpackOps(raw), now, true)
+            let tweaked: Bool = trip.tweaks != d.trip?.tweaks
+            d.trip = trip
+            d.seeds = seeds
+            d.chat[index].askOps = nil
+            d.chat[index].asked = true
+            let done: String = r.changes.joined(separator: "；")
+            d.chat.append(ChatMsg(r: .sys, t: done.isEmpty ? "沒有改到東西。" : "套用了：" + done))
+            for n in r.notes {
+                d.chat.append(ChatMsg(r: .sys, t: n))
+            }
+            // 旅途中不整趟重排，就不提重排
+            if tweaked && now == nil {
+                d.chat.append(ChatMsg(r: .sys, t: "之後改行程會照這個排。想整趟照這個重排，說「重排」。"))
+            }
+            d.chat = Array(d.chat.suffix(CHAT_KEEP))
+            return nil
+        }
+    }
+
+    /// 確認卡按「不要」：什麼都不改
+    @MainActor
+    private func skip(_ index: Int) {
+        store.mutate { (d: inout AppState) -> Void in
+            guard index < d.chat.count, d.chat[index].askOps != nil else { return }
+            d.chat[index].askOps = nil
+            d.chat[index].asked = false
+            d.chat.append(ChatMsg(r: .sys, t: "好，沒改。"))
         }
     }
 }

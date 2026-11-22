@@ -282,6 +282,9 @@ struct ChatMsg: Codable, Hashable, Sendable {
     var r: ChatRole
     var t: String
     var changes: [String]?
+    var ask: [String]?  // 確認卡上的每一行：這些要使用者按「套用」才改
+    var askOps: String?  // 確認卡對應的 op（JSON）。按過或過期了就清掉
+    var asked: Bool?  // 按了什麼：true 套用、false 不要；還沒按是 nil
 }
 
 /// 排好了、先放在一邊的一趟。行程、對話、要先訂的勾選都跟著它

@@ -81,9 +81,13 @@ final class FlowUITests: RadishUITestCase {
         tapId("open-chat")
         requireVisible(idQuery("chat-input"), "對話輸入框")
         shot("用講的改行程")
+        // 第一個提示句是「這趟想輕鬆一點」：要確認的改動，會跳確認卡
         tapId("chat-hint-0")
         RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         shot("用講的改行程-講完一句")
+        tapId("chat-ask-apply")
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        shot("用講的改行程-按了套用")
         tapButton("關閉")
 
         tapId("open-map")

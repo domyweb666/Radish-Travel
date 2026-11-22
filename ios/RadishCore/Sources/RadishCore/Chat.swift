@@ -46,7 +46,15 @@ struct BrainOut {
     var regen: Bool?
 }
 
-let LOCAL_HINTS: [String] = ["第 2 天上午下午對調", "第 2 天跟第 3 天對調", "第 3 天輕鬆一點", "重排"]
+let LOCAL_HINTS: [String] = ["這趟想輕鬆一點", "第 2 天上午下午對調", "第 2 天跟第 3 天對調", "第 3 天輕鬆一點", "重排"]
+
+/// 本機指令認得的「這趟」調整：說到這幾個字就是那一種
+private let TWEAK_WORDS: [(word: String, tweak: Tweak)] = [
+    (word: "長輩", tweak: .elder), (word: "輕鬆", tweak: .easy), (word: "省", tweak: .save), (word: "慶祝", tweak: .treat),
+]
+
+/// 要確認的改動，AI 或本機指令回話時講的那一句
+let NEED_CONFIRM: String = "這個要你點頭：下面那張卡按「套用」才會改。"
 let AI_HINTS: [String] = ["第 2 天上午下午對調", "第 3 天輕鬆一點", "多排一點咖啡廳", "有一天想整天逛街", "雨天備案是什麼"]
 
 /// 旅途中說要整趟重排時回的話
@@ -157,6 +165,13 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
         if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
         return BrainOut(reply: "好，整趟重排一次。", ops: [], regen: true)
     }
+    // 「這趟想輕鬆一點」這種講整趟的，是這趟的調整，要確認。講到第幾天的留給下面
+    if msg.contains("這趟") && !msg.contains("第") {
+        for w in TWEAK_WORDS where msg.contains(w.word) {
+            let op: [String: Any] = ["op": "setTweak", "tweak": w.tweak.rawValue, "on": true]
+            return BrainOut(reply: NEED_CONFIRM, ops: [op])
+        }
+    }
     if let m = chatMatch("第\\s*([0-9]+)\\s*天.*第\\s*([0-9]+)\\s*天.*(對調|交換|互換)", msg),
         let d1 = chatGroup(m, 1), let d2 = chatGroup(m, 2)
     {
@@ -197,7 +212,7 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
         }
     }
     return BrainOut(
-        reply: "這一版還沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「重排」。",
+        reply: "這一版還沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「這趟想輕鬆一點」「重排」。",
         ops: []
     )
 }
@@ -430,6 +445,11 @@ private func chatApplyOne(_ t: inout Trip, _ seeds: inout [Seed], _ o: [String: 
         } else {
             err = "換不了，找不到其中一個"
         }
+    } else if op == "setTweak" {
+        let on: Bool = permitOn(o["on"])
+        let line: String = opLine(t, o)
+        err = setTweak(&t, o["tweak"], on)
+        if err == nil { changes.append(line) }
     } else if op == "rest" {
         let dayRaw: Double = chatNum(o["day"])
         let part: Part? = chatPart(o["part"])
@@ -506,8 +526,11 @@ private func chatFrozen(_ t: Trip, _ o: [String: Any], _ now: TripNow?) -> Strin
 /// 把一串動作套到行程上。changes 是給人看的「哪一站從哪到哪」，notes 是沒做成的原因。
 /// ops 是 JSONSerialization 解出來的東西（AI 回的，不可信），也可以直接給 [Op]
 /// now 有給（旅途中）時，過去的時段不動；拔起來的站不管什麼時候都不動
+/// 權限表（Permit.swift）上沒有的 op 不做；要確認的 op 只有 confirmed 是 true（使用者按了套用）才做
 @discardableResult
-func applyOps(_ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?, _ now: TripNow? = nil) -> (changes: [String], notes: [String]) {
+func applyOps(
+    _ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?, _ now: TripNow? = nil, _ confirmed: Bool = false
+) -> (changes: [String], notes: [String]) {
     var changes: [String] = []
     var notes: [String] = []
     guard let list = ops as? [Any] else { return (changes: changes, notes: notes) }
@@ -525,6 +548,11 @@ func applyOps(_ t: inout Trip, _ seeds: inout [Seed], _ ops: Any?, _ now: TripNo
         }
         // 不是物件的（數字、字串、陣列）在 TS 是每個分支都不成立，什麼都不做
         guard let o = obj else { continue }
+        guard let level = opLevel(t, o) else { continue }
+        if level == .confirm && !confirmed {
+            notes.append("\(opLine(t, o))：要你確認才改")
+            continue
+        }
         if let stop = chatFrozen(t, o, now) {
             notes.append(stop)
             continue
@@ -590,6 +618,7 @@ func aiPrompt(_ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ c
 - 使用者的過敏是硬規則：不要加主打那些食材的店或小吃。你不知道每家店的食材，所以只要動到吃的站，reply 裡提醒他點餐前出示過敏告知卡、自己確認。
 - 「絕對不吃」的不要排；「不愛吃」的盡量避開，真的排了要在 reply 裡先講。
 - 使用者說過「以後都不排」的站或類別，不要加回來。
+- 動到標「自己加的」站、或用 setTweak 改這趟的調整，app 會跳一張卡讓他按「套用」才改。這種時候 reply 說要他確認，不要說已經改好。
 """
 
     var rules: String = ""
@@ -621,6 +650,7 @@ ops 可用的動作：
 {"op":"add","day":3,"part":"pm","place":{"n":"中文名","kr":"韓文名","c":"eat|shop|fun|sight|art|nature|cafe|night|kpop","s":"L|S","tip":"一句須知","lat":37.5,"lng":127.0}}
 {"op":"replace","id":"p3","with":"p12"}            換成候選裡的另一個（with 也可以是上面那種 place 物件）
 {"op":"rest","day":3,"part":"pm","on":true}        把某個時段設成留白或取消留白
+{"op":"setTweak","tweak":"easy","on":true}         這趟加上或拿掉一個調整（tweak: elder 帶長輩／easy 想輕鬆一點／save 想省一點／treat 有要慶祝的事），要使用者確認
 """
 
     return head + rules + mid + tail
