@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>第一次問 AI 的說明</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#111111}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 393px; height: 852px; position: relative; overflow: hidden; background: #F2F2F2; color: #111111; font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 393px; height: 59px; box-sizing: border-box; padding-bottom: 6px; background: #E3E3E3; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; line-height: 14px; color: #555555;">系統：狀態列、動態島</div>
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 59px; width: 393px; padding: 44px 20px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;">
+    <span style="font-size: 34px; line-height: 41px; font-weight: 700;">開一趟</span>
+    <span style="font-size: 15px; line-height: 20px; color: #555555;">第一版只排首爾</span>
+    <span style="display: block; height: 90px; border-radius: 16px; background: #FFFFFF;"></span>
+  </div>
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 59px; width: 393px; height: 793px; background: #111111; opacity: 0.35;"></div>
+
+  <section role="dialog" aria-label="送出之前，先講清楚" style="position: absolute; left: 0; top: 230px; width: 393px; height: 622px; box-sizing: border-box; padding: 0 20px 34px; background: #FFFFFF; border-radius: 20px 20px 0 0; display: flex; flex-direction: column;">
+    <div aria-hidden="true" style="height: 20px; display: flex; align-items: center; justify-content: center;"><span style="display: block; width: 36px; height: 5px; border-radius: 3px; background: #BDBDBD;"></span></div>
+    <h2 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 700;">送出之前，先講清楚</h2>
+    <p style="margin: 12px 0 0; font-size: 15px; line-height: 22px;">按「同意並送出」之後，這些會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）：</p>
+    <ul style="margin: 8px 0 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 22px;">
+      <li>你講的這句：「下個月去首爾玩 5 天，住明洞附近，想多排咖啡廳和市場，不想太趕」</li>
+      <li>這趟的日期、幾點到幾點走、幾個人、住哪一帶</li>
+      <li>平常的我裡的習慣。你還沒設的，先照一般的排法</li>
+    </ul>
+    <p style="margin: 10px 0 0; font-size: 15px; line-height: 22px;">AI 提的地點名稱，會拿去 Google 地圖查有沒有這個地方，不帶你的資料。</p>
+    <p style="margin: 10px 0 0; font-size: 15px; line-height: 22px; font-weight: 600;">不會送：手機的定位、名字、聯絡方式、照片。</p>
+    <p style="margin: 6px 0 0; font-size: 13px; line-height: 18px; color: #555555;">只有第一次會問。之後在「平常的我」可以收回。</p>
+    <button type="button" style="margin-top: 16px; height: 52px; border-radius: 14px; border: 0; background: #111111; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 600; outline: 1px dashed #8C8C8C; outline-offset: 3px;">同意並送出</button>
+    <button type="button" style="margin-top: 12px; height: 52px; border-radius: 14px; border: 1px solid #9A9A9A; background: #FFFFFF; color: #111111; font: inherit; font-size: 17px; font-weight: 600; outline: 1px dashed #8C8C8C; outline-offset: 3px;">先不要</button>
+    <p style="margin: 8px 0 0; font-size: 13px; line-height: 18px; color: #555555; text-align: center;">先不要的話，你講的都留著。</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

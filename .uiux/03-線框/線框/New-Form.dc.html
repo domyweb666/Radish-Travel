@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>開一趟・表單加想怎麼玩</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#111111}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 393px; height: 852px; position: relative; overflow: hidden; background: #F2F2F2; color: #111111; font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 393px; height: 59px; box-sizing: border-box; padding-bottom: 6px; background: #E3E3E3; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; line-height: 14px; color: #555555;">系統：狀態列、動態島</div>
+
+  <div style="position: absolute; left: 0; top: 59px; width: 393px; display: flex; flex-direction: column;">
+    <div style="height: 44px; display: flex; justify-content: flex-end; padding: 0 20px;">
+      <button type="button" aria-label="平常的我" style="width: 44px; height: 44px; border: 1px dashed #8C8C8C; border-radius: 22px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0;">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"></path></svg>
+      </button>
+    </div>
+    <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 4px;">
+      <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700;">開一趟</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 20px; color: #555555;">填完按最下面的「幫我排」</p>
+    </div>
+
+    <div style="margin: 12px 20px 0; background: #FFFFFF; border-radius: 16px; overflow: hidden;">
+      <div style="height: 52px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 17px;">去哪</span><span style="font-size: 17px; color: #333333;">首爾</span></div>
+    </div>
+
+    <div style="margin: 12px 20px 0; padding: 12px; background: #FFFFFF; border-radius: 16px;">
+      <label style="display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 15px; line-height: 20px; font-weight: 600;">想怎麼玩（可以不填）</span>
+        <textarea rows="3" placeholder="例如：想去弘大和聖水逛街，晚上吃烤肉" style="height: 76px; box-sizing: border-box; padding: 8px 12px; border-radius: 12px; border: 1px solid #9A9A9A; outline: 1px dashed #8C8C8C; outline-offset: 2px; resize: none; font: inherit; font-size: 17px; line-height: 24px; color: #111111; background: #FFFFFF;"></textarea>
+      </label>
+    </div>
+
+    <div style="margin: 12px 20px 0; background: #FFFFFF; border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+      <button type="button" style="height: 52px; padding: 0 14px; border: 0; border-bottom: 1px solid #E3E3E3; background: transparent; display: flex; align-items: center; justify-content: space-between; font: inherit; color: inherit; outline: 1px dashed #8C8C8C; outline-offset: -3px;"><span style="font-size: 17px;">出發日</span><span style="font-size: 17px; color: #333333;">12/16（三）</span></button>
+      <button type="button" style="height: 52px; padding: 0 14px; border: 0; background: transparent; display: flex; align-items: center; justify-content: space-between; font: inherit; color: inherit; outline: 1px dashed #8C8C8C; outline-offset: -3px;"><span style="font-size: 17px;">去幾天</span><span style="font-size: 17px; color: #333333;">5 天・12/20 回來</span></button>
+    </div>
+
+    <div style="margin: 12px 20px 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 13px; line-height: 18px; color: #555555;">第一天幾點到</span>
+      <div role="radiogroup" aria-label="第一天幾點到" style="height: 44px; padding: 3px; box-sizing: border-box; border-radius: 12px; background: #E0E0E0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;">
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">中午前</button>
+        <button type="button" role="radio" aria-checked="true" style="border: 1px solid #9A9A9A; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">下午</button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">晚上</button>
+      </div>
+    </div>
+    <div style="margin: 12px 20px 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 13px; line-height: 18px; color: #555555;">最後一天幾點走</span>
+      <div role="radiogroup" aria-label="最後一天幾點走" style="height: 44px; padding: 3px; box-sizing: border-box; border-radius: 12px; background: #E0E0E0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;">
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">上午</button>
+        <button type="button" role="radio" aria-checked="true" style="border: 1px solid #9A9A9A; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">下午</button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">晚上</button>
+      </div>
+    </div>
+    <div style="margin: 12px 20px 0; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 13px; line-height: 18px; color: #555555;">幾個人去</span>
+      <div role="radiogroup" aria-label="幾個人去" style="height: 44px; padding: 3px; box-sizing: border-box; border-radius: 12px; background: #E0E0E0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;">
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">我一個人</button>
+        <button type="button" role="radio" aria-checked="true" style="border: 1px solid #9A9A9A; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">兩個人</button>
+        <button type="button" role="radio" aria-checked="false" style="border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: -2px;">三四個人</button>
+      </div>
+    </div>
+    <div style="margin: 12px 20px 0; background: #FFFFFF; border-radius: 16px; overflow: hidden;">
+      <div style="height: 52px; padding: 0 14px; display: flex; align-items: center; justify-content: space-between;"><span style="font-size: 17px;">住哪一帶</span><span style="font-size: 17px; color: #333333;">明洞</span></div>
+    </div>
+  </div>
+
+  <nav aria-label="分頁" style="position: absolute; left: 46px; top: 742px; width: 300px; height: 64px; box-sizing: border-box; padding: 6px; display: flex; gap: 4px; background: #FFFFFF; border: 1px solid #C8C8C8; border-radius: 32px;">
+    <button type="button" aria-current="page" style="flex: 1; border: 1px dashed #8C8C8C; border-radius: 26px; background: #E0E0E0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; color: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 700;">這趟</span>
+    </button>
+    <button type="button" style="flex: 1; border: 1px dashed #8C8C8C; border-radius: 26px; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; color: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4zM8 9.5h8M8 12.5h5"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500;">問 AI</span>
+    </button>
+    <button type="button" style="flex: 1; border: 1px dashed #8C8C8C; border-radius: 26px; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; color: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500;">旅行</span>
+    </button>
+  </nav>
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 818px; width: 393px; height: 34px; background: #E3E3E3; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 14px; color: #555555;">系統：主畫面指示條</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

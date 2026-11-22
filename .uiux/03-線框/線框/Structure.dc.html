@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>分頁怎麼分</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#111111}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 600px; height: 852px; box-sizing: border-box; padding: 40px 32px; background: #F2F2F2; color: #111111; font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif; display: flex; flex-direction: column; gap: 20px;">
+  <div style="display: flex; flex-direction: column; gap: 6px;">
+    <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700;">分頁怎麼分</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 22px; color: #555555;">暫定，等樹狀測試（❓4）。跟 AI 講分兩層：「問 AI」是一個地方，佔一格分頁；「講一句」是動作，放在這趟每一天上，不用捲就看得到。</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+    <section style="padding: 16px; background: #FFFFFF; border-radius: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 700;">現在：四個分頁</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 21px;">
+        <div><span style="font-weight: 700;">行前</span><br><span style="color: #333333;">出發前、在當地、回程、花費</span></div>
+        <div><span style="font-weight: 700;">這趟</span><br><span style="color: #333333;">一次看一天；當天清單下面才有「用講的改行程」</span></div>
+        <div><span style="font-weight: 700;">旅行</span><br><span style="color: #333333;">每一趟、下次再來、去過的</span></div>
+        <div><span style="font-weight: 700;">我</span><br><span style="color: #333333;">平常的我</span></div>
+        <div style="padding-top: 10px; border-top: 1px solid #DADADA; color: #555555;">對話是一張彈出卡，往下一滑就關，打到一半的字跟著不見。</div>
+      </div>
+    </section>
+
+    <section style="padding: 16px; background: #FFFFFF; border-radius: 16px; border: 2px solid #111111; display: flex; flex-direction: column; gap: 12px;">
+      <h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 700;">提案：三個分頁</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 21px;">
+        <div><span style="font-weight: 700;">這趟</span><br><span style="color: #333333;">一次看一天，每一天上都有講的地方</span>
+          <div style="margin-top: 4px; padding-left: 12px; border-left: 2px solid #CFCFCF; color: #333333;">檢查這趟（原本行前的出發前）<br>須知（原本行前的在當地、回程）<br>更多 → 花費</div>
+        </div>
+        <div><span style="font-weight: 700;">問 AI</span><br><span style="color: #333333;">這趟的對話串，切走再切回來還在</span></div>
+        <div><span style="font-weight: 700;">旅行</span><br><span style="color: #333333;">每一趟、下次再來、去過的</span></div>
+        <div style="padding-top: 10px; border-top: 1px solid #DADADA; color: #333333;"><span style="font-weight: 700;">右上角：平常的我</span><br>原本的「我」分頁，設一次、每趟沿用</div>
+      </div>
+    </section>
+  </div>
+
+  <div style="padding: 16px; background: #FFFFFF; border-radius: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 22px;">
+    <span>方向 B 打開就是問 AI，分頁順序跟著換成「問 AI／這趟／旅行」：打開停的那一格放第一個（❓6）。</span>
+    <span>分頁的名字「問 AI」也是測了再定，候選還有「對話」「用講的改行程」（❓8）。</span>
+    <span>樹狀測試兩棵都測：提案這棵和現在這棵，每棵 3 個沒看過的人（❓47）。題目就是五條任務句。</span>
+  </div>
+
+  <div style="padding: 16px; background: #FFFFFF; border-radius: 16px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; line-height: 22px;">
+    <span style="font-weight: 700;">五條任務句</span>
+    <span>1. 你下個月要去首爾玩 5 天，住明洞附近，想多排咖啡廳和市場，不想太趕。請用這個 app 把行程排出來。</span>
+    <span>2. 行程排好了，你覺得第 3 天太滿，而且不想去樂天世界。請把它改掉，改完說得出動了哪幾站。</span>
+    <span>3. 你人在首爾，剛逛完益善洞，想知道接下來去哪、怎麼過去。</span>
+    <span>4. 還有一週出發，你想確認整趟有沒有排錯：會不會遇到休館、有沒有要先訂卻還沒訂的。</span>
+    <span>5. 明天要去的地方，你想先知道每一站要注意什麼，例如要帶現金、要排隊、要先買票。</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":600,"height":852}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
