@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>方向 A・移到別的時段</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#111111}a:hover{color:#000000}
+</style>
+</helmet>
+<div style="width: 393px; height: 852px; position: relative; overflow: hidden; background: #F2F2F2; color: #111111; font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 393px; height: 59px; box-sizing: border-box; padding-bottom: 6px; background: #E3E3E3; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; line-height: 14px; color: #555555;">系統：狀態列、動態島</div>
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 59px; width: 393px; padding: 44px 20px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;">
+    <span style="font-size: 34px; line-height: 41px; font-weight: 700;">景福宮</span>
+    <span style="font-size: 15px; line-height: 20px; color: #555555;">第 2 天・12/17（四）上午・鐘路・景福宮</span>
+    <span style="display: block; height: 186px; border-radius: 16px; background: #FFFFFF;"></span>
+  </div>
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 59px; width: 393px; height: 793px; background: #111111; opacity: 0.35;"></div>
+
+  <section role="dialog" aria-label="把景福宮移到別的時段" style="position: absolute; left: 0; top: 296px; width: 393px; height: 556px; box-sizing: border-box; padding: 0 20px 34px; background: #FFFFFF; border-radius: 20px 20px 0 0; display: flex; flex-direction: column;">
+    <div aria-hidden="true" style="height: 20px; display: flex; align-items: center; justify-content: center;"><span style="display: block; width: 36px; height: 5px; border-radius: 3px; background: #BDBDBD;"></span></div>
+    <h2 style="margin: 0; font-size: 22px; line-height: 28px; font-weight: 700;">把「景福宮」移到</h2>
+    <p style="margin: 4px 0 0; font-size: 13px; line-height: 18px; color: #555555;">現在在第 2 天上午。在路上的時段不能選。</p>
+
+    <div style="margin-top: 12px; display: grid; grid-template-columns: 60px 1fr 1fr 1fr; gap: 6px; align-items: center;">
+      <span></span>
+      <span style="font-size: 13px; line-height: 18px; color: #555555; text-align: center;">上午</span>
+      <span style="font-size: 13px; line-height: 18px; color: #555555; text-align: center;">下午</span>
+      <span style="font-size: 13px; line-height: 18px; color: #555555; text-align: center;">晚上</span>
+
+      <span style="display: flex; flex-direction: column;"><span style="font-size: 15px; line-height: 20px; font-weight: 600;">第 1 天</span><span style="font-size: 12px; line-height: 16px; color: #555555;">12/16</span></span>
+      <button type="button" disabled aria-label="第 1 天上午，在路上，不能選" style="height: 52px; border-radius: 12px; border: 1px solid #E0E0E0; background: #F2F2F2; font: inherit; font-size: 13px; color: #6B6B6B;">在路上</button>
+      <button type="button" disabled aria-label="第 1 天下午，在路上，不能選" style="height: 52px; border-radius: 12px; border: 1px solid #E0E0E0; background: #F2F2F2; font: inherit; font-size: 13px; color: #6B6B6B;">在路上</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">2 站</button>
+
+      <span style="display: flex; flex-direction: column;"><span style="font-size: 15px; line-height: 20px; font-weight: 600;">第 2 天</span><span style="font-size: 12px; line-height: 16px; color: #555555;">12/17</span></span>
+      <button type="button" disabled aria-label="第 2 天上午，景福宮現在在這" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #E0E0E0; font: inherit; font-size: 13px; font-weight: 600; color: #111111;">現在在這</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">2 站</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+
+      <span style="display: flex; flex-direction: column;"><span style="font-size: 15px; line-height: 20px; font-weight: 600;">第 3 天</span><span style="font-size: 12px; line-height: 16px; color: #555555;">12/18</span></span>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">2 站</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+
+      <span style="display: flex; flex-direction: column;"><span style="font-size: 15px; line-height: 20px; font-weight: 600;">第 4 天</span><span style="font-size: 12px; line-height: 16px; color: #555555;">12/19</span></span>
+      <button type="button" aria-pressed="true" style="height: 52px; border-radius: 12px; border: 2px solid #111111; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 700; color: #111111; display: flex; align-items: center; justify-content: center; gap: 4px; outline: 1px dashed #8C8C8C; outline-offset: 2px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>2 站</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+
+      <span style="display: flex; flex-direction: column;"><span style="font-size: 15px; line-height: 20px; font-weight: 600;">第 5 天</span><span style="font-size: 12px; line-height: 16px; color: #555555;">12/20</span></span>
+      <button type="button" style="height: 52px; border-radius: 12px; border: 1px solid #CFCFCF; background: #FFFFFF; font: inherit; font-size: 15px; color: #111111; outline: 1px dashed #8C8C8C; outline-offset: 2px;">1 站</button>
+      <button type="button" disabled aria-label="第 5 天下午，在路上，不能選" style="height: 52px; border-radius: 12px; border: 1px solid #E0E0E0; background: #F2F2F2; font: inherit; font-size: 13px; color: #6B6B6B;">在路上</button>
+      <button type="button" disabled aria-label="第 5 天晚上，在路上，不能選" style="height: 52px; border-radius: 12px; border: 1px solid #E0E0E0; background: #F2F2F2; font: inherit; font-size: 13px; color: #6B6B6B;">在路上</button>
+    </div>
+
+    <p style="margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: #F2F2F2; font-size: 15px; line-height: 22px;">第 4 天現在有 1 個主要景點、共 4 站</p>
+
+    <div style="margin-top: 14px; display: flex; gap: 8px;">
+      <button type="button" style="flex: 1; height: 52px; border-radius: 14px; border: 0; background: #111111; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 600; outline: 1px dashed #8C8C8C; outline-offset: 3px;">移過去</button>
+      <button type="button" style="flex: 1; height: 52px; border-radius: 14px; border: 1px solid #9A9A9A; background: #FFFFFF; color: #111111; font: inherit; font-size: 17px; font-weight: 600; outline: 1px dashed #8C8C8C; outline-offset: 3px;">取消</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

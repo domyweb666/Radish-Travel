@@ -18,7 +18,10 @@ a{color:#111111}a:hover{color:#000000}
   <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 393px; height: 59px; box-sizing: border-box; padding-bottom: 6px; background: #E3E3E3; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; line-height: 14px; color: #555555;">系統：狀態列、動態島</div>
 
   <div style="position: absolute; left: 0; top: 59px; width: 393px; display: flex; flex-direction: column;">
-    <div style="height: 44px; display: flex; justify-content: flex-end; padding: 0 20px;">
+    <div style="height: 44px; display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px;">
+      <button type="button" aria-label="更多" style="width: 44px; height: 44px; border: 1px dashed #8C8C8C; border-radius: 22px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0;">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>
+      </button>
       <button type="button" aria-label="平常的我" style="width: 44px; height: 44px; border: 1px dashed #8C8C8C; border-radius: 22px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0;">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"></path></svg>
       </button>
@@ -61,9 +64,10 @@ a{color:#111111}a:hover{color:#000000}
       <button type="button" style="flex-shrink: 0; height: 44px; padding: 0; border: 1px dashed #8C8C8C; border-radius: 22px; background: transparent; font: inherit; color: inherit;"><span style="display: block; height: 36px; margin: 0 4px; padding: 0 14px; border-radius: 18px; background: #E0E0E0; font-size: 15px; line-height: 36px;">多排一間咖啡廳</span></button>
     </div>
     <div style="display: flex; gap: 8px; align-items: center; padding: 8px 20px 0;">
-      <label style="flex: 1; display: block; height: 48px;">
-        <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">跟 AI 講</span>
-        <input type="text" value="第 3 天太滿，而且不想去樂天世界" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 16px; border-radius: 24px; background: #FFFFFF; border: 2px solid #111111; outline: 1px dashed #8C8C8C; outline-offset: 3px; font: inherit; font-size: 17px; color: #111111;">
+      <label style="flex: 1; min-width: 0; height: 48px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 6px; border-radius: 24px; background: #FFFFFF; border: 2px solid #111111; outline: 1px dashed #8C8C8C; outline-offset: 3px;">
+        <span style="flex-shrink: 0; height: 34px; padding: 0 10px; border-radius: 17px; background: #E0E0E0; color: #111111; font-size: 13px; line-height: 34px; font-weight: 600;">第 3 天</span>
+        <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">跟 AI 講第 3 天</span>
+        <input type="text" value="第 3 天太滿，而且不想去樂天世界" style="flex: 1; min-width: 0; height: 40px; border: 0; padding: 0; background: transparent; font: inherit; font-size: 17px; color: #111111; outline: none;">
       </label>
       <a href="A3-Reply.dc.html" aria-label="送出" style="width: 48px; height: 48px; flex-shrink: 0; border-radius: 24px; background: #111111; display: flex; align-items: center; justify-content: center; outline: 1px dashed #8C8C8C; outline-offset: 3px;">
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
