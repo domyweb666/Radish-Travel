@@ -53,10 +53,12 @@
 
 ## ⏭️ 下一步從哪繼續
 
+> 2026-11-23 更新：片 1 做完。外殼在 `ios/Radish/App/Nav.swift`、推進頁在 `Screens/TripPages.swift`；問 AI 分頁暫時是 `ChatSheet(inTab: true)`。這趟標題下的日期那行還是舊寫法，A1 的一行寫法留給片 2 或片 6。下一個從片 2 開始。
+
 1. 先問多米：另一條 SwiftUI 線（5c1d537、cadf4ec 改了 `ChatSheet.swift`、`Chat.swift`、`Permit.swift`）還在跑嗎？還在跑就先講好誰改哪些檔，不要兩條線同時改同一批 `ios/` 檔
 2. 讀這份、`方向說明-暫定.md`、`ios/README.md`，再看 `02-流程-暫定.md` 第 5-6 段。設計寫成程式照多米的流程走 VibeRails（9-8：附 `.uiux/05-設計代號/` 和詞彙表）
 3. 照 CLAUDE.md「行動前先給計畫」，把下面的切法給多米看，他點頭再動工。每片推上 `swiftui` 都要等 iOS check 綠（`bash ios/tools/watch-check.sh`），看過截圖再做下一片：
-   - 片 1 外殼：四個分頁改三個，右上角更多和平常的我，行前拆成檢查這趟、須知、花費三個推進頁（A1 頂端、A7、A15、A17、A18、Check、Notes）。主要動 `Radish/App/RadishApp.swift`、`Screens/Prep*.swift`、`Screens/MeScreen.swift`、`Sheets/MoreSheet.swift`
+   - ✅（2026-11-23 做完，1edf80e、e9b7888、2a22ce3，CI 全綠；多米說另一條 SwiftUI 線停了）片 1 外殼：四個分頁改三個，右上角更多和平常的我，行前拆成檢查這趟、須知、花費三個推進頁（A1 頂端、A7、A15、A17、A18、Check、Notes）。主要動 `Radish/App/RadishApp.swift`、`Screens/Prep*.swift`、`Screens/MeScreen.swift`、`Sheets/MoreSheet.swift`
    - 片 2 這一天的講：每一天最下面的常駐輸入列、說法、小標；送出後升起「剛剛那一則」半頁（A1、A1-Keyboard、A2、A3），加沒網路、句數用完、沒回好（A19–A21）和確認卡。主要動 `Screens/TripScreen*.swift`、`Sheets/ChatSheet.swift`
    - 片 3 問 AI 分頁：對話從彈出卡搬成分頁，最上面「在看：第 N 天」可以換天（A14）
    - 片 4 一站：彈出卡改推進頁，輸入列小標換成站名；移到別的時段的格子、給司機看、過敏告知卡（A5、A6、A11、A13）。主要動 `Sheets/StopSheet*.swift`、`Components/AllergyCardView.swift`
