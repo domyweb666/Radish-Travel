@@ -356,8 +356,10 @@ struct ChatSheet: View {
             d.seeds = seeds
             d.chat[index].askOps = nil
             d.chat[index].asked = true
-            let done: String = r.changes.joined(separator: "；")
-            d.chat.append(ChatMsg(r: .sys, t: done.isEmpty ? "沒有改到東西。" : "套用了：" + done))
+            // 卡上已經寫「套用了」，有改到就不再多講一次
+            if r.changes.isEmpty {
+                d.chat.append(ChatMsg(r: .sys, t: "沒有改到東西。"))
+            }
             for n in r.notes {
                 d.chat.append(ChatMsg(r: .sys, t: n))
             }
