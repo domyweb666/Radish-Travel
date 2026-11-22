@@ -16,6 +16,19 @@ final class FlowUITests: RadishUITestCase {
         scrollToSee(idQuery(identifier), "識別碼 \(identifier)", file: file, line: line).tap()
     }
 
+    /// 同 tapId，但元件被懸浮分頁列蓋住時再往下捲。isHittable 只看元件中心在不在螢幕裡，
+    /// 不管有沒有被蓋住；直接點會點到分頁列。只用在分頁頁面上，彈出卡會蓋住分頁列，用 tapId
+    private func tapClear(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
+        let element = scrollToSee(idQuery(identifier), "識別碼 \(identifier)", file: file, line: line)
+        let bar = app.buttons.matching(identifier: "tab-trip").firstMatch
+        var tries = 0
+        while bar.exists && element.frame.maxY > bar.frame.minY - 16 && tries < 4 {
+            scrollDown()
+            tries += 1
+        }
+        element.tap()
+    }
+
     /// 第一次排好之後的操作說明會蓋住整個畫面，有出現就關掉。
     private func skipGuideIfShown() {
         let skip = idQuery("guide-skip")
@@ -31,14 +44,14 @@ final class FlowUITests: RadishUITestCase {
         launch()
         seeText("開一趟", timeout: 40)
         shot("開一趟-空白")
-        tapId("cal-\(todayISO())")
-        tapId("days-5")
-        tapId("arrive-am")
-        tapId("leave-pm")
-        tapId("people-2")
-        tapId("base-C")
+        tapClear("cal-\(todayISO())")
+        tapClear("days-5")
+        tapClear("arrive-am")
+        tapClear("leave-pm")
+        tapClear("people-2")
+        tapClear("base-C")
         shot("開一趟-填到住哪")
-        tapId("start-go")
+        tapClear("start-go")
         // 第一次排好會先跳操作說明，蓋住整個畫面；先關掉它才看得到每天的分頁
         skipGuideIfShown()
         scrollUp()
@@ -78,7 +91,7 @@ final class FlowUITests: RadishUITestCase {
         scrollShots("單站的卡", count: 1)
         tapButton("關閉")
 
-        tapId("open-chat")
+        tapClear("open-chat")
         requireVisible(idQuery("chat-input"), "對話輸入框")
         shot("用講的改行程")
         // 第一個提示句是「這趟想輕鬆一點」：要確認的改動，會跳確認卡
@@ -90,7 +103,7 @@ final class FlowUITests: RadishUITestCase {
         shot("用講的改行程-按了套用")
         tapButton("關閉")
 
-        tapId("open-map")
+        tapClear("open-map")
         seeText("關閉")
         RunLoop.current.run(until: Date().addingTimeInterval(3))
         shot("這天的地圖")
