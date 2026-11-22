@@ -19,6 +19,16 @@ enum Push: Hashable {
     case cost
     /// 平常的我：右上角進來
     case me
+    /// 一站（S06，線框 A5）：從這一天的清單、下一站卡、須知、檢查這趟、去過的那一趟進來
+    case stop(id: String)
+    /// 去過的那一趟（S20，線框 A16）：現在這趟，或某一趟已經收起來的
+    case visited(AlbumSource)
+}
+
+/// 跟 AI 講的那一列在看哪裡（輸入列左邊的小標）。這一天的最下面是 .day，一站的最下面是 .stop
+enum TalkTarget: Hashable {
+    case day(Int)
+    case stop(id: String)
 }
 
 @MainActor
@@ -94,6 +104,10 @@ struct PushPage: View {
                 CostScreen()
             case .me:
                 MeScreen()
+            case .stop(let id):
+                StopScreen(id: id)
+            case .visited(let source):
+                VisitedScreen(source: source)
             }
         }
         .toolbarBackground(C.canvas, for: .navigationBar)

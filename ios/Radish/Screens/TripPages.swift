@@ -66,7 +66,7 @@ enum NotesPart: Hashable {
 /// 須知：在當地、按天（一次看一天）、回程（S13）。沒有這趟時只有在當地、回程
 struct NotesScreen: View {
     @Environment(AppStore.self) private var store
-    @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     /// nil 是還沒點過：照這趟走到哪決定先開哪一段
     @State private var picked: NotesPart?
     /// 按天那一段在看第幾天。nil 是旅途中的今天，不在旅途中是第 1 天
@@ -138,7 +138,7 @@ struct NotesScreen: View {
             DomySection(footer: "這幾站的須知都還沒核對過，去之前再查一下。") {
                 ForEach(stops, id: \.it.id) { (x: Found) in
                     NoteRow(meta: PART[need: x.s.part], name: x.it.n, tip: x.it.tip) {
-                        sheets.open(.stop(id: x.it.id))
+                        nav.push(.stop(id: x.it.id))
                     }
                     .accessibilityIdentifier("note-row-\(x.it.id)")
                 }

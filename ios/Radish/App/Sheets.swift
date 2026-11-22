@@ -10,28 +10,29 @@ enum AlbumSource: Hashable {
     case basket(id: String)
 }
 
+/// 半頁。一站、去過的那一趟改成推進頁了（Nav.swift 的 Push），不在這裡
 enum SheetReq: Identifiable, Hashable {
-    case stop(id: String)
-    case chat
+    /// 剛剛那一則（S05，線框 A3）：這一天或一站最下面講完一句，升起來的回覆
+    case reply
+    /// 這一天的路線（S12，線框 A8）
     case map(day: Int)
+    /// 附近還有什麼（S10，線框 A12）
+    case nearby(day: Int)
+    /// 移到別的時段（S07，線框 A6）
+    case move(id: String)
     case add
     case settings
     case more(day: Int)
-    case album(AlbumSource)
 
     var id: String {
         switch self {
-        case .stop(let id): return "stop-\(id)"
-        case .chat: return "chat"
+        case .reply: return "reply"
         case .map(let day): return "map-\(day)"
+        case .nearby(let day): return "nearby-\(day)"
+        case .move(let id): return "move-\(id)"
         case .add: return "add"
         case .settings: return "settings"
         case .more(let day): return "more-\(day)"
-        case .album(let source):
-            switch source {
-            case .current: return "album-current"
-            case .basket(let id): return "album-\(id)"
-            }
         }
     }
 }
@@ -56,20 +57,20 @@ struct SheetRouter: View {
 
     var body: some View {
         switch req {
-        case .stop(let id):
-            StopSheet(id: id)
-        case .chat:
-            ChatSheet()
+        case .reply:
+            ReplySheet()
         case .map(let day):
             MapSheet(day: day)
+        case .nearby(let day):
+            NearbySheet(day: day)
+        case .move(let id):
+            MoveSheet(id: id)
         case .add:
             AddSheet()
         case .settings:
             TripSettingsSheet()
         case .more(let day):
             MoreSheet(day: day)
-        case .album(let source):
-            AlbumSheet(source: source)
         }
     }
 }
