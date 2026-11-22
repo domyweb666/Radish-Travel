@@ -53,6 +53,9 @@
 
 ## ⏭️ 下一步從哪繼續
 
+> 2026-11-23 再更新：片 2–6 也做完了（多米說「直接開 subagent，全做」），四個 subagent 各管各的檔，合併後 97b8092、b411d93，CI 全綠、截圖看過。
+> 新檔：`Components/TalkBar.swift`（`.talkBar(_:target:)`、`AppStore.talk(_:target:)`）、`Sheets/ReplySheet.swift`、`Screens/AskScreen.swift`、`IO/Network.swift`、`Screens/StopScreen*.swift`、`Sheets/MoveSheet.swift`、`Components/DriverView.swift`、`Sheets/NearbySheet.swift`、`Components/TripCards.swift`、`Screens/VisitedScreen.swift`；刪了 ChatSheet、StopSheet、AlbumSheet、操作說明三步。
+> 還沒做：句數用完只有畫面、不會出現（❓28）；路線半頁「AI 的改法換一面」等 AI 回覆格式；回報這則（沒後端）；清單上的站「剛改過／AI 加的」標籤；開一趟（❓49）；S06 從檢查這趟進來的排序。都沒上真機，下一步推 tf-4 給多米。
 > 2026-11-23 更新：片 1 做完。外殼在 `ios/Radish/App/Nav.swift`、推進頁在 `Screens/TripPages.swift`；問 AI 分頁暫時是 `ChatSheet(inTab: true)`。這趟標題下的日期那行還是舊寫法，A1 的一行寫法留給片 2 或片 6。下一個從片 2 開始。
 
 1. 先問多米：另一條 SwiftUI 線（5c1d537、cadf4ec 改了 `ChatSheet.swift`、`Chat.swift`、`Permit.swift`）還在跑嗎？還在跑就先講好誰改哪些檔，不要兩條線同時改同一批 `ios/` 檔
