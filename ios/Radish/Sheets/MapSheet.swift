@@ -183,10 +183,7 @@ struct MapSheet: View {
             if let note {
                 noteCard(note)
             }
-            VStack(alignment: .leading, spacing: T.Space.s2) {
-                DayMap(points: pointsOf(h, stops), compact: true)
-                DomyText("底圖要網路，沒網路時地圖上只剩點，下面每一段照樣看得到。", .caption, tone: .secondary)
-            }
+            DayMap(points: pointsOf(h, stops), compact: true)
             legSection(routeLegs(h, stops, legs))
         }
     }
@@ -199,7 +196,7 @@ struct MapSheet: View {
     }
 
     private func legSection(_ rows: [RouteLeg]) -> some View {
-        DomySection(footer: "總分鐘含從住的地方出發和回去。手機算的，沒有問 AI：照直線距離加三成估，沒有查路線。真的要走的時候，從每一站跳去 Naver 地圖。") {
+        DomySection(footer: "總分鐘含從住的地方出發和回去。手機算的，沒有問 AI：照直線距離加三成估，沒有查路線。真的要走的時候，從每一站跳去 Naver 地圖。底圖要網路，沒網路時地圖上只剩點。") {
             ForEach(rows) { (row: RouteLeg) in
                 TextRow(row.title, note: row.note)
             }

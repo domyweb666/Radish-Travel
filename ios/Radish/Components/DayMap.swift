@@ -36,13 +36,14 @@ struct MapPoint: Identifiable {
 private let MAP_H: CGFloat = 380  // domy-ignore: 地圖的高度，TS 的 MAP_H，只有這裡用
 private let MAP_H_COMPACT: CGFloat = 150  // domy-ignore: 這一天的路線半頁裡的地圖高度。線框 A8 畫 190，半頁下緣還要釘總分鐘和按鈕，縮矮才整張看得到
 private let MAP_PAD: Double = 1.5  // domy-ignore: 看整條路線時四邊多留的比例（TS 是四邊各留 60 點）
+private let MAP_PAD_COMPACT: Double = 2.6  // domy-ignore: 矮版上下要多留：標記的圓頭在點的上面、字在點的下面，左下角還有 Apple 地圖的字
 private let MAP_MIN_SPAN: Double = 0.01  // domy-ignore: 只有一個點時至少看這麼大一塊（經緯度）
 private let MAP_ME_SPAN: Double = 0.02  // domy-ignore: 移到「我在哪」時看多大一塊，TS 的 latitudeDelta
 private let MAP_LINE: CGFloat = 3  // domy-ignore: 路線的線寬，TS 的 strokeWidth
 private let MAP_DASH: [CGFloat] = [2, 8]  // domy-ignore: 虛線樣式，TS 的 lineDashPattern
 
 /// 包住所有點、四邊留一點空的範圍。沒有點就回 nil
-private func dayMapRegion(_ points: [MapPoint]) -> MKCoordinateRegion? {
+private func dayMapRegion(_ points: [MapPoint], _ compact: Bool) -> MKCoordinateRegion? {
     let lats: [Double] = points.map { (p: MapPoint) -> Double in p.lat }
     let lngs: [Double] = points.map { (p: MapPoint) -> Double in p.lng }
     guard let minLat = lats.min(), let maxLat = lats.max(), let minLng = lngs.min(), let maxLng = lngs.max() else {
@@ -51,13 +52,13 @@ private func dayMapRegion(_ points: [MapPoint]) -> MKCoordinateRegion? {
     let center: CLLocationCoordinate2D = CLLocationCoordinate2D(
         latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2)
     let span: MKCoordinateSpan = MKCoordinateSpan(
-        latitudeDelta: max((maxLat - minLat) * MAP_PAD, MAP_MIN_SPAN),
+        latitudeDelta: max((maxLat - minLat) * (compact ? MAP_PAD_COMPACT : MAP_PAD), MAP_MIN_SPAN),
         longitudeDelta: max((maxLng - minLng) * MAP_PAD, MAP_MIN_SPAN))
     return MKCoordinateRegion(center: center, span: span)
 }
 
-private func dayMapCamera(_ points: [MapPoint]) -> MapCameraPosition {
-    if let region = dayMapRegion(points) {
+private func dayMapCamera(_ points: [MapPoint], _ compact: Bool) -> MapCameraPosition {
+    if let region = dayMapRegion(points, compact) {
         return MapCameraPosition.region(region)
     }
     return MapCameraPosition.automatic
@@ -146,7 +147,7 @@ struct DayMap: View {
     init(points: [MapPoint], compact: Bool = false) {
         self.points = points
         self.compact = compact
-        self._position = State(initialValue: dayMapCamera(points))
+        self._position = State(initialValue: dayMapCamera(points, compact))
     }
 
     /// 路線的線：照點的順序連起來。第一個點是住的地方時，最後再連回住的地方（出發、回去）
@@ -204,7 +205,7 @@ struct DayMap: View {
     /// 看整條路線：鏡頭調到包住所有點
     @MainActor
     private func fit() {
-        let next: MapCameraPosition = dayMapCamera(points)
+        let next: MapCameraPosition = dayMapCamera(points, compact)
         withAnimation(Motion.transition) {
             position = next
         }
