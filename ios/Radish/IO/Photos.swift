@@ -110,6 +110,17 @@ enum PhotoStore {
         UserDefaults.standard.set(list, forKey: pendingKey)
     }
 
+    /// 現在用得到的照片從清單移出來。復原之後、整包換掉之前叫：
+    /// 拿掉又復原的照片，之後全部清掉、重開 app 也不會被刪
+    static func keepUsed(_ s: AppState) {
+        let list: [String] = UserDefaults.standard.stringArray(forKey: pendingKey) ?? []
+        if list.isEmpty { return }
+        let used: Set<String> = refs(s)
+        let left: [String] = list.filter { (ref: String) -> Bool in !used.contains(ref) }
+        if left.count == list.count { return }
+        UserDefaults.standard.set(left, forKey: pendingKey)
+    }
+
     /// 刪掉記下來的那幾張。只在剛開 app、讀完檔的時候叫（復原紀錄這時候是空的）。
     /// 只看清單裡的檔名，不掃資料夾。存檔讀不出來就一張都不刪，清單留到下次。
     /// 復原回來、現在還用得到的不刪，從清單拿掉
@@ -151,6 +162,9 @@ enum PhotoStore {
         var out: Set<String> = []
         var trips: [Trip] = s.shelf.map { (x: Shelved) -> Trip in x.trip }
         if let trip = s.trip { trips.append(trip) }
+        for b in s.baskets {
+            if let trip = b.trip { trips.append(trip) }
+        }
         for t in trips {
             if let cover = t.cover { out.insert(cover) }
             for slot in t.slots {

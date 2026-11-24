@@ -184,6 +184,7 @@ struct Trip: Codable, Hashable, Sendable {
     var planTweaks: [Tweak]?  // 排這一版的時候用的調整。跟 tweaks 不一樣，就是排好之後才說的、還沒照它排。舊檔沒有
     var wish: String?  // 開一趟時寫的那句「想怎麼玩」，重排、復原都留著。沒寫就沒有，舊檔也沒有
     var wishChanges: [String]?  // 這一版裡照那句改了哪些。復原、重排之後就沒有了（重排不帶）
+    var wishOff: WishOff?  // 那句還沒送，使用者自己拿掉了，或改過字才講。沒有這回事是 nil，舊檔也沒有
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的

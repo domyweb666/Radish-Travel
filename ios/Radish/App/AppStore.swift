@@ -17,6 +17,8 @@ struct Notice: Equatable {
 private struct TalkDrafts {
     var now: [TalkTarget: String] = [:]
     var later: [TalkTarget: [String]] = [:]
+    /// 第 1 天那一列裡，從開一趟時寫的那句改出來、還沒講的字
+    var wishLine: String?
 }
 
 @MainActor
@@ -51,6 +53,10 @@ final class AppStore {
     @ObservationIgnored private var undoStack: [UndoSnap] = []
     /// 沒送出去、但那一列正在打別的：先放這裡，那一列空了再放回去
     @ObservationIgnored private var keptTalk: [TalkTarget: [String]] = [:]
+    /// 第 1 天那一列裡，從開一趟時寫的那句改出來、還沒講的字（wishTyped）。沒有改就是 nil
+    @ObservationIgnored private var wishLine: String?
+    /// 第幾次送出。整包換掉也加一：之前送的那句回來時對不上，就不套、也不動現在的狀態
+    @ObservationIgnored private var talkSeq: Int = 0
     /// 別趟打到一半的字，用 Trip.id 記
     @ObservationIgnored private var draftBox: [String: TalkDrafts] = [:]
     @ObservationIgnored private var noticeId = 0
@@ -158,6 +164,8 @@ final class AppStore {
             if let data, var state = AppState.hydrate(data) {
                 // 舊檔的趟沒有代號，先補上
                 syncAIUsed(&state)
+                // 等回覆的時候 app 被結束的那句，不會再有回覆了
+                markUnanswered(&state)
                 s = state
                 refillWishes()
             } else {
@@ -315,10 +323,14 @@ final class AppStore {
         var next = s
         // 句數不在復原的範圍，規則在 Chat.swift 的 aiLeft
         let message: String = applyUndo(&next, snap)
+        // 復原回來的對話裡，等不到回覆的那句要能再送一次
+        if !talkBusy { markUnanswered(&next) }
         leaveTrip(next.trip?.id)
         withAnimation(Motion.change) {
             s = next
         }
+        // 復原回來的照片不算拿掉了
+        PhotoStore.keepUsed(next)
         save()
         show(message, false)
     }
@@ -340,7 +352,7 @@ final class AppStore {
         }
         if !talkBusy { talkStage = .idle }
         if let old {
-            draftBox[old] = TalkDrafts(now: drafts, later: keptTalk)
+            draftBox[old] = TalkDrafts(now: drafts, later: keptTalk, wishLine: wishLine)
         }
         var back: TalkDrafts = TalkDrafts()
         if let next, let box = draftBox.removeValue(forKey: next) {
@@ -348,6 +360,7 @@ final class AppStore {
         }
         drafts = back.now
         keptTalk = back.later
+        wishLine = back.wishLine
     }
 
     /// 開一趟時寫的、還沒送給 AI 的那句：打到一半的字只放在記憶體，重開 app 之後照行程裡記的放回第 1 天那一列
@@ -363,7 +376,7 @@ final class AppStore {
         }
     }
 
-    /// 還沒送的那句。已經回來的那趟不用再放
+    /// 還沒送的那句。自己拿掉的、改過字講的（wishStatus 不會是 held）不放；已經回來的那趟不用再放
     private func heldWish(_ t: Trip, _ chat: [ChatMsg], _ debugDay: Int?) -> String? {
         guard let wish = t.wish, wishStatus(t, chat, false) == WishStatus.held else { return nil }
         if phaseOf(t.start, t.days, today, debugDay) == Phase.done { return nil }
@@ -385,6 +398,9 @@ final class AppStore {
     func replaceAll(_ next: AppState, imported: Bool) {
         var fresh: AppState = next
         carryAILog(&fresh, s)
+        // 現在還用得到的照片不算拿掉了，之後貼回備份才看得到
+        PhotoStore.keepUsed(s)
+        markUnanswered(&fresh)
         if imported {
             keepAgreed(&fresh, s)
         } else {
@@ -393,9 +409,12 @@ final class AppStore {
         undoStack = []
         canUndo = false
         undoTop = nil
+        // 還在等的那句不等了：回來的時候不套、也不動之後的狀態
+        talkSeq += 1
         talkStage = .idle
         drafts = [:]
         keptTalk = [:]
+        wishLine = nil
         draftBox = [:]
         startDraft = StartDraft()
         s = fresh
@@ -421,6 +440,8 @@ enum TalkHold: Equatable {
     case offline
     /// 這趟的 AI 句數用完了（線框 A20）
     case quota
+    /// 沒接 AI。只有再送一次開一趟時寫的那句才會有
+    case noAI
 }
 
 /// 等同意的那一句
@@ -451,8 +472,9 @@ enum TalkStage: Equatable {
     case idle
     /// 第一次要送到這個地方：等「同意並送出」（S03，線框 New-Consent）
     case consent(text: String, ask: TalkPending)
-    /// 要 AI 的這句沒有送出去，字留在講的那一列
-    case held(TalkHold)
+    /// 要 AI 的這句沒有送出去。again 是 false：新的一句，字留在講的那一列；
+    /// true：再送一次的那句，字本來就在對話裡，講的那一列沒有
+    case held(TalkHold, again: Bool)
     /// 剛開好一趟，寫的那句沒有送出去，字留在第 1 天講的那一列。行程已經排好
     case wishHeld(WishHold)
     /// 送出了，等回覆。同一時間只送一句
@@ -492,6 +514,42 @@ extension AppStore {
             if let t = s.trip, let x = findItem(t, id) { return x.s.day }
             return 1
         }
+    }
+
+    /// 按了再送一次、還是沒送出去的原因。沒有這回事是 nil
+    var talkAgainWhy: String? {
+        guard case .held(let why, again: let again) = talkStage, again else { return nil }
+        switch why {
+        case .offline:
+            return "剛剛沒網路，這句沒有再送出去，還在對話裡。連上網路再按一次。"
+        case .quota:
+            return "這趟的 AI 句數用完了，這句沒有再送出去，還在對話裡。"
+        case .noAI:
+            return "現在沒有接 AI，這句沒有再送出去，還在對話裡。到「平常的我」接上 AI 再按一次。"
+        }
+    }
+
+    /// 講的那一列打字（輸入框用，送出不走這裡）。第 1 天那一列放著開一趟時寫的那句的話，
+    /// 記下他是不是自己拿掉了：拿掉了，重開 app 就不再塞回來
+    func typeDraft(_ target: TalkTarget, _ next: String) {
+        let old: String = drafts[target] ?? ""
+        if old == next { return }
+        drafts[target] = next
+        guard target == TalkTarget.day(1), let trip = s.trip else { return }
+        let step: WishTyped = wishTyped(trip, s.chat, old, next, wishLine)
+        wishLine = step.line
+        if step.off == trip.wishOff { return }
+        let off: WishOff? = step.off
+        mutate { (d: inout AppState) -> Void in
+            setWishOff(&d, off)
+        }
+    }
+
+    /// 這句講出去了（記進對話了）。回 true：它是從開一趟時寫的那句改出來的，原本那句就不用再留
+    private func wishEdited(_ msg: String, _ target: TalkTarget, _ whole: Bool) -> Bool {
+        guard target == TalkTarget.day(1), wishFromLine(wishLine, msg) else { return false }
+        wishLine = nil
+        return !whole
     }
 
     private func talkStopId(_ target: TalkTarget) -> String? {
@@ -543,7 +601,7 @@ extension AppStore {
             var first: TalkPending = ask
             first.wish = true
             talkStage = .consent(text: text, ask: first)
-        case .held(let why):
+        case .held(let why, again: _):
             talkStage = .wishHeld(why == .offline ? WishHold.offline : WishHold.quota)
         case .idle, .busy, .wishHeld:
             break
@@ -613,7 +671,9 @@ extension AppStore {
             var mine: ChatMsg = ChatMsg(r: .me, t: msg, day: day, stop: stop)
             mine.wish = whole ? true : nil
             let said: ChatMsg = mine
+            let edited: Bool = wishEdited(msg, target, whole)
             mutate { (d: inout AppState) -> Void in
+                if edited { setWishOff(&d, .edited) }
                 d.chat.append(said)
                 d.chat.append(ChatMsg(r: .ai, t: answer, day: day, stop: stop, local: true, at: stamp))
             }
@@ -635,7 +695,7 @@ extension AppStore {
         if let dest {
             if let hold = talkHold {
                 keepDraft(msg, target)
-                talkStage = .held(hold)
+                talkStage = .held(hold, again: false)
                 Haptic.notify(.error)
                 return false
             }
@@ -677,7 +737,9 @@ extension AppStore {
                 if ask.wish {
                     talkStage = .wishHeld(hold == .offline ? WishHold.offline : WishHold.quota)
                 } else {
-                    talkStage = .held(hold)
+                    var again: Bool = false
+                    if let i = ask.retry { again = canRetry(i, text) }
+                    talkStage = .held(hold, again: again)
                 }
                 Haptic.notify(.error)
                 return
@@ -743,8 +805,14 @@ extension AppStore {
             talkSend(m.t, target, nil, retry: index)
             return
         }
+        // 開一趟時寫的那句，沒接 AI 時本機指令做不了：不送，留在對話裡
+        if m.wish == true && wishNoAI(m.t, target) {
+            talkStage = .held(.noAI, again: true)
+            Haptic.notify(.error)
+            return
+        }
         if let hold = talkHold {
-            talkStage = .held(hold)
+            talkStage = .held(hold, again: true)
             Haptic.notify(.error)
             return
         }
@@ -800,8 +868,12 @@ extension AppStore {
         var mine: ChatMsg = ChatMsg(r: .me, t: msg, day: day, stop: stop)
         mine.wish = whole ? true : nil
         let saying: ChatMsg = mine
+        let edited: Bool = retry == nil && wishEdited(msg, target, whole)
+        talkSeq += 1
+        let seq: Int = talkSeq
         talkStage = .busy
         mutate { (d: inout AppState) -> Void in
+            if edited { setWishOff(&d, .edited) }
             // 還沒按的確認卡過期：行程接下來會變，那幾步不一定還對
             for i in d.chat.indices where d.chat[i].askOps != nil {
                 d.chat[i].askOps = nil
@@ -821,16 +893,29 @@ extension AppStore {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
                     let out: BrainOut = try await askAI(prompt, dest)
                     self.countAISentence(trip.id)
+                    if self.talkSeq != seq { return }
                     self.talkFinish(out, local: false, tripId: tripId, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {
                     // 沒回好、讀不懂：這趟不動，不退回本機指令（線框 A21）
+                    if self.talkSeq != seq { return }
                     self.talkFail(tripId: tripId, me: me, said: msg, error)
                 }
             } else {
                 let out: BrainOut = localBrain(heard, trip, tripNow(clock))
+                if self.talkSeq != seq { return }
                 self.talkFinish(out, local: true, tripId: tripId, me: me, said: msg, day: day, stop: stop, clock: clock)
             }
             self.talkStage = .idle
+            self.talkLost()
+        }
+    }
+
+    /// 剛剛那句回來了，現在沒有句子在等。等的時候復原回來的對話裡要是還有沒人回的，補上再送一次
+    private func talkLost() {
+        var probe: AppState = s
+        if !markUnanswered(&probe) { return }
+        mutate { (d: inout AppState) -> Void in
+            markUnanswered(&d)
         }
     }
 

@@ -146,6 +146,8 @@ struct StopVisitBlock: View {
     @Environment(AppStore.self) private var store
     let id: String
     let it: Stop
+    /// 這一塊畫的是哪一趟。換了一趟，框裡打到一半的是上一趟的
+    let tripId: String?
 
     var body: some View {
         if it.status == .pulled {
@@ -157,7 +159,14 @@ struct StopVisitBlock: View {
                     onAdd: { (ref: String) -> Void in addPhoto(ref) },
                     onRemove: { (ref: String) -> Void in removePhoto(ref) })
             }
+            // 換了一趟就換一個新的框，上一趟打的字不會帶到這一趟
+            .id(tripId ?? "")
         }
+    }
+
+    /// 這一塊畫出來之後換了一趟（例：按了提示條的復原）
+    private var moved: Bool {
+        return store.s.trip?.id != tripId
     }
 
     /// 這一站現在的樣子。被拿掉、換掉了就是 nil
@@ -167,7 +176,15 @@ struct StopVisitBlock: View {
     }
 
     private func saveSay(_ say: String) {
-        guard let stop = now else { return }
+        // 沒有存的話把那一句寫在提示條上，還來得及抄
+        if moved {
+            if !say.isEmpty { store.say("剛剛換到別趟了，這一句沒有存：「\(say)」") }
+            return
+        }
+        guard let stop = now else {
+            if !say.isEmpty { store.say("這一站不在這趟裡了，這一句沒有存：「\(say)」") }
+            return
+        }
         // 沒有變就不留一步
         if (stop.say ?? "") == say { return }
         change(say.isEmpty ? "那一句清掉了。" : "那一句記下來了。") { (x: inout Stop) -> Void in
@@ -177,6 +194,11 @@ struct StopVisitBlock: View {
 
     /// 照片處理完才叫，中間清單可能變過，所以照現在的清單加
     private func addPhoto(_ ref: String) {
+        if moved {
+            PhotoStore.removeLater(ref)
+            store.say("剛剛換到別趟了，照片沒有加上去。")
+            return
+        }
         guard let stop = now else {
             PhotoStore.removeLater(ref)
             store.say("這一站不在這趟裡了，照片沒有加上去。")
@@ -196,7 +218,7 @@ struct StopVisitBlock: View {
 
     /// 只拿掉引用，檔案留到下次開 app 才刪，中間都能復原
     private func removePhoto(_ ref: String) {
-        guard let stop = now else { return }
+        guard !moved, let stop = now else { return }
         let old: [String] = stop.photos ?? []
         if !old.contains(ref) { return }
         change("照片拿掉了。") { (x: inout Stop) -> Void in

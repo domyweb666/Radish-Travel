@@ -187,7 +187,7 @@ private struct StopPage: View {
         StopAllergyEntry(it: it, trip: trip) {
             pane = .allergy
         }
-        StopVisitBlock(id: id, it: it)
+        StopVisitBlock(id: id, it: it, tripId: trip.id)
         StopPlaceCard(it: it) {
             driver = true
         }

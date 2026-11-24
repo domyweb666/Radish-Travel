@@ -136,6 +136,28 @@ func isSaid(_ chat: [ChatMsg], _ me: Int, _ said: String) -> Bool {
     return chat[me].r == .me && chat[me].t == said
 }
 
+/// 等回覆的時候換到別趟，改動沒套上去：對話裡記的那一行。wishPending 靠這一行認，字改了舊的存檔會認不出來
+let AWAY_NOT_APPLIED: String = "等回覆的時候你換到別趟了，這次的改動沒有套上去。要的話再講一次。"
+
+/// 這段對話最後一則是我說的、沒有人回（等回覆時 app 被結束、回的時候那一趟不在手上）：
+/// 記成沒收到回覆，才有「再送一次」。只能在沒有句子在等回覆的時候叫。有補到回 true
+@discardableResult
+func markUnanswered(chat: inout [ChatMsg]) -> Bool {
+    guard let last = chat.last, last.r == .me, last.failed == nil else { return false }
+    chat[chat.count - 1].failed = ""
+    return true
+}
+
+/// 現在這趟和其他排好的，每一段對話都補
+@discardableResult
+func markUnanswered(_ d: inout AppState) -> Bool {
+    var hit: Bool = markUnanswered(chat: &d.chat)
+    for i in d.shelf.indices {
+        if markUnanswered(chat: &d.shelf[i].chat) { hit = true }
+    }
+    return hit
+}
+
 /// 送出那一句的那一趟現在放在一邊：回的話留在它的對話裡，改動不套。回那一趟的名字；找不到就回 nil、什麼都不動
 @discardableResult
 func leaveReply(
@@ -145,7 +167,7 @@ func leaveReply(
     guard let i = found, isSaid(d.shelf[i].chat, me, said) else { return nil }
     d.shelf[i].chat.append(reply)
     if hadChanges {
-        d.shelf[i].chat.append(ChatMsg(r: .sys, t: "等回覆的時候你換到別趟了，這次的改動沒有套上去。要的話再講一次。"))
+        d.shelf[i].chat.append(ChatMsg(r: .sys, t: AWAY_NOT_APPLIED))
     }
     return tripTitle(d.shelf[i].trip)
 }
@@ -282,11 +304,23 @@ struct PlanCardText: Hashable, Sendable {
 
 /* ---------- 開一趟時寫的那句「想怎麼玩」現在怎樣 ---------- */
 
+/// 那句還沒送，使用者自己動過講的那一列
+enum WishOff: String, Codable, Sendable {
+    /// 從那一列拿掉了
+    case removed
+    /// 改過字才講的，原本那句沒送
+    case edited
+}
+
 enum WishStatus: Hashable, Sendable {
     /// 沒寫
     case empty
     /// 還沒送給 AI（沒網路、沒接 AI、句數用完、按了先不要）
     case held
+    /// 還沒送，使用者自己從講的那一列拿掉了
+    case removed
+    /// 還沒送，使用者改過字才講。原本那句沒送
+    case edited
     /// 送出去了，等 AI 回
     case waiting
     /// 送出去了，沒收到回覆
@@ -323,7 +357,10 @@ func wishStatus(_ t: Trip, _ chat: [ChatMsg], _ busy: Bool) -> WishStatus {
     if (t.wish ?? "").isEmpty { return .empty }
     let reply: ChatMsg? = wishReply(chat)
     if !(t.wishChanges ?? []).isEmpty { return .changed(local: reply?.local == true) }
-    guard let i = wishSaid(chat) else { return .held }
+    guard let i = wishSaid(chat) else {
+        guard let off = t.wishOff else { return .held }
+        return off == WishOff.removed ? WishStatus.removed : WishStatus.edited
+    }
     guard let r = reply else {
         let last: Int? = chat.lastIndex { (m: ChatMsg) -> Bool in m.r == .me }
         let waiting: Bool = busy && last == i && chat[i].failed == nil
@@ -340,13 +377,68 @@ private func wishKey(_ s: String) -> String {
     return s.components(separatedBy: CharacterSet.whitespacesAndNewlines).joined()
 }
 
-/// 現在要送的這句，是不是開一趟時寫的、還沒送成的那句
+/// 現在要送的這句，是不是開一趟時寫的那句，而且還沒照它改：還沒送成、改完又復原或重排了、回的改動沒套上去
 func wishPending(_ t: Trip, _ chat: [ChatMsg], _ msg: String) -> Bool {
     guard let wish = t.wish else { return false }
     let key: String = wishKey(wish)
     if key.isEmpty || key != wishKey(msg) { return false }
-    let now: WishStatus = wishStatus(t, chat, true)
-    return now == WishStatus.held || now == WishStatus.noReply
+    switch wishStatus(t, chat, true) {
+    case .held, .removed, .edited, .noReply, .gone:
+        return true
+    case .agreed:
+        // 按過「套用」，後來按了「復原這次」
+        return wishReply(chat)?.undone == true
+    case .answered:
+        return wishMissed(chat)
+    case .empty, .waiting, .changed, .asking:
+        return false
+    }
+}
+
+/// 那句回了，改動因為換到別趟沒套上去
+private func wishMissed(_ chat: [ChatMsg]) -> Bool {
+    guard let i = wishSaid(chat) else { return false }
+    for m in chat.dropFirst(i + 1) {
+        if m.r == .me { return false }
+        if m.r == .sys && m.t == AWAY_NOT_APPLIED { return true }
+    }
+    return false
+}
+
+/// 在第 1 天那一列打字的結果：line 是從那句改出來、還沒講的字，off 是要記進行程的
+struct WishTyped: Hashable, Sendable {
+    var line: String?
+    var off: WishOff?
+}
+
+/// 第 1 天那一列的字從 old 打成 next。那一列放著那句（或從它改出來的 line）時，清空了才算拿掉；打回一樣的字就不算。
+/// 只給打字用：送出、換趟、放回那一列不會走這裡
+func wishTyped(_ t: Trip, _ chat: [ChatMsg], _ old: String, _ next: String, _ line: String?) -> WishTyped {
+    let key: String = wishKey(t.wish ?? "")
+    if key.isEmpty || wishSaid(chat) != nil { return WishTyped(line: nil, off: t.wishOff) }
+    let was: String = wishKey(old)
+    let now: String = wishKey(next)
+    if now == key {
+        let back: WishOff? = t.wishOff == WishOff.removed ? nil : t.wishOff
+        return WishTyped(line: nil, off: back)
+    }
+    let mine: Bool = !was.isEmpty && (was == key || wishFromLine(line, old))
+    if !mine { return WishTyped(line: line, off: t.wishOff) }
+    if now.isEmpty { return WishTyped(line: nil, off: t.wishOff ?? WishOff.removed) }
+    return WishTyped(line: next, off: t.wishOff)
+}
+
+/// 這句是不是從那句改出來的
+func wishFromLine(_ line: String?, _ msg: String) -> Bool {
+    guard let line = line else { return false }
+    return wishKey(line) == wishKey(msg)
+}
+
+/// 現在這趟的那句：記下使用者自己拿掉了、改過字才講（nil 是打回來了）
+func setWishOff(_ d: inout AppState, _ off: WishOff?) {
+    guard var trip = d.trip else { return }
+    trip.wishOff = off
+    d.trip = trip
 }
 
 /// 講的那一列只有一行：換行變成空白
@@ -388,6 +480,10 @@ func wishLine(_ t: Trip, _ chat: [ChatMsg], _ busy: Bool) -> String? {
         return nil
     case .held:
         return "你寫的\(q)還沒有送給 AI，行程沒有照它改。在第 1 天講的那一列隨時可以送。"
+    case .removed:
+        return "你寫的\(q)，你從講的那一列拿掉了，沒有送給 AI，行程沒有照它改。"
+    case .edited:
+        return "你寫的\(q)，你改過字才講，原本那句沒有送給 AI。講的那句在「問 AI」看得到。"
     case .waiting:
         return "你寫的\(q)正在問 AI，還沒有改。"
     case .noReply:
@@ -416,13 +512,13 @@ private func planHead(_ t: Trip, _ status: WishStatus) -> String {
     }
     let plain: String = "這一版是 app 內建的排法排的"
     switch status {
-    case .empty, .held:
+    case .empty, .held, .removed:
         return plain + "，沒有問 AI"
     case .changed(let local), .answered(let local):
         if local { return plain + "，沒有問 AI" }
         if status == WishStatus.answered(local: false) { return plain }
         return "先由手機照你選的排好，AI 再照你寫的那句改過"
-    case .waiting, .noReply, .asking, .agreed, .gone:
+    case .edited, .waiting, .noReply, .asking, .agreed, .gone:
         return plain
     }
 }
@@ -527,6 +623,8 @@ func applyUndo(_ d: inout AppState, _ snap: UndoSnap) -> String {
     // 那一步之後才改的「平常的我」還沒套到這趟，這件事不能跟著退掉
     let dirty: Bool = snap.settingsDirty || d.settingsDirty
     let open: String? = d.trip?.id
+    // 講的那一列不在復原的範圍：那句拿掉了、改過才講，也不能跟著退掉
+    let offs: [(id: String, off: WishOff?)] = wishOffs(d)
     var text: String = "復原了上一步。"
     // 照順序退，只改這趟的那一步退的時候一定還是那一趟；萬一不是，也照換了一趟的做法，不把現在這趟蓋掉
     if snap.swap || snap.trip?.id != d.trip?.id {
@@ -544,7 +642,27 @@ func applyUndo(_ d: inout AppState, _ snap: UndoSnap) -> String {
     d.baskets = snap.baskets
     d.settings.learned = snap.learned
     d.settingsDirty = dirty && d.trip != nil
+    keepWishOffs(&d, offs)
     return text
+}
+
+private func wishOffs(_ d: AppState) -> [(id: String, off: WishOff?)] {
+    var trips: [Trip] = d.shelf.map { (x: Shelved) -> Trip in x.trip }
+    if let t = d.trip { trips.append(t) }
+    var out: [(id: String, off: WishOff?)] = []
+    for t in trips {
+        if let id = t.id { out.append((id: id, off: t.wishOff)) }
+    }
+    return out
+}
+
+private func keepWishOffs(_ d: inout AppState, _ offs: [(id: String, off: WishOff?)]) {
+    for x in offs {
+        if d.trip?.id == x.id { d.trip?.wishOff = x.off }
+        for i in d.shelf.indices where d.shelf[i].trip.id == x.id {
+            d.shelf[i].trip.wishOff = x.off
+        }
+    }
 }
 
 /// 從 list 拿出代號一樣的那一趟

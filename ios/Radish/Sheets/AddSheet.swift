@@ -28,6 +28,9 @@ struct AddSheet: View {
                 error: error
             )
             .accessibilityIdentifier("add-name")
+            .onChange(of: store.s.trip?.id) { (_: String?, _: String?) in
+                tripChanged()
+            }
             .onChange(of: name) { _, next in
                 if next.count > AddSheet.maxName {
                     name = String(next.prefix(AddSheet.maxName))
@@ -51,6 +54,15 @@ struct AddSheet: View {
         return false
     }
 
+    /// 半頁開著的時候按復原換了一趟：打的字留著，先講清楚會排進哪一趟
+    private func tripChanged() {
+        if let trip = store.s.trip {
+            error = "現在換成「\(tripTitle(trip))」這趟了，按下去會排進這一趟。"
+        } else {
+            error = "現在沒有這趟，還不能排進去。"
+        }
+    }
+
     /// 旅途中的現在；出發前、回來後是 nil
     private var now: TripNow? {
         guard let phase = store.phase else { return nil }
@@ -66,6 +78,10 @@ struct AddSheet: View {
 
     private func addToTrip() {
         guard need() else { return }
+        if store.s.trip == nil {
+            tripChanged()
+            return
+        }
         let place: String = n
         let clock: TripNow? = now
         let day: Int? = store.s.trip.map { (t: Trip) -> Int in shownDay(t) }

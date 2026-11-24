@@ -15,14 +15,26 @@ struct TripSettingsSheet: View {
     @Environment(Sheets.self) private var sheets
     /// 正在改的草稿。還沒動過是 nil，這時顯示的是這趟現在的樣子
     @State private var draft: TripFormValue?
+    /// 草稿是哪一趟的。半頁開著的時候按復原可能換到別趟，那份草稿就不能用在現在這趟
+    @State private var draftTrip: String?
     /// 有改過還沒存就按關閉：問一聲
     @State private var askClose: Bool = false
 
     init() {}
 
+    /// 這趟的草稿。別趟的不算
+    private func draftOfThis(_ trip: Trip) -> TripFormValue? {
+        return draftTrip == trip.id ? draft : nil
+    }
+
+    /// 手上的草稿是別趟的：那一趟剛剛改的沒有存
+    private func stale(_ trip: Trip) -> Bool {
+        return draft != nil && draftTrip != trip.id
+    }
+
     /// 改過、還沒存
     private func dirty(_ trip: Trip) -> Bool {
-        guard let now = draft else { return false }
+        guard let now = draftOfThis(trip) else { return false }
         return now != formOf(trip)
     }
 
@@ -35,7 +47,7 @@ struct TripSettingsSheet: View {
     }
 
     private func formNow(_ trip: Trip) -> TripFormValue {
-        return draft ?? formOf(trip)
+        return draftOfThis(trip) ?? formOf(trip)
     }
 
     /// 改到這幾樣要整趟重排
@@ -52,7 +64,9 @@ struct TripSettingsSheet: View {
         return allItems(trip).contains { (x: Found) -> Bool in x.it.status == .pulled }
     }
 
-    private func save(_ form: TripFormValue, _ regen: Bool) {
+    private func save(_ form: TripFormValue, _ regen: Bool, _ tripId: String?) {
+        // 表單是哪一趟的就只存進那一趟
+        guard store.s.trip?.id == tripId else { return }
         Haptic.notify(.success)
         guard let start = form.start, !start.isEmpty,
             let days = form.days, days != 0,
@@ -107,11 +121,18 @@ struct TripSettingsSheet: View {
         let regen: Bool = regenOf(form, trip)
         let blocked: Bool = regen && hasVisited(trip)
         let binding: Binding<TripFormValue> = Binding<TripFormValue>(
-            get: { draft ?? formOf(trip) },
-            set: { (v: TripFormValue) in draft = v }
+            get: { draftOfThis(trip) ?? formOf(trip) },
+            set: { (v: TripFormValue) in
+                draft = v
+                draftTrip = trip.id
+            }
         )
         let minStart: String = trip.start < store.today ? trip.start : store.today
         return SheetScaffold("行程設定", onClose: { close(trip) }) {
+            if stale(trip) {
+                Banner("現在換成「\(tripTitle(trip))」這趟了。剛剛在上一趟改的沒有存。")
+                    .accessibilityIdentifier("settings-swapped")
+            }
             TripForm(value: binding, minStart: minStart, fallbackBase: store.s.settings.base)
             notice(regen, blocked)
             if !missing.isEmpty {
@@ -122,9 +143,13 @@ struct TripSettingsSheet: View {
                 disabled: !missing.isEmpty || blocked,
                 fullWidth: true
             ) {
-                save(form, regen)
+                save(form, regen, trip.id)
             }
             .accessibilityIdentifier("settings-save")
+        }
+        .onChange(of: trip.id) { (_: String?, _: String?) in
+            // 「改的還沒存」問的是上一趟的，不用再問
+            askClose = false
         }
         // 改過還沒存就不給往下滑關掉，免得改的不見。關閉鈕還在，按了會問
         .interactiveDismissDisabled(dirty(trip))

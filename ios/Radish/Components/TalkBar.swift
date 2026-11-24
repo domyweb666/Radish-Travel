@@ -62,7 +62,7 @@ struct TalkBar: View {
         Binding<String>(
             get: { store.drafts[target] ?? "" },
             set: { (v: String) in
-                store.drafts[target] = v.count > TALK_MAX ? String(v.prefix(TALK_MAX)) : v
+                store.typeDraft(target, v.count > TALK_MAX ? String(v.prefix(TALK_MAX)) : v)
             }
         )
     }
@@ -126,7 +126,7 @@ struct TalkBar: View {
             return "沒網路：手機答得出的照樣答，要 AI 的先打好"
         case .quota?:
             return "這趟的 AI 句數用完了。手機答得出的照樣答，打的字留著。"
-        case nil:
+        case .noAI?, nil:
             // 走後端、算句數的時候，剩 5 句以內才講（❓29 先這樣定）
             if let left = store.talkLeft, left <= 5 {
                 return "這趟還能問 AI \(left) 句。手機答得出的不算。"

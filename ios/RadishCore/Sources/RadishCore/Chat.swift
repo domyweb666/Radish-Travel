@@ -301,12 +301,21 @@ let WISH_FOCUS: String =
     "這句是使用者開這趟時寫的「想怎麼玩」，講的是整趟。行程剛由 app 內建的排法照他選的排好，你照這句在上面改；沒講到的不要動，做不到的在 reply 說清楚。"
 
 /// 那句手機自己答得出的話，回答案。寫在「想怎麼玩」的多半是想要什麼，裡面有「附近」「幾站」這些字也不算在問；
-/// 真的是問句才給手機答
+/// 真的是問句、而且只問一件事才給手機答：有「想」的、講了好幾件的，手機答了一件，其他的 AI 就收不到
 func wishPhone(_ raw: String, _ d: AppState, _ now: TripNow?) -> String? {
     let marks: [String] = ["？", "?", "嗎", "有哪些"]
     let asks: Bool = marks.contains { (w: String) -> Bool in raw.contains(w) }
-    if !asks { return nil }
+    if !asks || raw.contains("想") { return nil }
+    let ends: CharacterSet = CharacterSet(charactersIn: "？?。！!.～~ \n")
+    let msg: String = raw.trimmingCharacters(in: ends)
+    if wishMany(msg) || msg.contains("？") || msg.contains("?") { return nil }
     return phoneAnswer(raw, d, 1, nil, now)
+}
+
+/// 講了好幾件。頭尾的標點要先拿掉
+private func wishMany(_ msg: String) -> Bool {
+    let cuts: [String] = ["，", ",", "。", "；", ";", "、", "\n", "還有", "然後"]
+    return cuts.contains { (w: String) -> Bool in msg.contains(w) }
 }
 
 /// 沒接 AI 時，本機指令做不做得了那句。只有一件事、而且聽得懂才算：
@@ -314,9 +323,7 @@ func wishPhone(_ raw: String, _ d: AppState, _ now: TripNow?) -> String? {
 func wishLocalCan(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> Bool {
     let ends: CharacterSet = CharacterSet(charactersIn: "。！!.～~ \n")
     let msg: String = raw.trimmingCharacters(in: ends)
-    if msg.isEmpty { return false }
-    let cuts: [String] = ["，", ",", "。", "；", ";", "、", "\n", "還有", "然後"]
-    if cuts.contains(where: { (w: String) -> Bool in msg.contains(w) }) { return false }
+    if msg.isEmpty || wishMany(msg) { return false }
     return localBrain(msg, t, now).reply != LOCAL_LOST
 }
 

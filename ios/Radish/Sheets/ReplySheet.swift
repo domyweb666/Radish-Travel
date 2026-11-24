@@ -297,21 +297,29 @@ struct ReplySheet: View {
                 if case .wishHeld = store.talkStage { return }
                 sheets.close()
             }
-        case .held(let why):
-            held(why)
+        case .held(let why, again: let again):
+            if again {
+                lastRound
+            } else {
+                held(why)
+            }
         case .wishHeld(let why):
             wishHeld(why)
         case .idle, .busy:
-            if let me = store.lastTalk, me < store.s.chat.count {
-                round(me)
-            } else {
-                DomyText("還沒有講過話。", .body, tone: .secondary)
-                closeButton("好")
-            }
+            lastRound
         }
     }
 
-    /// 要 AI 的那句沒送出去（沒網路、句數用完）。字已經留在講的那一列
+    @ViewBuilder private var lastRound: some View {
+        if let me = store.lastTalk, me < store.s.chat.count {
+            round(me)
+        } else {
+            DomyText("還沒有講過話。", .body, tone: .secondary)
+            closeButton("好")
+        }
+    }
+
+    /// 要 AI 的新的一句沒送出去（沒網路、句數用完）。字已經留在講的那一列
     @ViewBuilder private func held(_ why: TalkHold) -> some View {
         switch why {
         case .offline:
@@ -321,6 +329,8 @@ struct ReplySheet: View {
             // ❓29：要不要賣、在哪賣，閘門 4 定。線框那格［ ］不放上來
             DomyText("這趟的 AI 句數用完了。這句沒有送出去，這趟沒有動。", .headline)
             DomyText("手機答得出的照樣答，打的字留著。", .body, tone: .secondary)
+        case .noAI:
+            DomyText("現在沒有接 AI，這句沒有送出去，這趟沒有動。", .headline)
         }
         closeButton("好")
     }
@@ -402,6 +412,10 @@ struct ReplySheet: View {
             DomyText("這句沒有收到回覆，這趟沒有動。", .headline)
             if me < store.s.chat.count, store.s.chat[me].wish == true {
                 DomyText("行程在，是手機照你選的排的。", .body, tone: .secondary)
+            }
+            if let line = store.talkAgainWhy {
+                DomyText(line, .body, tone: .secondary)
+                    .accessibilityIdentifier("reply-again-why")
             }
             // ❓28：這次算不算句數，等收費方式定了再寫
             if !code.isEmpty {

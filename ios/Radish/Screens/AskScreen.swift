@@ -160,6 +160,10 @@ struct AskScreen: View {
             VStack(alignment: .trailing, spacing: T.Space.s1) {
                 DomyText("這句沒有收到回覆，這趟沒有動。", .footnote, tone: .secondary, align: .trailing)
                 if index == store.lastTalk {
+                    if let line = store.talkAgainWhy {
+                        DomyText(line, .footnote, tone: .secondary, align: .trailing)
+                            .accessibilityIdentifier("chat-again-why")
+                    }
                     DomyButton("再送一次", variant: .secondary, size: .compact, disabled: store.talkBusy) {
                         store.retryTalk(index)
                     }

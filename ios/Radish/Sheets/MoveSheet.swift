@@ -29,6 +29,10 @@ struct MoveSheet: View {
                 gone
             }
         }
+        .onChange(of: store.s.trip?.id) { (_: String?, _: String?) in
+            // 半頁開著的時候換了一趟：選的那一格是上一趟的，重選
+            to = nil
+        }
         .presentationDetents([.fraction(0.7), .large])  // domy-ignore: 半頁高度照 A6，五天的格子放得下
     }
 
