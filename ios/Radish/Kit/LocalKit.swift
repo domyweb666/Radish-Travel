@@ -180,6 +180,62 @@ struct FlowLayout: Layout {
     }
 }
 
+/// 兩顆一樣寬的按鈕並排；字放大到有一顆放不下，就一顆一列往下排
+struct PairLayout: Layout {
+    var spacing: CGFloat = T.Space.s2
+
+    /// 並排而且每顆的字都放得下，最少要多寬
+    private func needed(_ subviews: Subviews) -> CGFloat {
+        var widest: CGFloat = 0
+        for sub in subviews {
+            widest = max(widest, sub.sizeThatFits(.unspecified).width)
+        }
+        let count: CGFloat = CGFloat(subviews.count)
+        return widest * count + spacing * max(0, count - 1)
+    }
+
+    private func columnWidth(_ width: CGFloat, _ count: Int) -> CGFloat {
+        let n: CGFloat = CGFloat(max(1, count))
+        return max(0, (width - spacing * (n - 1)) / n)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        if subviews.isEmpty { return .zero }
+        let need: CGFloat = needed(subviews)
+        var width: CGFloat = need
+        if let given = proposal.width, given.isFinite { width = given }
+        let stacked: Bool = need > width
+        let each: CGFloat = stacked ? width : columnWidth(width, subviews.count)
+        var tallest: CGFloat = 0
+        var total: CGFloat = 0
+        for sub in subviews {
+            let h: CGFloat = sub.sizeThatFits(ProposedViewSize(width: each, height: nil)).height
+            tallest = max(tallest, h)
+            total += h
+        }
+        let gaps: CGFloat = spacing * CGFloat(subviews.count - 1)
+        return CGSize(width: width, height: stacked ? total + gaps : tallest)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        if subviews.isEmpty { return }
+        let stacked: Bool = needed(subviews) > bounds.width
+        let each: CGFloat = stacked ? bounds.width : columnWidth(bounds.width, subviews.count)
+        let offer: ProposedViewSize = ProposedViewSize(width: each, height: nil)
+        var x: CGFloat = bounds.minX
+        var y: CGFloat = bounds.minY
+        for sub in subviews {
+            let h: CGFloat = sub.sizeThatFits(offer).height
+            sub.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: offer)
+            if stacked {
+                y += h + spacing
+            } else {
+                x += each + spacing
+            }
+        }
+    }
+}
+
 /// 一排膠囊，放不下會換行
 struct ChipRow<Content: View>: View {
     @ViewBuilder var content: Content

@@ -30,6 +30,15 @@ struct RadishApp: App {
         _store = State(initialValue: AppStore())
     }
 
+    /// 平常是 nil，跟著系統的深淺。只有 UI 測試會指定深色
+    private var forcedScheme: ColorScheme? {
+        #if DEBUG
+            return UITestScenes.dark ? .dark : nil
+        #else
+            return nil
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -37,6 +46,7 @@ struct RadishApp: App {
                 .environment(sheets)
                 .environment(nav)
                 .tint(C.accent)
+                .preferredColorScheme(forcedScheme)
                 .task {
                     // 只有剛開 app 那一次：讀完檔，再刪以前拿掉的照片。之後復原紀錄可能還用得到，不能刪
                     if !store.ready {
@@ -90,6 +100,33 @@ private struct DayWatch: View {
     }
 }
 
+/// 懸浮分頁列。鍵盤出來時整個收起來：外殼的高度會被鍵盤縮短，留著的話會被推上來蓋住輸入框
+private struct ShellTabBar: View {
+    @Environment(Nav.self) private var nav
+    let tabs: [TabItem]
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            if !KeyboardStage.shared.up {
+                DomyTabBar(tabs: tabs, selected: nav.tab.rawValue) { (key: String) in
+                    nav.select(TabKey(rawValue: key) ?? .trip)
+                }
+                .transition(.opacity)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { (note: Notification) in
+            KeyboardStage.shared.willShow(note)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { (_: Notification) in
+            KeyboardStage.shared.willHide()
+        }
+        // 萬一漏掉前一個通知，分頁列還是要回來
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { (_: Notification) in
+            KeyboardStage.shared.willHide()
+        }
+    }
+}
+
 /// 外殼只看 store.ready，不讀行程資料：改一站的時候外殼不用跟著重算。通知的重排在 AppStore 存檔時做
 struct RootView: View {
     @Environment(AppStore.self) private var store
@@ -129,10 +166,7 @@ struct RootView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 DayWatch()
                 NoticeBar()
-                DomyTabBar(tabs: tabs, selected: nav.tab.rawValue) { key in
-                    nav.select(TabKey(rawValue: key) ?? .trip)
-                }
-                .ignoresSafeArea(.keyboard, edges: .bottom)
+                ShellTabBar(tabs: tabs)
             }
         }
         .sheet(item: $sheets.req) { req in

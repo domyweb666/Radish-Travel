@@ -3,6 +3,7 @@
 import Accessibility
 import Observation
 import SwiftUI
+import UIKit
 
 /// 有懸浮分頁列的畫面，捲動內容底部要留這麼多空間（安全區另外算，SwiftUI 會自己加）
 let tabBarClearance: CGFloat = T.Size.tabBarBottom + T.Size.tabBar + T.Space.s4
@@ -48,12 +49,26 @@ struct Screen<Actions: View, Content: View>: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(C.canvas.ignoresSafeArea())
+            .safeAreaInset(edge: .top, spacing: 0) { statusCover }
             .onChange(of: scrollTo) { _, target in
                 guard let target else { return }
                 withAnimation(Motion.transition) {
                     proxy.scrollTo(target, anchor: .center)
                 }
             }
+        }
+    }
+
+    /// 往下捲的時候，內容不要跑到狀態列底下跟時間疊在一起。自己不佔高度，只把底色往上鋪滿安全區。
+    /// 只有分頁最上層（有右上角那排）要；推進頁的導覽列自己有底色
+    @ViewBuilder private var statusCover: some View {
+        if Actions.self != EmptyView.self {
+            Color.clear
+                .frame(height: 0)
+                .frame(maxWidth: .infinity)
+                .background(C.canvas, ignoresSafeAreaEdges: .top)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 }
@@ -200,6 +215,38 @@ struct DomyTabBar: View {
     }
 }
 
+/// 懸浮分頁列從安全區下緣算起佔的高度，加上它跟上面那一列的間隔
+let tabBarRoom: CGFloat = T.Size.tabBarBottom + T.Size.tabBar + T.Space.s3
+
+/// 鍵盤有沒有蓋到懸浮分頁列。分頁列、講的那一列、提示條都看這一份，不會一個收了一個沒收。
+/// 外殼（RadishApp.swift 的 ShellTabBar）聽系統通知來改
+@MainActor
+@Observable
+final class KeyboardStage {
+    static let shared: KeyboardStage = KeyboardStage()
+    private(set) var up: Bool = false
+
+    private init() {}
+
+    /// 接實體鍵盤時只有一條或在畫面外，不會蓋到分頁列，就照沒有鍵盤排
+    func willShow(_ note: Notification) {
+        guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let shown: CGFloat = UIScreen.main.bounds.height - end.minY
+        change(shown > tabBarRoom)
+    }
+
+    func willHide() {
+        change(false)
+    }
+
+    private func change(_ now: Bool) {
+        if up == now { return }
+        withAnimation(Motion.transition) {
+            up = now
+        }
+    }
+}
+
 /// 這一天、一站最下面常駐講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
 let talkBarClearance: CGFloat = T.Size.touch + T.Size.field + T.Space.s4
 
@@ -259,7 +306,7 @@ struct NoticeBar: View {
                     store.undo()
                 }
                 .padding(.horizontal, T.Size.screenMargin)
-                .padding(.bottom, tabBarClearance + talkBarClearance)
+                .padding(.bottom, (KeyboardStage.shared.up ? T.Space.s4 : tabBarClearance) + talkBarClearance)
                 .transition(.opacity)
             }
         }

@@ -1,7 +1,7 @@
 // 剛剛那一則（S05，線框 A3、A21、New-Consent）：這一天或一站最下面講完一句，從下面升起來的半頁。
 // 上半還看得到這一天。寫這次改了什麼或答案、可以復原這次、看整段對話（切到問 AI 分頁）。
 // 要確認的改動顯示確認卡（Permit.swift 的權限表），按「套用」才改。
-// 第一次要送給 AI 時先在這裡講清楚送什麼（S03）；沒收到回覆時這趟不動，可以再送一次。
+// 第一次要送給 AI 時先在這裡講清楚送什麼（S03，這時直接全高，兩顆按鈕一次看得到）；沒收到回覆時這趟不動，可以再送一次。
 // 對話裡一則一則的樣子（我說的、回的、確認卡、這次改了）也在這個檔，問 AI 分頁（AskScreen）共用。
 // 這個檔是 SwiftUI 版才有的；確認卡、這次改了照原本的 mobile/src/sheets/ChatSheet.tsx。
 import SwiftUI
@@ -270,8 +270,24 @@ struct ReplySheet: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
     @Environment(Nav.self) private var nav
+    /// 現在是半高還是全高。手指拉的也記在這裡
+    @State private var detent: PresentationDetent = .medium
 
     init() {}
+
+    private func asking(_ stage: TalkStage) -> Bool {
+        if case .consent = stage { return true }
+        return false
+    }
+
+    /// 等同意時開到全高，「同意並送出／先不要」不用捲。同意了接著等回覆，收回半高，上面看得到這一天
+    private func fit(_ old: TalkStage, _ now: TalkStage) {
+        if asking(now) {
+            detent = .large
+        } else if asking(old) && now == .busy {
+            detent = .medium
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -284,8 +300,11 @@ struct ReplySheet: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(C.canvas.ignoresSafeArea())
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
+        .onChange(of: store.talkStage, initial: true) { (old: TalkStage, now: TalkStage) in
+            fit(old, now)
+        }
         .onDisappear { store.talkDismiss() }
     }
 

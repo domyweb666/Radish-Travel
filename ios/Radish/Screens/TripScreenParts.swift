@@ -315,7 +315,8 @@ struct TripNextStop: View {
         titleButton(it)
         DomyText(legText(next, all), .subheadline, tone: .secondary)
         if !it.kr.isEmpty {
-            HStack(spacing: T.Space.s2) {
+            // 字級放大時兩顆放不下，改成一顆一列
+            PairLayout(spacing: T.Space.s2) {
                 DomyButton("用 Naver 找路", variant: .secondary, size: .compact, fullWidth: true) {
                     openNaver(it.kr)
                 }

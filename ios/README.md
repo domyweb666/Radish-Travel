@@ -8,8 +8,10 @@
 
 推到 `swiftui`、`work/**` 或 `overnight-**` 分支，GitHub Actions 的「iOS check」會跑兩關：
 
-1. **規則引擎測試（Linux）**：`ios/RadishCore` 的 30 條測試，一分鐘左右。
-2. **編譯與模擬器截圖（macOS）**：把整個 app 編起來，開 iPhone 模擬器跑 `RadishUITests`，每個畫面截一張圖。大約十分鐘。
+1. **規則引擎測試（Linux）**：`ios/RadishCore` 的 153 條以上測試，一分鐘左右。
+2. **編譯與模擬器截圖（macOS）**：把整個 app 編起來，開 iPhone 模擬器跑 `RadishUITests`，每個畫面截一張圖。
+   `FlowUITests` 從空白走一次主流程；`SceneUITests` 用啟動參數直接開到某個狀態（旅途中、回來後、沒網路、句數用完、深色、大字），一個畫面一條。
+   場景和假的 AI 在 `Radish/App/UITestScenes.swift`，只有 Debug 版有。
 
 推完之後跑這一行，它會等 CI 跑完，印出錯誤，並把截圖抓回來：
 
@@ -26,14 +28,14 @@ bash ios/tools/watch-check.sh
 | `project.yml` | XcodeGen 的專案定義。Xcode 專案檔不進 git，CI 每次重新產生。加 Swift 檔不用改這裡 |
 | `RadishCore/Sources/RadishCore/` | 資料型別和規則：排行程、喜好、花費、提醒、對話、地圖網頁。只用 Foundation |
 | `RadishCore/Sources/RadishCore/Resources/seoul.json` | 首爾資料包，從 `mobile/src/data/seoul.ts` 轉出來的，全部未核對 |
-| `RadishCore/Tests/` | 規則的測試，跟 `mobile/tests/` 一條對一條 |
+| `RadishCore/Tests/` | 規則的測試。從 `mobile/tests/` 搬來的，加上 SwiftUI 版之後才有的（跟 AI 講、同意、句數、復原、開一趟寫的那句） |
 | `Radish/App/` | 外殼、三個分頁（這趟／問 AI／旅行）、推進頁總管（`Nav`）、狀態儲存（`AppStore`）、彈出卡總管（`Sheets`） |
 | `Radish/Kit/` | Domy Design 的 SwiftUI 元件、蘿蔔橘（`Theme.swift`）、圖示、蘿蔔和蘿蔔人 |
 | `Radish/Screens/` | 這趟、問 AI（`AskScreen`）、旅行、開一趟；推進頁：檢查這趟、須知、花費（`TripPages`）、平常的我（`MeScreen`）、一站（`StopScreen`）、去過的那一趟（`VisitedScreen`） |
 | `Radish/Sheets/` | 半頁：剛剛那一則、路線、附近、移到別的時段、自己加一站、更多、行程設定 |
 | `Radish/Components/` | 講的那一列（`TalkBar`）、剛排好和回來後的卡（`TripCards`）、表單、月曆、拔蘿蔔動畫、給司機看、過敏告知卡 |
 | `Radish/IO/` | 照片、本機通知、外部地圖、分享 |
-| `RadishUITests/` | 走主流程並截圖的測試 |
+| `RadishUITests/` | 截圖的測試：主流程 `FlowUITests`、一個畫面一條的 `SceneUITests` |
 | `tools/` | 轉資料、檢查寫死數值、等 CI 的腳本 |
 
 `RadishCore` 的原始碼是直接編進 app 的，跟 app 同一個模組。`Package.swift` 只給 Linux 上跑測試用。
@@ -53,14 +55,16 @@ bash ios/tools/watch-check.sh
 
 - 沒有網頁預覽，也不能用 Expo Go 掃碼。要看畫面就看 CI 截圖，或把模擬器版丟上 Limrun。
 - 存檔從 AsyncStorage 換成 app 資料夾裡的一個 JSON 檔。兩版的資料不互通。存檔讀不出來時不會蓋掉，會改名留著。
-- 「用講的改行程」的 AI 網址寫在建置設定 `RADISH_AI_ENDPOINT`，要填完整網址。Expo 版那條「開發伺服器轉接這台電腦的 claude cli」沒有搬，所以現在只有本機指令那幾句。
+- 「用講的改行程」有三種接 AI 的方法，都接了就照這個順序用：連自己電腦的 Claude CLI（平常的我裡掃 QR code，電腦端在 `tools/claude-bridge/`）、平常的我裡填的 Claude API 金鑰（存在鑰匙圈）、自己的後端（建置設定 `RADISH_AI_ENDPOINT`，要填完整網址；後端還沒有，現在是空的）。三種都沒接，就只聽得懂手機自己的那幾句。第一次送到一個地方會先問。
 - 挑照片改用系統的相簿選擇器，不用問相簿權限。
 - 地圖上點標記只看得到中文站名，韓文名稱沒有顯示（SwiftUI 的標記放不了第二行）。
 - 輸入框的字數上限是打完才截掉，超過的那個字可能會閃一下。
 
 ## 還沒驗的
 
-- 沒在真的 iPhone 上跑過。震動、拔蘿蔔的節奏、通知會不會跳出來、定位、分享網頁檔，模擬器都驗不到。
-- 要裝到手機得走 TestFlight。工作流寫好了（`.github/workflows/ios.yml`），還差三件只有多米能做的事，步驟在 `ios/ci/README.md`。這條線還沒真的跑過。
-- 深色模式沒截圖看過。
+- 多米的手機上還沒一項一項驗過。震動、拔蘿蔔的節奏、通知會不會跳出來、定位、分享網頁檔，模擬器都驗不到。
+- TestFlight 走得通（推 `tf-N` 標籤才出版，`.github/workflows/ios.yml`），出過 0.3.0（4）。
+- 真的 AI 沒有在 CI 上打過：UI 測試裡的 AI 全是假的，送出去的請求在手機裡就攔下來了。
+- 深色只截三個分頁，而且是用測試參數 `-uitest-dark` 指定深色；跟著系統切深淺、其他畫面的深色都還沒看過。
+- 大字級只截「這趟」一個畫面。
 - 過敏告知卡的韓文、首爾資料，跟 Expo 版一樣都還沒核對。

@@ -6,11 +6,16 @@
 //   -uitest-ai ok|fail|slow           假的 AI 怎麼回。沒帶當成 fail。有帶 -uitest-dest 就一定攔下來，不會真的打網路
 //   -uitest-agreed                    那個地方當成同意過了
 //   -uitest-offline                   假裝沒網路（在 IO/Network.swift）
+//   -uitest-dark                      指定深色（RadishApp.swift 的 forcedScheme）。測試切系統深淺在 CI 上沒有作用
 // 日期都從今天往前往後推，行程用 generate 排，所以資料包或規則改了這裡會跟著變。
 #if DEBUG
     import Foundation
 
     enum UITestScenes {
+        static var dark: Bool {
+            return ProcessInfo.processInfo.arguments.contains("-uitest-dark")
+        }
+
         /// RadishApp.init 叫，要在 AppStore 建起來之前：存檔、送去哪裡都先放好
         static func prepare(_ args: [String]) {
             if let dest = value("-uitest-dest", args) {

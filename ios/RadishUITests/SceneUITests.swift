@@ -3,8 +3,6 @@ import XCTest
 /// 一個畫面一條短測試：用場景（Radish/App/UITestScenes.swift）直接開到那個狀態，截圖就結束，互相不依賴。
 /// 主流程在 FlowUITests；這裡補它走不到的畫面。找元件一律用識別碼的 firstMatch，比用字找快。
 final class SceneUITests: RadishUITestCase {
-    private var changedAppearance: Bool = false
-
     /// 每條測試的檔名不一樣，流水號相同也不會互蓋。name 是 -[SceneUITests test01給司機看]
     override var shotPrefix: String {
         let last: String = name.components(separatedBy: " ").last ?? name
@@ -13,13 +11,6 @@ final class SceneUITests: RadishUITestCase {
             method = String(method.dropFirst(4))
         }
         return "Scene-" + method
-    }
-
-    override func tearDownWithError() throws {
-        if changedAppearance {
-            XCUIDevice.shared.appearance = .light
-        }
-        try super.tearDownWithError()
     }
 
     /* ---------- 找、捲、點 ---------- */
@@ -75,47 +66,97 @@ final class SceneUITests: RadishUITestCase {
         return limit
     }
 
-    /// 捲到整個看得到。在上面就往回捲，在下面就往下捲；捲不動了就停
+    /// 位置讀得到。捲出畫面的輸入框，位置會是空的或無限大
+    private func placed(_ frame: CGRect) -> Bool {
+        return !frame.isEmpty && !frame.isInfinite && frame.minY.isFinite && frame.maxY.isFinite
+    }
+
+    /// 捲到整個看得到。在上面就往回捲，在下面就往下捲；捲不動了就停。
+    /// 位置讀不到的（捲出畫面的輸入框）先往下找，找不到再往回找
     @discardableResult
     private func bring(
         _ id: String, inSheet: Bool = false, file: StaticString = #filePath, line: UInt = #line
     ) -> XCUIElement {
         let element: XCUIElement = see(id, file: file, line: line)
-        for _ in 0..<10 {
+        var lost: Int = 0
+        for _ in 0..<16 {
             let before: CGRect = element.frame
-            if !before.isEmpty && before.minY < 56 {
+            if !placed(before) {
+                lost += 1
+                if lost <= 5 {
+                    drag(0.66, 0.3)
+                } else {
+                    drag(0.3, 0.62)
+                }
+                continue
+            }
+            // 狀態列底下那一條有遮底，藏在裡面的點不到
+            if before.minY < 64 {
                 drag(0.3, 0.62)
-            } else if before.isEmpty || before.maxY > bottomLimit(inSheet) {
+            } else if before.maxY > bottomLimit(inSheet) {
                 drag(0.66, 0.3)
             } else {
                 break
             }
-            if element.frame == before && !before.isEmpty { break }
+            if element.frame == before { break }
         }
         return element
+    }
+
+    /// 識別碼可能掛在整格（小標加輸入框）上，先找真的輸入框
+    private func fieldById(_ id: String) -> XCUIElement {
+        for query in [app.textFields, app.textViews] {
+            let hit: XCUIElement = query.matching(identifier: id).firstMatch
+            if hit.exists { return hit }
+        }
+        return byId(id)
+    }
+
+    /// 捲到真的點得到的輸入框。捲過頭就一小步一小步往回捲
+    private func bringField(_ id: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+        // 講的那一列釘在最下面，不用捲
+        let pinned: Bool = id.hasSuffix("-input")
+        see(id, file: file, line: line)
+        if !pinned { bring(id, file: file, line: line) }
+        for _ in 0..<10 {
+            let field: XCUIElement = fieldById(id)
+            let box: CGRect = field.frame
+            if placed(box) && box.minY >= 64 {
+                if !pinned && box.maxY > bottomLimit(false) {
+                    drag(0.55, 0.4)
+                    continue
+                }
+                if field.isHittable { return field }
+            }
+            drag(0.4, 0.55)
+        }
+        let last: XCUIElement = fieldById(id)
+        let ok: Bool = placed(last.frame) && last.isHittable
+        XCTAssertTrue(ok, "捲不到輸入框 \(id)", file: file, line: line)
+        return last
+    }
+
+    /// 打開鍵盤，截圖，確認分頁列收起來了、輸入框整個在鍵盤上面
+    private func typeAndCheck(_ id: String, _ text: String, _ title: String) {
+        let field: XCUIElement = bringField(id)
+        field.tap()
+        let keyboard: XCUIElement = app.keyboards.firstMatch
+        let up: Bool = keyboard.waitForExistence(timeout: 8)
+        XCTAssertTrue(up, "點了 \(id)，鍵盤沒有出來")
+        field.typeText(text)
+        pause()
+        shot(title)
+        XCTAssertFalse(byId("tab-trip").exists, "鍵盤出來了，分頁列還在")
+        let box: CGRect = fieldById(id).frame
+        if placed(box) && placed(keyboard.frame) {
+            XCTAssertLessThanOrEqual(box.maxY, keyboard.frame.minY + 1, "\(id) 被鍵盤蓋到")
+        }
     }
 
     private func tapId(
         _ id: String, inSheet: Bool = false, file: StaticString = #filePath, line: UInt = #line
     ) {
         bring(id, inSheet: inSheet, file: file, line: line).tap()
-    }
-
-    /// 有鍵盤才打字：鍵盤沒出來就不打，不讓打字害截圖截不到
-    private func typeIfPossible(_ id: String, _ text: String) {
-        var field: XCUIElement = byId(id)
-        // 識別碼可能掛在整格（小標加輸入框）上，先找真的輸入框
-        for query in [app.textFields, app.textViews] {
-            let hit: XCUIElement = query.matching(identifier: id).firstMatch
-            if hit.exists {
-                field = hit
-                break
-            }
-        }
-        field.tap()
-        if app.keyboards.firstMatch.waitForExistence(timeout: 5) {
-            app.typeText(text)
-        }
     }
 
     /// 今天往後幾天，YYYY-MM-DD
@@ -217,9 +258,7 @@ final class SceneUITests: RadishUITestCase {
         see("talk-hold")
         shot("沒網路")
         see("talk-input")
-        typeIfPossible("talk-input", "第二天多排一間咖啡廳")
-        pause()
-        shot("沒網路-打了一句")
+        typeAndCheck("talk-input", "第二天多排一間咖啡廳", "沒網路-打了一句")
     }
 
     func test09句數用完() {
@@ -321,24 +360,17 @@ final class SceneUITests: RadishUITestCase {
             tapId("cal-next")
         }
         tapId("cal-\(iso)")
+        // 想怎麼玩在月曆上面，點完日期要往回捲才點得到
+        fillWish()
         for id in ["days-5", "arrive-am", "leave-pm", "people-2", "base-C"] {
             tapId(id)
         }
-        // 想怎麼玩那一格還沒做進來的話就跳過，後面照樣排
-        if byId("start-wish").waitForExistence(timeout: 3) {
-            bring("start-wish")
-            shot("想怎麼玩-空的")
-            typeIfPossible("start-wish", "想慢慢逛，多吃在地小館")
-            pause()
-            shot("想怎麼玩-打了字")
-            // 往下拖把鍵盤收起來
-            for _ in 0..<3 where app.keyboards.firstMatch.exists {
-                drag(0.3, 0.9)
-            }
-        } else {
-            shot("沒有想怎麼玩那一格")
-        }
         tapId("start-go")
+        // 沒接 AI：行程排好，升起半頁講那句還沒送
+        see("reply-wish-held", timeout: 20)
+        pause()
+        shot("排好了-那句還沒送")
+        byId("reply-done").tap()
         see("day-tab-1", timeout: 20)
         pause()
         shot("沒接AI排出來的")
@@ -348,12 +380,56 @@ final class SceneUITests: RadishUITestCase {
         }
     }
 
+    /// 打想怎麼玩那一格，按收鍵盤。中文打不進去就改打英文
+    private func fillWish() {
+        let field: XCUIElement = bringField("start-wish")
+        shot("想怎麼玩-空的")
+        field.tap()
+        let keyboard: XCUIElement = app.keyboards.firstMatch
+        let up: Bool = keyboard.waitForExistence(timeout: 8)
+        XCTAssertTrue(up, "點了想怎麼玩，鍵盤沒有出來")
+        field.typeText("想慢慢逛，多吃在地小館")
+        let typed: String = (fieldById("start-wish").value as? String) ?? ""
+        if !typed.contains("慢慢逛") {
+            fieldById("start-wish").typeText("slow walks, small local restaurants")
+        }
+        pause()
+        shot("想怎麼玩-打了字")
+        XCTAssertFalse(byId("tab-trip").exists, "鍵盤出來了，分頁列還在")
+        see("start-wish-done").tap()
+        let gone: Bool = waitUntil(timeout: 8) { !self.app.keyboards.firstMatch.exists }
+        XCTAssertTrue(gone, "按了收鍵盤，鍵盤還在")
+        see("tab-trip")
+    }
+
+    /* ---------- 鍵盤出來時，分頁列不蓋輸入框 ---------- */
+
+    func test21問AI打字() {
+        openScene("plan")
+        openTab("ask")
+        typeAndCheck("chat-input", "hello", "問AI-鍵盤出來")
+    }
+
+    func test22花費打字() {
+        openScene("trip")
+        see("open-more").tap()
+        tapId("more-cost", inSheet: true)
+        typeAndCheck("spend-krw", "12000", "花費-鍵盤出來")
+    }
+
+    func test23一站寫一句() {
+        openScene("done")
+        let rows: XCUIElementQuery = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "stop-row-"))
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 15), "清單裡沒有站")
+        tapId(rows.firstMatch.identifier)
+        typeAndCheck("visit-say", "hello", "一站-鍵盤出來")
+    }
+
     /* ---------- 深色、大字 ---------- */
 
     func test19深色的三個分頁() {
-        changedAppearance = true
-        XCUIDevice.shared.appearance = .dark
-        openScene("trips")
+        openScene("trips", ["-uitest-dark"])
         see("day-tab-1")
         pause()
         shot("深色-這趟")

@@ -143,7 +143,12 @@ private struct WishField: View {
             .padding(.horizontal, T.Space.s4)
             .padding(.vertical, T.Space.s3)
             .frame(minHeight: T.Size.field)
-            .background(C.surface, in: shape)
+            // 框的邊邊（字以外的留白）點了也要能打字
+            .background {
+                shape.fill(C.surface)
+                    .onTapGesture { focused = true }
+                    .accessibilityHidden(true)
+            }
             .overlay(
                 shape.strokeBorder(
                     focused ? C.accent : C.fieldBorder,

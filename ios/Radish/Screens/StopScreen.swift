@@ -207,7 +207,9 @@ private struct StopPage: View {
                 pane = .drop
             }
         } label: {
+            // 導覽列會幫它畫一顆膠囊底，左右留一點空，字才不會貼邊
             DomyText("不想去這一站", .body, tone: .strong, lines: 1)
+                .padding(.horizontal, T.Space.s2)
                 .frame(minHeight: T.Size.touch)
                 .contentShape(Rectangle())
         }
