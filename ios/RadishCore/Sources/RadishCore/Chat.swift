@@ -156,18 +156,80 @@ private func chatFind(_ name: String, _ t: Trip) -> Found? {
     return nil
 }
 
-/// 沒接 AI 時的本機指令。聽不懂就老實說聽不懂。now 有給（旅途中）時，「輕鬆一點」只挑還沒過、還沒拔的站
+/// 講重排時可以有的客氣話、贅字。長的放前面，先拿掉長的
+private let REGEN_FILLERS: [String] = [
+    "照現在的設定", "照新的設定", "照新設定", "照這個調整", "照現在的調整", "照新的調整", "照調整", "照設定", "照這個", "照這樣",
+    "這整趟", "整趟", "這一趟", "這趟", "整個", "全部", "行程", "一次", "一遍", "一下",
+    "麻煩", "幫我", "那就", "我要", "我想要", "我想", "想要", "請", "那", "就", "把", "再", "都", "好", "吧", "啊", "喔", "啦", "要",
+]
+private let REGEN_CORES: [String] = ["重排", "重新排", "重新排過", "重新安排"]
+
+/// 這句是不是只在叫 app 整趟重排：「重排」「整趟重排一次」「幫我重新排」。
+/// 有接 AI 也由手機自己做（AI 沒有這個動作），所以認得嚴：說不要、只講某一天、還帶別的要求的都不算
+func talkWantsRegen(_ raw: String) -> Bool {
+    var k: String = chatStrip("[\\s，。、！!,.～~「」]+", raw)
+    for w in REGEN_FILLERS {
+        k = k.replacingOccurrences(of: w, with: "")
+    }
+    return REGEN_CORES.contains(k)
+}
+
+/// 手機照「重排」做的時候回什麼。旅途中、已經有拔起來的站都不重排：去過的站會被洗掉
+private func localRegen(_ t: Trip, _ now: TripNow?) -> BrainOut {
+    if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
+    if tripVisited(t) { return BrainOut(reply: NO_REGEN_VISITED, ops: []) }
+    return BrainOut(reply: "好，整趟重排一次。", ops: [], regen: true)
+}
+
+/// 本機指令只做一步，先在複本上照著套一次：套不上、套了跟現在一樣，就老實說沒做；
+/// 要確認的說要你點頭；真的套得上才講 done 那一句
+private func localStep(_ t: Trip, _ op: Op, _ now: TripNow?, _ done: String) -> BrainOut {
+    let o: [String: Any] = opJSON(op)
+    var copy: Trip = t
+    var seeds: [Seed] = []
+    let list: [Any] = [o]
+    let r: (changes: [String], notes: [String]) = applyOps(&copy, &seeds, list, now, true)
+    if r.changes.isEmpty {
+        let why: String = r.notes.first ?? "沒有改到東西"
+        return BrainOut(reply: "這個沒做成：\(why)。這趟沒有動。", ops: [])
+    }
+    if copy == t { return BrainOut(reply: "改了會跟現在一樣，所以這趟沒有動。", ops: []) }
+    if opLevel(t, o) == OpLevel.confirm { return BrainOut(reply: NEED_CONFIRM, ops: list) }
+    return BrainOut(reply: done, ops: list)
+}
+
+/// 這趟沒有這一天的話，回要講的那一句
+private func localNoDay(_ t: Trip, _ days: [Int]) -> BrainOut? {
+    for d in days where d < 1 || d > t.days {
+        let word: String = d == Int.max ? "那一天" : "第 \(d) 天"
+        return BrainOut(reply: "這個沒做成：這趟只有 \(t.days) 天，沒有\(word)。這趟沒有動。", ops: [])
+    }
+    return nil
+}
+
+/// 兩天整天對調時，是不是每個時段都對得上。有一邊在路上的時段不會動
+private func localWholeSwap(_ t: Trip, _ a: Int, _ b: Int) -> Bool {
+    for p in PARTS {
+        let hasA: Bool = slotAt(t, a, p) != nil
+        let hasB: Bool = slotAt(t, b, p) != nil
+        if hasA != hasB { return false }
+    }
+    return true
+}
+
+/// 沒接 AI 時的本機指令。聽不懂就老實說聽不懂，套不上就老實說套不上。
+/// now 有給（旅途中）時，「輕鬆一點」只挑還沒過、還沒拔的站
 func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
     // 旅途中說的「今天」就是第幾天，下面的說法都認得
     var msg: String = raw
     if let n = now { msg = msg.replacingOccurrences(of: "今天", with: "第 \(n.day) 天") }
-    if msg.contains("重排") || msg.contains("重新排") {
-        if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
-        return BrainOut(reply: "好，整趟重排一次。", ops: [], regen: true)
-    }
+    if talkWantsRegen(raw) { return localRegen(t, now) }
     // 「這趟想輕鬆一點」這種講整趟的，是這趟的調整，要確認。講到第幾天的留給下面
     if msg.contains("這趟") && !msg.contains("第") {
         for w in TWEAK_WORDS where msg.contains(w.word) {
+            if (t.tweaks ?? []).contains(w.tweak) {
+                return BrainOut(reply: "這趟已經有「\(TWEAK_TEXT[need: w.tweak].name)」了，這趟沒有動。", ops: [])
+            }
             let op: [String: Any] = ["op": "setTweak", "tweak": w.tweak.rawValue, "on": true]
             return BrainOut(reply: NEED_CONFIRM, ops: [op])
         }
@@ -175,12 +237,18 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
     if let m = chatMatch("第\\s*([0-9]+)\\s*天.*第\\s*([0-9]+)\\s*天.*(對調|交換|互換)", msg),
         let d1 = chatGroup(m, 1), let d2 = chatGroup(m, 2)
     {
-        let op: Op = Op.swapDays(a: chatInt(d1), b: chatInt(d2))
-        return BrainOut(reply: "第 \(d1) 天和第 \(d2) 天整天對調了。", ops: [opJSON(op)])
+        let a: Int = chatInt(d1)
+        let b: Int = chatInt(d2)
+        if let no = localNoDay(t, [a, b]) { return no }
+        var done: String = "第 \(a) 天和第 \(b) 天整天對調了。"
+        if !localWholeSwap(t, a, b) { done = "第 \(a) 天和第 \(b) 天對調了，在路上的時段沒有動。" }
+        return localStep(t, Op.swapDays(a: a, b: b), now, done)
     }
     if let m = chatMatch("第\\s*([0-9]+)\\s*天.*(對調|交換|互換)", msg), let d1 = chatGroup(m, 1) {
-        let op: Op = Op.swapParts(day: chatInt(d1), a: Part.am, b: Part.pm)
-        return BrainOut(reply: "第 \(d1) 天的上午和下午對調了。", ops: [opJSON(op)])
+        let day: Int = chatInt(d1)
+        if let no = localNoDay(t, [day]) { return no }
+        let op: Op = Op.swapParts(day: day, a: Part.am, b: Part.pm)
+        return localStep(t, op, now, "第 \(day) 天的上午和下午對調了。")
     }
     if let m = chatMatch("把?(.+?)(?:移|搬|挪|改|放)到?第\\s*([0-9]+)\\s*天\\s*(上午|下午|晚上)?", msg),
         let name = chatGroup(m, 1), let d2 = chatGroup(m, 2)
@@ -188,8 +256,10 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
         if let x = chatFind(name, t) {
             var part: Part = x.s.part
             if let word = chatGroup(m, 3), let said = PART_WORD[word] { part = said }
-            let op: Op = Op.move(id: x.it.id, day: chatInt(d2), part: part)
-            return BrainOut(reply: "「\(x.it.n)」移到第 \(d2) 天\(PART[need: part])了。", ops: [opJSON(op)])
+            let day: Int = chatInt(d2)
+            if let no = localNoDay(t, [day]) { return no }
+            let op: Op = Op.move(id: x.it.id, day: day, part: part)
+            return localStep(t, op, now, "「\(x.it.n)」移到第 \(day) 天\(PART[need: part])了。")
         }
     }
     if let m = chatMatch("(?:不要|拿掉|刪掉|移除|不去)(.+)", msg), let rest = chatGroup(m, 1) {
@@ -197,19 +267,25 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
         name = name.replacingOccurrences(of: "吧", with: "")
         name = name.replacingOccurrences(of: "。", with: "")
         if let x = chatFind(name, t) {
-            let op: Op = Op.remove(id: x.it.id)
-            return BrainOut(reply: "「\(x.it.n)」拿掉了，放進下次再來。", ops: [opJSON(op)])
+            return localStep(t, Op.remove(id: x.it.id), now, "「\(x.it.n)」拿掉了，放進下次再來。")
         }
     }
     if let m = chatMatch("第\\s*([0-9]+)\\s*天.*(輕鬆|少一點|太累|好累|太滿)", msg), let d1 = chatGroup(m, 1) {
-        let stops: [Found] = dayStops(t, chatInt(d1)).filter { (s: Found) -> Bool in
+        let day: Int = chatInt(d1)
+        if let no = localNoDay(t, [day]) { return no }
+        let stops: [Found] = dayStops(t, day).filter { (s: Found) -> Bool in
             return s.it.status != .pulled && !slotPast(now, s.s.day, s.s.part)
         }
         let big: Found? = stops.first { (s: Found) -> Bool in s.it.s == .L }
-        if let x = big ?? stops.first {
-            let op: Op = Op.remove(id: x.it.id)
-            return BrainOut(reply: "第 \(d1) 天拿掉「\(x.it.n)」，鬆一點。", ops: [opJSON(op)])
+        guard let x = big ?? stops.first else {
+            return BrainOut(reply: "第 \(day) 天沒有還能拿掉的站，這趟沒有動。", ops: [])
         }
+        return localStep(t, Op.remove(id: x.it.id), now, "第 \(day) 天拿掉「\(x.it.n)」，鬆一點。")
+    }
+    // 講到重排，但沒有單純叫整趟重排：不要重排、只重排一天、重排時還要多排什麼
+    if msg.contains("重排") || msg.contains("重新排") {
+        if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
+        return BrainOut(reply: "這趟沒有動。手機只會照現在的設定整趟重排，要的話只說「重排」兩個字。", ops: [])
     }
     return BrainOut(
         reply: "這一版還沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「這趟想輕鬆一點」「重排」。",
@@ -523,9 +599,18 @@ private func chatFrozen(_ t: Trip, _ o: [String: Any], _ now: TripNow?) -> Strin
     return nil
 }
 
+/// 一次最多做幾步
+let OPS_MAX: Int = 20
+
+/// splitOps 切掉的那幾步只留數目，交給 applyOps 講出來
+struct OpsOver {
+    let count: Int
+}
+
 /// 把一串動作套到行程上。changes 是給人看的「哪一站從哪到哪」，notes 是沒做成的原因。
 /// ops 是 JSONSerialization 解出來的東西（AI 回的，不可信），也可以直接給 [Op]
 /// now 有給（旅途中）時，過去的時段不動；拔起來的站不管什麼時候都不動
+/// 一次最多 OPS_MAX 步。超過的、看不懂的（不是物件、權限表上沒有的 op）不做，在 notes 寫有幾步沒做
 /// 權限表（Permit.swift）上沒有的 op 不做；要確認的 op 只有 confirmed 是 true（使用者按了套用）才做
 @discardableResult
 func applyOps(
@@ -534,7 +619,19 @@ func applyOps(
     var changes: [String] = []
     var notes: [String] = []
     guard let list = ops as? [Any] else { return (changes: changes, notes: notes) }
-    for raw in list.prefix(20) {
+    var todo: [Any] = []
+    var over: Int = 0
+    var unknown: Int = 0
+    for raw in list {
+        if let more = raw as? OpsOver {
+            over += more.count
+        } else if todo.count < OPS_MAX {
+            todo.append(raw)
+        } else {
+            over += 1
+        }
+    }
+    for raw in todo {
         // TS 碰到 null 會丟例外，被 catch 接住記成這一句
         if raw is NSNull {
             notes.append("有一步沒做成")
@@ -546,9 +643,11 @@ func applyOps(
         } else {
             obj = raw as? [String: Any]
         }
-        // 不是物件的（數字、字串、陣列）在 TS 是每個分支都不成立，什麼都不做
-        guard let o = obj else { continue }
-        guard let level = opLevel(t, o) else { continue }
+        // 不是物件的（數字、字串、陣列）、權限表上沒有的：什麼都不做，只記有幾步
+        guard let o = obj, let level = opLevel(t, o) else {
+            unknown += 1
+            continue
+        }
         if level == .confirm && !confirmed {
             notes.append("\(opLine(t, o))：要你確認才改")
             continue
@@ -561,6 +660,8 @@ func applyOps(
             notes.append(err)
         }
     }
+    if unknown > 0 { notes.append("有 \(unknown) 步看不懂，沒有做") }
+    if over > 0 { notes.append("一次最多做 \(OPS_MAX) 步，後面有 \(over) 步沒做") }
     return (changes: changes, notes: notes)
 }
 
@@ -868,6 +969,8 @@ func aiPrompt(
         rules += "\n- 使用者說累了、下雨、晚了、多出時間，只調今天還沒過的時段，除非他講的是別天。"
         rules += "\n- 他說「下一站」，指今天還沒拔起來的第一站。"
         rules += "\n- 旅途中不要整趟重排。"
+    } else {
+        rules += "\n- 你沒有整趟重排的動作。使用者想整趟重排，ops 給空陣列，reply 請他只說「重排」兩個字，app 會自己排。"
     }
 
     let nowText: String = nowLine(t, clock)
@@ -899,7 +1002,10 @@ ops 可用的動作：
 enum AskError: Error, Equatable, CustomStringConvertible {
     case badURL
     case http(Int)
+    /// 回的看不懂：沒有 JSON、沒有 reply、ops 不是一串
     case badReply
+    /// 回到一半就被切斷（stop_reason 是 max_tokens）
+    case cutOff
     /// 401、403：金鑰不對、被停用，或沒有權限
     case badKey(Int)
     /// 帳戶沒有額度、要先儲值
@@ -920,7 +1026,9 @@ enum AskError: Error, Equatable, CustomStringConvertible {
         case .http(let status):
             return "HTTP \(status)"
         case .badReply:
-            return "後端回的不是看得懂的 JSON"
+            return "AI 回的內容看不懂"
+        case .cutOff:
+            return "AI 的回覆太長，只收到一半"
         case .badKey(let status):
             return "Claude API 金鑰不能用（HTTP \(status)），到平常的我重新填"
         case .noCredit:
@@ -964,19 +1072,54 @@ private func postJSON(_ url: URL, _ headers: [String: String], _ payload: [Strin
     }
 }
 
-/// 一段含 JSON 的文字 → {reply, ops}。第一個 { 到最後一個 } 當成 JSON；找不到就當成空物件
+/// 一段含 JSON 的文字 → {reply, ops}。第一個 { 到最後一個 } 當成 JSON。
+/// 找不到、讀不懂、沒有 reply 就丟錯：不能沒改卻說「好了」。丟錯會走沒回好那條路（線框 A21），不算句數
 func brainFromText(_ text: String) throws -> BrainOut {
-    var json: String = "{}"
-    if let m = chatMatch("\\{[\\s\\S]*\\}", text), let whole = chatGroup(m, 0) { json = whole }
-    let parsed: Any = try JSONSerialization.jsonObject(with: Data(json.utf8), options: [.allowFragments])
-    return brainFromDict((parsed as? [String: Any]) ?? [:])
+    guard let m = chatMatch("\\{[\\s\\S]*\\}", text), let json = chatGroup(m, 0),
+        let parsed = try? JSONSerialization.jsonObject(with: Data(json.utf8), options: []),
+        let dict = parsed as? [String: Any]
+    else { throw AskError.badReply }
+    return try brainFromDict(dict)
 }
 
-private func brainFromDict(_ dict: [String: Any]) -> BrainOut {
-    var reply: String = "好了。"
-    if let r = dict["reply"], !(r is NSNull) { reply = chatText(r) }
-    let ops: [Any] = (dict["ops"] as? [Any]) ?? []
+/// reply 要是有字的字串；ops 沒給或是 null 當成沒有要改，給了就要是一串
+func brainFromDict(_ dict: [String: Any]) throws -> BrainOut {
+    guard let raw = dict["reply"] as? String else { throw AskError.badReply }
+    let reply: String = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if reply.isEmpty { throw AskError.badReply }
+    var ops: [Any] = []
+    if let given = dict["ops"], !(given is NSNull) {
+        guard let list = given as? [Any] else { throw AskError.badReply }
+        ops = list
+    }
     return BrainOut(reply: chatSlice(reply, 600), ops: ops)
+}
+
+/// 自己的後端回的那一包：{reply, ops}，或 {text: "…含 JSON 的文字…"}
+func brainFromServer(_ body: Data) throws -> BrainOut {
+    guard let data = try? JSONSerialization.jsonObject(with: body, options: [.allowFragments]),
+        let obj = data as? [String: Any]
+    else { throw AskError.badReply }
+    if (obj["stop_reason"] as? String) == "max_tokens" { throw AskError.cutOff }
+    if let text = obj["text"] as? String { return try brainFromText(text) }
+    return try brainFromDict(obj)
+}
+
+/// Claude（Messages API）回的那一包。被擋下、回到一半被切斷、沒有文字，都算沒回好
+func brainFromClaude(_ body: Data) throws -> BrainOut {
+    guard let data = try? JSONSerialization.jsonObject(with: body, options: []),
+        let obj = data as? [String: Any]
+    else { throw AskError.badReply }
+    let stop: String = (obj["stop_reason"] as? String) ?? ""
+    if stop == "refusal" { throw AskError.refused }
+    if stop == "max_tokens" { throw AskError.cutOff }
+    let blocks: [[String: Any]] = (obj["content"] as? [[String: Any]]) ?? []
+    var text: String = ""
+    for b in blocks where (b["type"] as? String) == "text" {
+        text += (b["text"] as? String) ?? ""
+    }
+    if text.isEmpty { throw AskError.badReply }
+    return try brainFromText(text)
 }
 
 /// 直接問 Claude 的 HTTP 標頭
@@ -1016,17 +1159,7 @@ func askClaude(_ prompt: String, _ key: String) async throws -> BrainOut {
     let got: (body: Data, status: Int?) = try await postJSON(url, claudeHeaders(key, fallback: true), payload)
     let status: Int = got.status ?? 0
     if !(status >= 200 && status < 300) { throw claudeError(status, got.body) }
-    guard let obj = try JSONSerialization.jsonObject(with: got.body, options: []) as? [String: Any] else {
-        throw AskError.badReply
-    }
-    if (obj["stop_reason"] as? String) == "refusal" { throw AskError.refused }
-    let blocks: [[String: Any]] = (obj["content"] as? [[String: Any]]) ?? []
-    var text: String = ""
-    for b in blocks where (b["type"] as? String) == "text" {
-        text += (b["text"] as? String) ?? ""
-    }
-    if text.isEmpty { throw AskError.badReply }
-    return try brainFromText(text)
+    return try brainFromClaude(got.body)
 }
 
 /// 連電腦的 CLI 時試一次：把網址的 /ask 換成 /ping，拿回那台電腦的名字
@@ -1087,13 +1220,7 @@ func askRemote(_ prompt: String, _ endpoint: String = AI_ENDPOINT) async throws 
     if let status = got.status, !(status >= 200 && status < 300) {
         throw AskError.http(status)
     }
-    let data: Any = try JSONSerialization.jsonObject(with: got.body, options: [.allowFragments])
-    // TS 對 null 讀 .text 會丟例外
-    if data is NSNull { throw AskError.badReply }
-    if let obj = data as? [String: Any], let text = obj["text"] as? String {
-        return try brainFromText(text)
-    }
-    return brainFromDict((data as? [String: Any]) ?? [:])
+    return try brainFromServer(got.body)
 }
 
 private func chatOpHasAiPlace(_ o: Op) -> Bool {
@@ -1160,7 +1287,7 @@ private func talkBare(_ name: String) -> String {
 }
 
 /// 給本機指令聽的那句：「這一站」換成站名、「這天」換成第幾天。
-/// prefix 為 true（在看某一天）而且句子沒講到哪一天、也不是講整趟時，前面補「第 N 天」
+/// prefix 為 true（在看某一天）而且句子沒講到哪一天、也不是講整趟（這趟、重排）時，前面補「第 N 天」
 func talkLocal(_ msg: String, _ t: Trip, _ day: Int?, _ stopId: String?, _ prefix: Bool) -> String {
     var out: String = msg
     if let id = stopId, let x = findItem(t, id) {
@@ -1175,6 +1302,7 @@ func talkLocal(_ msg: String, _ t: Trip, _ day: Int?, _ stopId: String?, _ prefi
         }
         let open: Bool =
             !talkMentionsDay(out) && !out.contains("這趟") && !out.contains("今天") && !out.contains("明天")
+            && !talkWantsRegen(out)
         if prefix && open { out = "第 \(d) 天" + out }
     }
     return out
@@ -1281,6 +1409,8 @@ private func phoneCount(_ t: Trip, _ base: Settings, _ day: Int, _ left: Bool, _
 private func phoneNext(_ t: Trip, _ base: Settings, _ now: TripNow?) -> String {
     guard let n = now else { return "現在不是旅途中。出發之後再問，手機會照那天排的告訴你下一站。" }
     let stops: [Found] = dayStops(t, n.day)
+    // 一站都沒排（留白、全部不去），沒有東西可以拔，不能說都拔完了
+    if stops.isEmpty { return "今天沒有排站。" }
     guard let i = stops.firstIndex(where: { (x: Found) -> Bool in x.it.status == .kept }) else {
         return "今天排的都拔完了。"
     }

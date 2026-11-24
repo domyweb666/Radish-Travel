@@ -105,6 +105,7 @@ struct StartTrip: View {
         let isFirst: Bool = first
         let picked: StartPrefs = prefs
         let filled: TripFormValue = form
+        // 沒寫 undoable，提示條不放「復原」；換了一趟，act 照樣會留一步
         store.act { (d: inout AppState) -> String? in
             if isFirst {
                 var play: [Cat: Int] = [:]
@@ -122,7 +123,9 @@ struct StartTrip: View {
                 stayName: filled.cleanStayName, name: filled.cleanName, cover: filled.cover,
                 start: start, days: days, arrive: arrive, leave: leave, people: people
             )
-            d.trip = generate(draft, d.settings)
+            var trip: Trip = generate(draft, d.settings)
+            trip.planTweaks = draft.tweaks ?? []
+            d.trip = trip
             d.chat = []
             var kept: [String: Bool] = [:]
             for (k, v) in d.checks where !k.hasPrefix("b_") {
@@ -234,7 +237,23 @@ struct StartTrip: View {
                 }
                 .accessibilityIdentifier("start-settings")
             }
+            undoButton
             backButton
+        }
+    }
+
+    /// 剛不要的那一版、剛收進去過的旅行的那一趟：提示條過了，這裡還拿得回來
+    @ViewBuilder
+    private var undoButton: some View {
+        if let trip = store.undoTrip {
+            DomyButton(
+                "復原，拿回「\(tripTitle(trip))・\(fmtDay(trip.start))出發」",
+                variant: .plain,
+                fullWidth: true
+            ) {
+                store.undo()
+            }
+            .accessibilityIdentifier("start-undo")
         }
     }
 
@@ -248,7 +267,7 @@ struct StartTrip: View {
                 variant: .plain,
                 fullWidth: true
             ) {
-                store.act { (d: inout AppState) -> String? in
+                store.act(undoable: true) { (d: inout AppState) -> String? in
                     return openShelved(&d, backId)
                 }
             }

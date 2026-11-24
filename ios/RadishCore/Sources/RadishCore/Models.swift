@@ -181,6 +181,7 @@ struct Trip: Codable, Hashable, Sendable {
     var planMark: String?  // 剛排好那張卡第一次出現時，這一版的樣子（planMarkOf）。之後對不上就是改過了
     var aiUsed: Int?  // 這趟問了 AI 幾句（AI 有回的才算，見 Chat.swift 的 aiLeft）。只多不少，跟 AppState.aiLog 對
     var id: String?  // 這趟的代號，重排、放一邊、復原都不變，用來認是不是同一趟。syncAIUsed 補上，舊檔沒有
+    var planTweaks: [Tweak]?  // 排這一版的時候用的調整。跟 tweaks 不一樣，就是排好之後才說的、還沒照它排。舊檔沒有
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -281,6 +282,9 @@ struct Basket: Codable, Identifiable, Hashable, Sendable {
     var items: [BasketItem] = []
     var start: String?
     var days: Int?
+    // 以下是收起來時一起留的，舊檔沒有
+    var trip: Trip?  // 整趟：花費、匯率、機票、沒去的站都在。去過的站的那一句和照片以 items 為準，這一份裡拿掉
+    var chat: [ChatMsg]?  // 這趟跟 AI 講過的
 }
 
 struct ChatMsg: Codable, Hashable, Sendable {
@@ -307,6 +311,7 @@ struct Shelved: Codable, Identifiable, Hashable, Sendable {
     var chat: [ChatMsg] = []
     var checks: [String: Bool] = [:]
     var debugDay: Int?
+    var shut: Bool?  // 按了「這趟不排了，收起來」放過來的：不提醒訂位。打開過就清掉
 }
 
 /// 要 AI 的句子送去哪一種地方

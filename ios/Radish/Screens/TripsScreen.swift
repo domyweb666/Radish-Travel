@@ -201,12 +201,13 @@ struct TripsScreen: View {
                 ForEach(shelf, id: \.id) { (x: Shelved) in
                     TripRow(
                         title: tripTitle(x.trip),
-                        meta: "\(range(x.trip.start, x.trip.days))・\(when(x.trip, x.debugDay))",
+                        meta: "\(range(x.trip.start, x.trip.days))・\(when(x.trip, x.debugDay))"
+                            + (x.shut == true ? "・收起來了" : ""),
                         cover: x.trip.cover,
                         testId: "trip-card-\(x.id)"
                     ) {
                         let id: String = x.id
-                        store.act { (d: inout AppState) -> String? in
+                        store.act(undoable: true) { (d: inout AppState) -> String? in
                             return openShelved(&d, id)
                         }
                         goTrip()
@@ -220,9 +221,9 @@ struct TripsScreen: View {
     @ViewBuilder private var newTripButton: some View {
         let hasCur: Bool = store.s.trip != nil
         DomyButton("開新的一趟", variant: hasCur ? .secondary : .primary, fullWidth: true) {
-            // 現在這趟先放到其他排好的。不走復原：復原只還原行程，放一邊的那份會多一份
+            // 現在這趟先放到其他排好的，可以復原
             if store.s.trip != nil {
-                store.mutate { (d: inout AppState) in
+                store.mutate(undoable: true) { (d: inout AppState) in
                     shelveCurrent(&d)
                 }
             }
@@ -248,7 +249,7 @@ struct TripsScreen: View {
         let baskets: [Basket] = store.s.baskets
         return TripsGroup("去過的旅行") {
             if baskets.isEmpty {
-                NoneRow(text: "還沒有。這趟收起來之後，會放在這裡。")
+                NoneRow(text: "還沒有。有去過的站，這趟收起來之後會放在這裡。")
             } else {
                 ForEach(baskets, id: \.id) { (b: Basket) in
                     TripRow(

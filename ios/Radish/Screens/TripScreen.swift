@@ -30,11 +30,6 @@ struct TripScreen: View {
             }
         }
         .pushPages(store.s.trip.map(tripTitle) ?? "開一趟")
-        .onChange(of: today) { _, now in
-            if let now {
-                nav.tripDay = now
-            }
-        }
     }
 
     /// 現在看的是第幾天：使用者點了哪一天（記在 Nav，切分頁回來還在）；還沒點過就跟著今天（旅途中）或第 1 天
@@ -141,19 +136,32 @@ struct TripScreen: View {
                 nav.push(.check)
             }
         }
-        if store.s.settingsDirty {
+        if store.s.settingsDirty && tripVisited(trip) {
+            // 有去過的站不整趟重排，跟行程設定一樣擋
+            Banner(
+                "「平常的我」改過了，這趟還是照舊的排。已經有去過的站，整趟重排會把去過的紀錄洗掉，所以不重排。想改哪一天，直接說。",
+                actionTitle: "知道了"
+            ) {
+                store.mutate { (d: inout AppState) -> Void in
+                    d.settingsDirty = false
+                }
+            }
+        } else if store.s.settingsDirty {
             Banner("「平常的我」改過了，這趟還是照舊的排。", actionTitle: "照新的設定重排") {
                 replan()
             }
         }
     }
 
+    /// 有去過的站就不重排，只講原因，不多一步復原
     private func replan() {
+        guard let trip = store.s.trip else { return }
+        if tripVisited(trip) {
+            store.say(NO_REGEN_VISITED)
+            return
+        }
         store.act(undoable: true) { (d: inout AppState) -> String? in
-            guard let old = d.trip else { return nil }
-            d.trip = replanTrip(old, draftOf(old), d.settings)
-            d.settingsDirty = false
-            return "照新的設定重排了。手動改過的地方也一起重排了。"
+            return replanCurrent(&d)
         }
     }
 }

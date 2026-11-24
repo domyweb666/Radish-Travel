@@ -54,25 +54,107 @@ private func clearCurrent(_ d: inout AppState, _ keepChecks: Bool = false) {
     }
 }
 
-/// 把這趟收起來：去過的站收進「去過的旅行」，行程清空
+/// 收進去過的旅行的那一份整趟。去過的站的那一句和照片已經在 items 裡，這裡拿掉，
+/// 之後在去過的那一趟改那一句、拿掉照片，才不會還留著一份舊的
+private func keptTrip(_ t: Trip) -> Trip {
+    var out: Trip = t
+    for i in out.slots.indices {
+        for j in out.slots[i].items.indices where out.slots[i].items[j].status == .pulled {
+            out.slots[i].items[j].say = nil
+            out.slots[i].items[j].photos = nil
+        }
+    }
+    return out
+}
+
+/// 把這趟收起來。有去過的站：收進「去過的旅行」，花費、匯率、沒去的站、對話一起留著。
+/// 一站都沒去過：整趟放到「其他排好的」，什麼都不會不見，只是不再提醒訂位
 @discardableResult
 func archiveTrip(_ d: inout AppState) -> String? {
     guard let trip = d.trip else { return nil }
     let items: [BasketItem] = visitedOf(trip)
-    if !items.isEmpty {
-        let basket: Basket = Basket(
-            id: newId("b"),
-            title: "\(tripTitle(trip))・\(fmtDay(trip.start))出發",
-            cover: trip.cover,
-            items: items,
-            start: trip.start,
-            days: trip.days
-        )
-        d.baskets.insert(basket, at: 0)
+    if items.isEmpty {
+        shelveCurrent(&d)
+        if !d.shelf.isEmpty {
+            d.shelf[0].shut = true
+        }
+        return "這趟收起來了，放在「旅行」的「其他排好的」。"
     }
-    // 收起來可以復原，所以勾選先不動；排下一趟時才清
+    var basket: Basket = Basket(
+        id: newId("b"),
+        title: "\(tripTitle(trip))・\(fmtDay(trip.start))出發",
+        cover: trip.cover,
+        items: items,
+        start: trip.start,
+        days: trip.days
+    )
+    basket.trip = keptTrip(trip)
+    basket.chat = d.chat.isEmpty ? nil : d.chat
+    d.baskets.insert(basket, at: 0)
+    // 勾選先不動；排下一趟時才清
     clearCurrent(&d, true)
-    return items.isEmpty ? "這趟收起來了。" : "這趟去過的 \(items.count) 站收進「去過的旅行」了。"
+    return "這趟收進「去過的旅行」了，去過的 \(items.count) 站、花費、沒去的站都在裡面。"
+}
+
+/// 收進去過的旅行的那一趟裡，當時沒去的站，照行程順序。舊檔沒有留就是空的
+func basketLeft(_ b: Basket) -> [Found] {
+    guard let trip = b.trip else { return [] }
+    return allItems(trip).filter { (x: Found) -> Bool in x.it.status != .pulled }
+}
+
+/// 排訂位提醒要看的那一份：按過「不排了，收起來」的那幾趟不提醒
+func remindState(_ s: AppState) -> AppState {
+    var out: AppState = s
+    out.shelf = s.shelf.filter { (x: Shelved) -> Bool in x.shut != true }
+    return out
+}
+
+/* ---------- 整趟重排 ---------- */
+
+/// 有去過的站：整趟重排會把去過的紀錄洗掉，所以不重排
+func tripVisited(_ t: Trip) -> Bool {
+    return allItems(t).contains { (x: Found) -> Bool in x.it.status == .pulled }
+}
+
+/// 有去過的站、說要整趟重排時回的話（旅途中的那一句在 Chat.swift 的 NO_REGEN_ON_TRIP）
+let NO_REGEN_VISITED: String = "這趟已經有去過的站，整趟重排會把去過的紀錄洗掉，所以沒有重排。想改哪一天，直接說哪一段。"
+
+/// 照現在的設定整趟重排。有去過的站就不動，回講清楚的那一句
+func replanCurrent(_ d: inout AppState) -> String? {
+    guard let old = d.trip else { return nil }
+    if tripVisited(old) { return NO_REGEN_VISITED }
+    d.trip = replanTrip(old, draftOf(old), d.settings)
+    d.settingsDirty = false
+    return "照新的設定重排了。手動改過的地方也一起重排了。"
+}
+
+/* ---------- 等 AI 回覆的時候換了一趟 ---------- */
+
+/// 對話裡第 me 則是不是我說的那一句
+func isSaid(_ chat: [ChatMsg], _ me: Int, _ said: String) -> Bool {
+    guard me >= 0 && me < chat.count else { return false }
+    return chat[me].r == .me && chat[me].t == said
+}
+
+/// 送出那一句的那一趟現在放在一邊：回的話留在它的對話裡，改動不套。回那一趟的名字；找不到就回 nil、什麼都不動
+@discardableResult
+func leaveReply(
+    _ d: inout AppState, _ tripId: String, _ me: Int, _ said: String, _ reply: ChatMsg, _ hadChanges: Bool
+) -> String? {
+    let found: Int? = d.shelf.firstIndex { (x: Shelved) -> Bool in x.trip.id == tripId }
+    guard let i = found, isSaid(d.shelf[i].chat, me, said) else { return nil }
+    d.shelf[i].chat.append(reply)
+    if hadChanges {
+        d.shelf[i].chat.append(ChatMsg(r: .sys, t: "等回覆的時候你換到別趟了，這次的改動沒有套上去。要的話再講一次。"))
+    }
+    return tripTitle(d.shelf[i].trip)
+}
+
+/// 送出那一句的那一趟現在放在一邊：在它的對話裡記下沒收到回覆，切回去可以再送一次
+func leaveFail(_ d: inout AppState, _ tripId: String, _ me: Int, _ said: String, _ code: String) {
+    let found: Int? = d.shelf.firstIndex { (x: Shelved) -> Bool in x.trip.id == tripId }
+    guard let i = found, isSaid(d.shelf[i].chat, me, said) else { return }
+    d.shelf[i].chat[me].failed = code
 }
 
 /// 現在這趟先放到「其他排好的」，讓出位置排新的一趟。什麼都不會不見
@@ -166,13 +248,21 @@ func planMarkOf(_ t: Trip) -> String {
 }
 
 /// 看起來還沒動過：沒有自己加的、AI 加的、換過的、拔起來的站。
-/// 給還沒記過 planMark 的舊行程用：動過的舊行程不再跳出剛排好那張卡
+/// 給還沒記過 planMark 的行程用：動過的不再跳出剛排好那張卡。
+/// 這趟的調整跟排的時候不一樣也算動過：在問 AI 重排完、還沒看這一頁就加了調整，卡上不能寫照它調過
 func planUntouched(_ t: Trip) -> Bool {
+    if let planned = t.planTweaks, tweakKeys(planned) != tweakKeys(t.tweaks) { return false }
     for x in allItems(t) {
         let it: Stop = x.it
         if it.mine == true || it.ai == true || it.swaps > 0 || it.status == .pulled { return false }
     }
     return true
+}
+
+/// 排序過再比：順序不同不算不一樣
+private func tweakKeys(_ list: [Tweak]?) -> [String] {
+    let keys: [String] = (list ?? []).map { (k: Tweak) -> String in k.rawValue }
+    return keys.sorted()
 }
 
 /// YYYY-MM-DD 變成 11/22。看不懂就回 nil
@@ -237,13 +327,125 @@ func planCardText(_ t: Trip, _ st: Settings) -> PlanCardText {
     return PlanCardText(head: head, body: bits.joined(separator: "；") + "。" + rest)
 }
 
-/// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。可以復原。
-/// 跟收起來一樣，對話會清掉，復原只拿回行程
+/// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。復原拿得回行程和對話
 @discardableResult
 func dropPlan(_ d: inout AppState) -> String? {
     guard d.trip != nil else { return nil }
     clearCurrent(&d, true)
     return "這一版拿掉了，可以重新開一趟。"
+}
+
+/* ---------- 復原 ---------- */
+
+/// 改之前的樣子，復原用。只放在記憶體。
+/// 只改這趟的那一步：還原行程、下次再來、順路、去過的旅行、學到的；對話、打勾不動。
+/// 換掉現在這趟的那一步（切到別趟、開新的一趟、收起來、不要這一版）：連其他排好的、對話、要先訂的打勾一起還原
+struct UndoSnap: Sendable {
+    var trip: Trip?
+    var seeds: [Seed]
+    var pool: [String]
+    var baskets: [Basket]
+    var settingsDirty: Bool
+    /// 設定裡「從行程學到的」：拿掉一站順便記的，要能跟著那一步一起復原
+    var learned: [Learned]
+    var shelf: [Shelved]
+    var chat: [ChatMsg]
+    var checks: [String: Bool]
+    var debugDay: Int?
+    /// 這一步換掉了現在這趟
+    var swap: Bool
+    /// 這一步的記號（跟 AI 講的那一輪才有），對話裡用它認「還是不是最後一步」
+    var mark: String?
+}
+
+/// 這一步有沒有換掉現在這趟，或動到其他排好的。兩份都要先補好代號（syncAIUsed）
+func tripSwapped(_ before: AppState, _ after: AppState) -> Bool {
+    if before.trip?.id != after.trip?.id { return true }
+    let a: [String] = before.shelf.map { (x: Shelved) -> String in x.id }
+    let b: [String] = after.shelf.map { (x: Shelved) -> String in x.id }
+    return a != b
+}
+
+func undoSnap(_ prev: AppState, swap: Bool, mark: String? = nil) -> UndoSnap {
+    return UndoSnap(
+        trip: prev.trip, seeds: prev.seeds, pool: prev.pool, baskets: prev.baskets,
+        settingsDirty: prev.settingsDirty, learned: prev.settings.learned,
+        shelf: prev.shelf, chat: prev.chat, checks: prev.checks, debugDay: prev.debugDay,
+        swap: swap, mark: mark)
+}
+
+/// 退回那一步之前。句數不跟著退（Chat.swift 的 restoreTrip、syncAIUsed）。回提示條要講的那一句
+@discardableResult
+func applyUndo(_ d: inout AppState, _ snap: UndoSnap) -> String {
+    // 那一步之後才改的「平常的我」還沒套到這趟，這件事不能跟著退掉
+    let dirty: Bool = snap.settingsDirty || d.settingsDirty
+    let open: String? = d.trip?.id
+    var text: String = "復原了上一步。"
+    // 照順序退，只改這趟的那一步退的時候一定還是那一趟；萬一不是，也照換了一趟的做法，不把現在這趟蓋掉
+    if snap.swap || snap.trip?.id != d.trip?.id {
+        unswap(&d, snap)
+        // 剛剛開著的那趟，換趟之前還沒有：放到其他排好的了
+        let known: Bool = open == snap.trip?.id || snap.shelf.contains { (x: Shelved) -> Bool in x.trip.id == open }
+        if open != nil && !known {
+            text = "復原了上一步。剛剛那一趟放在「其他排好的」，沒有不見。"
+        }
+    } else {
+        restoreTrip(&d, snap.trip)
+    }
+    d.seeds = snap.seeds
+    d.pool = snap.pool
+    d.baskets = snap.baskets
+    d.settings.learned = snap.learned
+    d.settingsDirty = dirty && d.trip != nil
+    return text
+}
+
+/// 從 list 拿出代號一樣的那一趟
+private func takeTrip(_ list: inout [Shelved], _ id: String?) -> Shelved? {
+    guard let id = id else { return nil }
+    let found: Int? = list.firstIndex { (x: Shelved) -> Bool in x.trip.id == id }
+    guard let i = found else { return nil }
+    return list.remove(at: i)
+}
+
+/// 退回換趟之前。換過去之後講的話、打的勾（都不算一步）留著；換趟之後才有的那一趟放到其他排好的
+private func unswap(_ d: inout AppState, _ snap: UndoSnap) {
+    syncAIUsed(&d)
+    // 現在手上的每一趟，開著的排最前面
+    var now: [Shelved] = []
+    if let t = d.trip {
+        now.append(
+            Shelved(id: newId("t"), trip: t, chat: d.chat, checks: bookingChecks(d.checks), debugDay: d.debugDay))
+    }
+    now.append(contentsOf: d.shelf)
+
+    var chat: [ChatMsg] = snap.chat
+    var books: [String: Bool] = bookingChecks(snap.checks)
+    var debugDay: Int? = snap.debugDay
+    if let x = takeTrip(&now, snap.trip?.id) {
+        chat = x.chat
+        books = x.checks
+        debugDay = x.debugDay
+    }
+    var shelf: [Shelved] = []
+    for old in snap.shelf {
+        var kept: Shelved = old
+        if let x = takeTrip(&now, old.trip.id) {
+            kept.trip = x.trip
+            kept.chat = x.chat
+            kept.checks = x.checks
+            kept.debugDay = x.debugDay
+        }
+        shelf.append(kept)
+    }
+    var checks: [String: Bool] = otherChecks(d.checks)
+    for (k, v) in books { checks[k] = v }
+    d.trip = snap.trip
+    d.shelf = now + shelf
+    d.chat = chat
+    d.checks = checks
+    d.debugDay = debugDay
+    syncAIUsed(&d)
 }
 
 func shareText(_ trip: Trip) -> String {

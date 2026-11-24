@@ -1,5 +1,7 @@
 // 畫面外框：分頁的外框（Screen）、彈出卡的外框（SheetScaffold）、懸浮分頁列、提示條。
 // 對應 mobile 的 components/Screen.tsx、components/Sheet.tsx、DomyTabBar、components/NoticeBar.tsx。
+import Accessibility
+import Observation
 import SwiftUI
 
 /// 有懸浮分頁列的畫面，捲動內容底部要留這麼多空間（安全區另外算，SwiftUI 會自己加）
@@ -94,6 +96,8 @@ struct FixedScreen<Actions: View, Content: View>: View {
 
 /// 彈出卡的外框：系統的頁面卡片，可以往下拉關掉；右上角一直有「關閉」。
 /// 用在 `.sheet` 裡面。scroll 為 false 時內容自己管捲動（例如對話、地圖）。
+/// 開著的時候有提示條，就在這張裡面的下緣出現（SheetNotice），內容讓出位置，不會被蓋住；
+/// 外面自己用 safeAreaInset 釘了下緣按鈕的（MapSheet），提示條在按鈕上面。
 struct SheetScaffold<Content: View>: View {
     let title: String
     var scroll: Bool = true
@@ -136,6 +140,9 @@ struct SheetScaffold<Content: View>: View {
                 .padding(.bottom, T.Space.s6)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            SheetNotice()
         }
         .background(C.canvas.ignoresSafeArea())
     }
@@ -196,36 +203,117 @@ struct DomyTabBar: View {
 /// 這一天、一站最下面常駐講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
 let talkBarClearance: CGFloat = T.Size.touch + T.Size.field + T.Space.s4
 
+/// 半頁開著多久還沒關，提示條才在半頁裡出現。做完就自己收起來的半頁不會閃一下
+private let sheetNoticeDelay: Double = 0.8  // 等半頁收掉的時間，不是動畫
+
+/// 現在是哪一則提示由半頁顯示。外殼看到是同一則就不畫，不會兩條一起看得到
+@MainActor
+@Observable
+final class NoticeStage {
+    static let shared: NoticeStage = NoticeStage()
+    /// Notice.id。nil 是沒有半頁在顯示
+    var inSheet: Int?
+
+    private init() {}
+}
+
+/// 提示條的樣子，外殼和半頁共用
+private struct NoticeCard: View {
+    let notice: Notice
+    let onUndo: () -> Void
+
+    var body: some View {
+        HStack(spacing: T.Space.s3) {
+            DomyText(notice.text, .subheadline, color: C.surface)
+            if notice.canUndo {
+                Button {
+                    onUndo()
+                } label: {
+                    DomyText("復原", .callout, color: C.bright)
+                        .frame(minWidth: T.Size.touch, minHeight: T.Size.touch)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("notice-undo")
+            }
+        }
+        .padding(.vertical, notice.canUndo ? 0 : T.Space.s3)
+        .padding(.horizontal, T.Space.s4)
+        .background(C.textPrimary, in: RoundedRectangle(cornerRadius: T.Radius.lg, style: .continuous))
+        .domyElevation(T.Elevation.level2)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("notice-bar")
+    }
+}
+
 /// 提示條：做完一個動作後告訴你發生了什麼，可以復原的會帶一顆「復原」。浮在分頁列和講的那一列上方。
+/// 一直掛在外殼上：不管提示條畫在哪裡，VoiceOver 都由這裡念一次
 struct NoticeBar: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
-        if let notice = store.notice {
-            HStack(spacing: T.Space.s3) {
-                DomyText(notice.text, .subheadline, color: C.surface)
-                if notice.canUndo {
-                    Button {
-                        store.dismissNotice()
-                        store.undo()
-                    } label: {
-                        DomyText("復原", .callout, color: C.bright)
-                            .frame(minWidth: T.Size.touch, minHeight: T.Size.touch)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("notice-undo")
+        ZStack(alignment: .bottom) {
+            if let notice = store.notice, NoticeStage.shared.inSheet != notice.id {
+                NoticeCard(notice: notice) {
+                    store.dismissNotice()
+                    store.undo()
                 }
+                .padding(.horizontal, T.Size.screenMargin)
+                .padding(.bottom, tabBarClearance + talkBarClearance)
+                .transition(.opacity)
             }
-            .padding(.vertical, notice.canUndo ? 0 : T.Space.s3)
-            .padding(.horizontal, T.Space.s4)
-            .background(C.textPrimary, in: RoundedRectangle(cornerRadius: T.Radius.lg, style: .continuous))
-            .domyElevation(T.Elevation.level2)
-            .padding(.horizontal, T.Size.screenMargin)
-            .padding(.bottom, tabBarClearance + talkBarClearance)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("notice-bar")
-            .transition(.opacity)
+        }
+        .onChange(of: store.notice?.id, initial: true) { (_: Int?, now: Int?) in
+            if now != nil {
+                announce()
+            }
+        }
+    }
+
+    /// 用高優先：按完按鈕焦點會跳走，一般優先的會被蓋掉
+    private func announce() {
+        guard let notice = store.notice else { return }
+        var words: AttributedString = AttributedString(notice.canUndo ? notice.text + "可以復原。" : notice.text)
+        words.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(words).post()
+    }
+}
+
+/// 半頁裡面的提示條，放在 SheetScaffold 下緣。拿不到 AppStore 就不出現
+private struct SheetNotice: View {
+    @Environment(AppStore.self) private var store: AppStore?
+    /// 這張半頁接手顯示的那一則
+    @State private var shown: Int?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let store, let notice = store.notice, notice.id == shown {
+                NoticeCard(notice: notice) {
+                    store.dismissNotice()
+                    store.undo()
+                }
+                .padding(.horizontal, T.Size.screenMargin)
+                .padding(.vertical, T.Space.s3)
+                .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .task(id: store?.notice?.id) {
+            await takeOver()
+        }
+        .onDisappear {
+            // 半頁收掉了，還沒過時的那一則還給外殼
+            NoticeStage.shared.inSheet = nil
+        }
+    }
+
+    private func takeOver() async {
+        guard let id = store?.notice?.id else { return }
+        try? await Task.sleep(for: .seconds(sheetNoticeDelay))
+        if Task.isCancelled { return }
+        withAnimation(Motion.transition) {
+            shown = id
+            NoticeStage.shared.inSheet = id
         }
     }
 }

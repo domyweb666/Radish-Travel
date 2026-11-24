@@ -196,7 +196,9 @@ final class FixesTests: XCTestCase {
     func test收起來再切到別趟_不會把打勾帶過去() throws {
         var d: AppState = twoTrips()
         archiveTrip(&d)
-        XCTAssertEqual(d.checks["b_p1"], true, "收起來可以復原，打勾先留著")
+        XCTAssertNil(d.checks["b_p1"])
+        let shut: Shelved? = d.shelf.first { (x: Shelved) -> Bool in x.trip.name == "A" }
+        XCTAssertEqual(shut?.checks["b_p1"], true, "一站都沒去過，整趟放一邊，打勾跟著它")
         let bId: String = try shelfId(d, "B")
         openShelved(&d, bId)
         XCTAssertEqual(d.checks, ["passport": true, "b_p2": true])

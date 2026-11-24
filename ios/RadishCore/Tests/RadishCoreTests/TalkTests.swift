@@ -88,9 +88,8 @@ final class TalkTests: XCTestCase {
         let out: BrainOut = try brainFromText(text)
         XCTAssertEqual(out.reply, "第 3 天少排一站。")
         XCTAssertEqual(out.ops.count, 1)
-        let none: BrainOut = try brainFromText("沒有 JSON")
-        XCTAssertEqual(none.reply, "好了。")
-        XCTAssertTrue(none.ops.isEmpty)
+        // 沒有 JSON 以前當成「好了。」，現在算沒回好（TalkFixesTests）
+        XCTAssertThrowsError(try brainFromText("沒有 JSON"))
     }
 
     func test有填金鑰就算接上AI() {

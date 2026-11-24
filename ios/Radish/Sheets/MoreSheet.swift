@@ -104,7 +104,8 @@ struct MoreSheet: View {
         }
     }
 
-    /// 收起來單獨一塊放最下面，不跟常用的擠在一起。可以復原
+    /// 收起來單獨一塊放最下面，不跟常用的擠在一起。可以復原。
+    /// 去過任何一站就收進去過的旅行，一站都沒去過就放到其他排好的（TripActions.swift 的 archiveTrip）
     private var archiveSection: some View {
         DomySection {
             SettingsRow("這趟不排了，收起來", destructive: true) {

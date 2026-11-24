@@ -38,7 +38,8 @@ final class Nav {
     var trip: [Push] = []
     var ask: [Push] = []
     var trips: [Push] = []
-    /// 這趟分頁在看第幾天。放在這裡，切到別的分頁再切回來還是同一天。nil 是跟著今天或第 1 天
+    /// 這趟分頁在看第幾天。放在這裡，切到別的分頁再切回來還是同一天。nil 是跟著今天或第 1 天。
+    /// 換了一趟、跨了一天由外殼的 DayWatch（RadishApp.swift）重設
     var tripDay: Int?
 
     /// 推進一頁到現在這個分頁。最上面已經是這一頁就不再推一次（連按兩下）

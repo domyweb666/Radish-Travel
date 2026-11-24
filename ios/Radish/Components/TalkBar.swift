@@ -204,15 +204,18 @@ struct TalkBar: View {
         .accessibilityIdentifier("\(ids)-send")
     }
 
-    /// 送一句。typedNow 是框裡打的那句：收下了才清掉；點說法送出去的，不動框裡打到一半的字
+    /// 送一句。typedNow 是框裡打的那句：先從框裡拿走，沒收下就放回去；點說法送出去的，不動框裡打到一半的字
     private func send(_ raw: String, typedNow: Bool) {
         let msg: String = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         if !canSend(msg) { return }
+        // 先清掉再送：前一句還在等同意的話，talk 會把那句放回這一列
+        if typedNow { store.drafts[target] = nil }
         let ok: Bool = store.talk(msg, target: target)
-        if !ok { return }
-        if typedNow {
-            store.drafts[target] = nil
+        if !ok {
+            if typedNow && store.drafts[target] == nil { store.drafts[target] = raw }
+            return
         }
+        store.keptBack(target)
         focused = false
         onSent()
     }

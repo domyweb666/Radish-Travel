@@ -15,6 +15,9 @@ struct VisitedTrip: Sendable {
     let days: Int?
     let items: [BasketItem]
     let basketId: String?
+    /// 收起來時一起留的整趟：花費、匯率、沒去的站。現在這趟、舊檔沒有
+    var kept: Trip?
+    var left: [String] = []
 
     /// 12/16（三） – 12/20（日）。沒有出發日就是空字串
     var dates: String {
@@ -38,7 +41,9 @@ func visitedTrip(_ s: AppState, _ source: AlbumSource) -> VisitedTrip? {
             title: tripTitle(trip), start: trip.start, days: trip.days, items: visitedOf(trip), basketId: nil)
     case .basket(let id):
         guard let b = s.baskets.first(where: { (x: Basket) -> Bool in x.id == id }) else { return nil }
-        return VisitedTrip(title: b.title, start: b.start, days: b.days, items: b.items, basketId: b.id)
+        let left: [String] = basketLeft(b).map { (x: Found) -> String in "第 \(x.s.day) 天・\(x.it.n)" }
+        return VisitedTrip(
+            title: b.title, start: b.start, days: b.days, items: b.items, basketId: b.id, kept: b.trip, left: left)
     }
 }
 
@@ -318,6 +323,7 @@ struct VisitedScreen: View {
             } else {
                 shareBlock(v)
                 dayBlock(v)
+                keptBlock(v)
             }
         }
         .sheet(item: $edit) { (e: BasketEdit) in
@@ -326,6 +332,55 @@ struct VisitedScreen: View {
                 .environment(nav)
                 .tint(C.accent)
         }
+    }
+
+    /* ---------- 收起來時一起留的：花費、沒去的站 ---------- */
+
+    private func twdText(_ krw: Double, _ trip: Trip) -> String? {
+        guard let t = toTwd(krw, trip.rate) else { return nil }
+        return "約 \(money(t))"
+    }
+
+    private func spendFooter(_ trip: Trip) -> String {
+        let sum: (count: Int, krw: Double, twd: Double?) = spendTotal(trip)
+        let head: String = "\(sum.count) 筆，一共 \(krwText(sum.krw))"
+        guard let twd = twdText(sum.krw, trip) else { return head + "。" }
+        return head + "，\(twd)（照你填的匯率算）。"
+    }
+
+    /// 沒有記花費、站都去了就不顯示
+    @ViewBuilder
+    private func keptBlock(_ v: VisitedTrip) -> some View {
+        if let trip = v.kept {
+            let list: [Spend] = trip.spend ?? []
+            if !list.isEmpty {
+                DomySection("實際花的", footer: spendFooter(trip)) {
+                    ForEach(list, id: \.id) { (x: Spend) in
+                        TextRow(krwText(x.krw), note: spendNote(x, trip))
+                    }
+                }
+            }
+            if trip.flight > 0 {
+                DomySection("機票") {
+                    TextRow("每人 \(money(trip.flight))")
+                }
+            }
+        }
+        if !v.left.isEmpty {
+            DomySection("排了、沒去的") {
+                ForEach(Array(v.left.enumerated()), id: \.offset) { pair in
+                    TextRow(pair.element)
+                }
+            }
+        }
+    }
+
+    private func spendNote(_ x: Spend, _ trip: Trip) -> String {
+        var bits: [String] = []
+        if let day = x.day { bits.append("第 \(day) 天") }
+        if let note = x.note, !note.isEmpty { bits.append(note) }
+        if let twd = twdText(x.krw, trip) { bits.append(twd) }
+        return bits.joined(separator: "・")
     }
 
     private func subtitle(_ v: VisitedTrip) -> String {

@@ -44,6 +44,8 @@ func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = f
     next.rate = own.rate
     next.id = old.id
     next.aiUsed = old.aiUsed
+    // 這一版照哪些調整排的，記下來：之後才說的不能講成照它排的
+    next.planTweaks = d.tweaks ?? []
     return next
 }
 

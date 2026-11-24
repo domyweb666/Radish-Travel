@@ -1,6 +1,8 @@
 // 蘿蔔旅行：三個分頁（這趟／問 AI／旅行），懸浮分頁列。打開時先停在「這趟」。
 // 平常的我從右上角推進；原本的行前拆成檢查這趟、須知、花費三個推進頁（Nav.swift）。
+import Combine
 import SwiftUI
+import UIKit
 
 @main
 struct RadishApp: App {
@@ -41,12 +43,46 @@ struct RadishApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         store.refreshToday()
+                        // 上次沒寫成功的，回來再寫一次。都寫好了就不做事
+                        store.flush()
                     } else {
                         // 要離開前景（進多工畫面、回主畫面）：排著還沒寫的那一份現在就寫，被滑掉也不會掉
                         store.flush(wait: true)
                     }
                 }
         }
+    }
+}
+
+/// 盯著換了一趟、跨了一天：這趟分頁看的那一天跟著換。放在外殼，不在這趟分頁的時候也要跟
+private struct DayWatch: View {
+    @Environment(AppStore.self) private var store
+    @Environment(Nav.self) private var nav
+
+    /// 旅途中的今天是第幾天。不在旅途中就是 nil
+    private var today: Int? {
+        if case .trip(let d)? = store.phase { return d }
+        return nil
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .onChange(of: store.s.trip?.id) { (_: String?, _: String?) in
+                // 換了一趟：旅途中跳到今天，其他從第 1 天看起
+                nav.tripDay = today
+            }
+            .onChange(of: today) { (_: Int?, now: Int?) in
+                if let now {
+                    nav.tripDay = now
+                }
+            }
+            // app 一直開著跨過午夜
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { (_: Notification) in
+                store.refreshToday()
+            }
     }
 }
 
@@ -87,6 +123,7 @@ struct RootView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DayWatch()
                 NoticeBar()
                 DomyTabBar(tabs: tabs, selected: nav.tab.rawValue) { key in
                     nav.select(TabKey(rawValue: key) ?? .trip)

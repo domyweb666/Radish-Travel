@@ -606,11 +606,17 @@ private struct MeResetSheet: View {
 
     var body: some View {
         SheetScaffold("全部清掉？", onClose: close) {
-            DomyText("所有的旅行、下次再來、設定都會回到一開始的樣子，救不回來。想留著的話，先回上一頁按「複製備份」。", .body)
+            DomyText("所有的旅行、下次再來、設定、跟 AI 的對話、送給 AI 的同意都會清掉，回到一開始的樣子，救不回來。", .body)
+            DomyText("你填的 Claude API 金鑰、連電腦的 Claude CLI 也會從這支手機清掉，要用再填一次、再連一次。", .body)
+            DomyText("想留著行程的話，先回上一頁按「複製備份」。備份裡沒有金鑰、電腦連線和照片。", .body)
+            DomyText("照片檔不會清，還留在手機裡，之後貼回備份看得到。要連照片一起清，把 app 刪掉。", .footnote, tone: .secondary)
             DomyButton("清掉", variant: .destructive, fullWidth: true) {
+                // 金鑰和電腦連線在鑰匙圈，不在存檔裡，刪 app 也可能還在，要另外清
+                store.setClaudeKey(nil)
+                store.setBridge(nil)
                 store.replaceAll(AppState(), imported: false)
                 close()
-                store.say("全部清掉了。")
+                store.say("全部清掉了，金鑰和電腦連線也清了。")
             }
             .accessibilityIdentifier("me-reset-confirm")
             DomyButton("不清了", variant: .secondary, fullWidth: true) {
@@ -688,7 +694,22 @@ private struct MeAiSheet: View {
 
 /* ---------- Claude API 金鑰 ---------- */
 
-/// 自己填 Claude API 金鑰：填了之後要 AI 的句子直接問 Anthropic。金鑰存在鑰匙圈，不進備份
+/// 清掉金鑰、斷開電腦之後，要 AI 的句子會去哪裡。改完設定再算，照 store 現在的狀態講
+@MainActor
+private func aiNextText(_ store: AppStore) -> String {
+    guard let dest = store.aiDest else { return "之後只用手機答得出的和內建的幾種說法。" }
+    let ask: String = store.aiAgreedHere ? "" : "第一次送之前會先問你。"
+    switch dest.kind {
+    case .bridge:
+        return "電腦還連著，之後要 AI 的句子還是會送到那台電腦。" + ask
+    case .key:
+        return "之後要 AI 的句子會用你填的金鑰直接問 Claude。" + ask
+    case .server:
+        return "之後要 AI 的句子會送到蘿蔔旅行的伺服器。" + ask
+    }
+}
+
+/// 自己填 Claude API 金鑰：填了之後要 AI 的句子直接問 Anthropic。有連電腦的時候先用電腦。金鑰存在鑰匙圈，不進備份
 private struct MeClaudeSheet: View {
     @Environment(AppStore.self) private var store
     let close: () -> Void
@@ -702,9 +723,13 @@ private struct MeClaudeSheet: View {
         SheetScaffold("Claude API 金鑰", onClose: close) {
             DomyText("填了之後，要 AI 幫忙的句子會用這把金鑰直接問 Anthropic 的 Claude（\(CLAUDE_MODEL)），不經過蘿蔔旅行。費用算在這把金鑰的 Anthropic 帳戶，app 不另外收錢。", .body)
             DomyText("金鑰只存在這支手機的鑰匙圈裡，不會進「複製備份」；換手機要重新填。金鑰到 console.anthropic.com 的 API Keys 建一把。", .footnote, tone: .secondary)
+            if store.bridgeSet {
+                DomyText("現在連著電腦，要 AI 的句子會先送到那台電腦。跟電腦斷開之後，才會用這把金鑰。", .footnote, tone: .strong)
+                    .accessibilityIdentifier("me-claude-bridge-first")
+            }
             if store.claudeKeySet {
                 DomySection {
-                    SettingsRow("現在用的", value: maskedClaudeKey(CLAUDE_KEY))
+                    SettingsRow(store.bridgeSet ? "存著的" : "現在用的", value: maskedClaudeKey(CLAUDE_KEY))
                 }
             }
             VStack(alignment: .leading, spacing: T.Space.s2) {
@@ -739,7 +764,7 @@ private struct MeClaudeSheet: View {
                 DomyButton("清掉金鑰", variant: .destructive, fullWidth: true) {
                     store.setClaudeKey(nil)
                     close()
-                    store.say("金鑰清掉了。之後只用手機答得出的和內建的幾種說法。")
+                    store.say("金鑰清掉了。" + aiNextText(store))
                 }
                 .accessibilityIdentifier("me-claude-clear")
             }
@@ -753,11 +778,15 @@ private struct MeClaudeSheet: View {
         Task { @MainActor in
             do {
                 try await checkClaudeKey(key)
-                store.setClaudeKey(key)
+                let saved: Bool = store.setClaudeKey(key)
                 checking = false
+                if !saved {
+                    err = "這把金鑰可以用，可是沒有存進手機。等一下再按一次。"
+                    return
+                }
                 draft = ""
                 close()
-                store.say("金鑰可以用。之後要 AI 的句子會直接問 Claude。")
+                store.say("金鑰可以用，存起來了。" + aiNextText(store))
             } catch let e as AskError {
                 checking = false
                 switch e {
@@ -765,8 +794,11 @@ private struct MeClaudeSheet: View {
                     err = "Anthropic 不認得這把金鑰。確認有沒有整段貼完、是不是被停用了。"
                 case .noCredit:
                     // 金鑰是對的，只是沒額度：先存起來，儲值之後就能用
-                    store.setClaudeKey(key)
-                    draft = ""
+                    // 框裡的字留著：清掉的話下面這句會跟著被清掉
+                    if !store.setClaudeKey(key) {
+                        err = "這把金鑰是對的，可是沒有存進手機。等一下再按一次。"
+                        return
+                    }
                     err = "金鑰存起來了，但這個 Anthropic 帳戶現在沒有額度，到 console.anthropic.com 儲值之後才問得到。"
                 default:
                     err = "沒試成功：\(e.description)。等一下再按一次。"
@@ -841,7 +873,7 @@ private struct MeBridgeSheet: View {
                 DomyButton("中斷連線", variant: .destructive, fullWidth: true) {
                     store.setBridge(nil)
                     close()
-                    store.say("跟電腦斷開了。")
+                    store.say("跟電腦斷開了。" + aiNextText(store))
                 }
                 .accessibilityIdentifier("me-bridge-clear")
             }
@@ -872,8 +904,12 @@ private struct MeBridgeSheet: View {
         Task { @MainActor in
             do {
                 let name: String = try await checkBridge(url)
-                store.setBridge(url)
+                let saved: Bool = store.setBridge(url)
                 checking = false
+                if !saved {
+                    err = "連得到電腦，可是沒有存進手機。等一下再按一次。"
+                    return
+                }
                 draft = ""
                 close()
                 store.say("連上「\(name)」了。之後要 AI 的句子會交給那台電腦的 Claude CLI。")

@@ -77,12 +77,13 @@ func opLevel(_ t: Trip, _ o: [String: Any]) -> OpLevel? {
     return base
 }
 
-/// 把 AI 回的一串 op 分成直接改和要確認兩堆。不是物件、表上沒有的，留在直接改那堆，applyOps 照舊忽略或記一句
+/// 把 AI 回的一串 op 分成直接改和要確認兩堆。不是物件、表上沒有的，留在直接改那堆，applyOps 不做、記有幾步沒做。
+/// 一次最多 OPS_MAX 步，後面的不做，數目（OpsOver）放在直接改那堆最後面，也由 applyOps 講出來
 func splitOps(_ t: Trip, _ ops: Any?) -> (direct: [Any], confirm: [[String: Any]]) {
     var direct: [Any] = []
     var confirm: [[String: Any]] = []
     guard let list = ops as? [Any] else { return (direct: direct, confirm: confirm) }
-    for raw in list.prefix(20) {
+    for raw in list.prefix(OPS_MAX) {
         var obj: [String: Any]? = raw as? [String: Any]
         if let typed = raw as? Op { obj = opJSON(typed) }
         if let o = obj, opLevel(t, o) == .confirm {
@@ -91,6 +92,7 @@ func splitOps(_ t: Trip, _ ops: Any?) -> (direct: [Any], confirm: [[String: Any]
             direct.append(raw)
         }
     }
+    if list.count > OPS_MAX { direct.append(OpsOver(count: list.count - OPS_MAX)) }
     return (direct: direct, confirm: confirm)
 }
 

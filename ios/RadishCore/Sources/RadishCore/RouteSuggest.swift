@@ -120,7 +120,7 @@ private func routeObj(_ raw: Any) -> [String: Any]? {
 /// 這串 ops 是不是全都只動這一天：只准 move（站本來就在這天、移到這天的某個時段）和 swapParts（這天的兩個不同時段）。
 /// 有一步不是，整串都不要
 func routeOpsInDay(_ t: Trip, _ day: Int, _ ops: [Any]) -> Bool {
-    if ops.count > 20 { return false }
+    if ops.count > OPS_MAX { return false }
     for raw in ops {
         guard let o = routeObj(raw), let op = o["op"] as? String else { return false }
         if op == "move" {

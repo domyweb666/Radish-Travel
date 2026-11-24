@@ -1,5 +1,6 @@
 // 整個 App 的狀態：存在手機本機（Application Support 裡的一個 JSON 檔），沒網路也看得到全部。
 // 會改到行程的動作都走 act(undoable: true)，每次留一份改之前的樣子，最多 20 步，可以復原。
+// 換掉現在這趟的動作（切到別趟、開新的一趟、收起來、不要這一版）一定會留一步，規則在 TripActions.swift 的 applyUndo。
 // 對應 mobile/src/store.tsx。
 // 檔尾的 extension 是跟 AI 講（talk）：手機先答、同意、沒網路、句數、送出、套上改動、確認卡、復原這次。
 import Foundation
@@ -12,16 +13,10 @@ struct Notice: Equatable {
     let canUndo: Bool
 }
 
-/// 復原要還原的那幾樣。learned 是設定裡「從行程學到的」：拿掉一站順便記的，要能跟著那一步一起復原
-private struct Snapshot {
-    let trip: Trip?
-    let seeds: [Seed]
-    let pool: [String]
-    let baskets: [Basket]
-    let settingsDirty: Bool
-    let learned: [Learned]
-    /// 這一步的記號（跟 AI 講的那一輪才有），對話裡用它認「還是不是最後一步」
-    let mark: String?
+/// 一趟打到一半的字。換了一趟就收在這裡，換回來再拿出來
+private struct TalkDrafts {
+    var now: [TalkTarget: String] = [:]
+    var later: [TalkTarget: [String]] = [:]
 }
 
 @MainActor
@@ -40,6 +35,7 @@ final class AppStore {
     /// 跟 AI 講的那一句現在怎樣：沒事、等同意、沒送出去（沒網路、句數用完）、送出中
     private(set) var talkStage: TalkStage = .idle
     /// 每個講的地方打到一半的字（每一天、每一站各一份），切分頁再回來還在。只放在記憶體，app 被關掉就沒了（❓39）
+    /// 每一趟各一份：換了一趟就換成那一趟的
     var drafts: [TalkTarget: String] = [:]
     /// 今天（裝置當地），YYYY-MM-DD。app 回到前景時會更新
     private(set) var today: String = todayISO()
@@ -50,7 +46,11 @@ final class AppStore {
     /// 要 AI 的句子現在會送去哪裡，沒接 AI 是 nil。判斷在 Chat.swift 的 aiRoute，這裡留一份讓畫面知道要重畫
     private(set) var aiDest: AIDest? = aiDestNow()
 
-    @ObservationIgnored private var undoStack: [Snapshot] = []
+    @ObservationIgnored private var undoStack: [UndoSnap] = []
+    /// 沒送出去、但那一列正在打別的：先放這裡，那一列空了再放回去
+    @ObservationIgnored private var keptTalk: [TalkTarget: [String]] = [:]
+    /// 別趟打到一半的字，用 Trip.id 記
+    @ObservationIgnored private var draftBox: [String: TalkDrafts] = [:]
     @ObservationIgnored private var noticeId = 0
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private let fileURL: URL
@@ -95,32 +95,43 @@ final class AppStore {
         }
     }
 
-    /// 存或清掉 Claude API 金鑰（nil 或空字串是清掉）。存進鑰匙圈，不進存檔、不進備份
-    func setClaudeKey(_ key: String?) {
+    /// 存或清掉 Claude API 金鑰（nil 或空字串是清掉）。存進鑰匙圈，不進存檔、不進備份。
+    /// 沒存成功回 false：原本的不動，提示條講清楚，叫的人不要再說可以用了
+    @discardableResult
+    func setClaudeKey(_ key: String?) -> Bool {
         let clean: String = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.isEmpty {
             SecretStore.clear(.claudeKey)
             CLAUDE_KEY = ""
         } else {
-            SecretStore.save(.claudeKey, clean)
+            guard SecretStore.save(.claudeKey, clean) else {
+                show("金鑰沒有存成功，等一下再試一次。", false)
+                return false
+            }
             CLAUDE_KEY = clean
         }
         claudeKeySet = !CLAUDE_KEY.isEmpty
         aiDest = aiDestNow()
+        return true
     }
 
-    /// 存或清掉連電腦 Claude CLI 的網址（nil 或空字串是中斷連線）
-    func setBridge(_ url: String?) {
+    /// 存或清掉連電腦 Claude CLI 的網址（nil 或空字串是中斷連線）。沒存成功回 false，原本的不動
+    @discardableResult
+    func setBridge(_ url: String?) -> Bool {
         let clean: String = (url ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.isEmpty {
             SecretStore.clear(.bridge)
             BRIDGE_URL = ""
         } else {
-            SecretStore.save(.bridge, clean)
+            guard SecretStore.save(.bridge, clean) else {
+                show("連線沒有存成功，等一下再試一次。", false)
+                return false
+            }
             BRIDGE_URL = clean
         }
         bridgeSet = !BRIDGE_URL.isEmpty
         aiDest = aiDestNow()
+        return true
     }
 
     nonisolated static func defaultURL() -> URL {
@@ -174,7 +185,7 @@ final class AppStore {
     }
 
     /// 現在就把還沒寫的那一份寫進檔案。wait 為 true 時等寫完才回來（app 要進背景時用）。
-    /// 寫完順便把排好的通知換成新的
+    /// 寫完順便把排好的通知換成新的。沒寫成功會記著，下次改動或回到前景再寫一次
     func flush(wait: Bool = false) {
         saveTask?.cancel()
         saveTask = nil
@@ -190,7 +201,7 @@ final class AppStore {
                 try data.write(to: url, options: .atomic)
             } catch {
                 Task { @MainActor [weak self] in
-                    self?.show("這一步沒有存成功，手機的空間可能滿了。", false)
+                    self?.saveFailed()
                 }
             }
         }
@@ -202,10 +213,16 @@ final class AppStore {
         syncReminderList()
     }
 
+    /// 沒寫成功：還是沒存的，下次再寫
+    private func saveFailed() {
+        dirty = true
+        show("這一步沒有存成功，手機的空間可能滿了。", false)
+    }
+
     /// 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空。內容跟上次一樣就不動
     private func syncReminderList() {
         guard ready else { return }
-        let list: [Reminder] = s.remind ? remindersOf(s, today) : []
+        let list: [Reminder] = s.remind ? remindersOf(remindState(s), today) : []
         let key: String = list.map { (item: Reminder) -> String in "\(item.on)|\(item.title)|\(item.body)" }
             .joined(separator: "/")
         if key == reminderKey { return }
@@ -236,6 +253,7 @@ final class AppStore {
 
     /// 改狀態。fn 直接改 draft；回傳的字串會顯示在提示條（回 nil 就不顯示）。
     /// undoable 為 true 時這一步可以復原。會改到行程的動作都要 undoable: true。
+    /// 換掉現在這趟的動作不管有沒有寫都會留一步，不然之後復原會把別趟蓋掉；寫了才在提示條給「復原」。
     /// mark 是這一步的記號（跟 AI 講的那一輪用），之後拿 undoTop 比對還是不是最後一步
     func act(undoable: Bool = false, animated: Bool = true, mark: String? = nil, _ change: (inout AppState) -> String?) {
         let prev = s
@@ -243,17 +261,16 @@ final class AppStore {
         let message: String? = change(&draft)
         // 剛開的一趟補代號；每一趟的句數只多不少
         syncAIUsed(&draft)
-        if undoable {
-            undoStack.append(
-                Snapshot(
-                    trip: prev.trip, seeds: prev.seeds, pool: prev.pool, baskets: prev.baskets,
-                    settingsDirty: prev.settingsDirty, learned: prev.settings.learned, mark: mark))
+        let swap: Bool = tripSwapped(prev, draft)
+        if undoable || swap {
+            undoStack.append(undoSnap(prev, swap: swap, mark: mark))
             if undoStack.count > AppStore.undoMax {
                 undoStack.removeFirst()
             }
             canUndo = true
             undoTop = mark
         }
+        leaveTrip(draft.trip?.id)
         // 資料變了要看得出哪裡動了：列表增減、數字換值都用同一條曲線
         // animated 傳 false 的情況：同一下還要開全螢幕的東西（拔蘿蔔），兩個動畫撞在一起那張會開不出來
         if animated {
@@ -294,17 +311,40 @@ final class AppStore {
         undoTop = undoStack.last?.mark
         var next = s
         // 句數不在復原的範圍，規則在 Chat.swift 的 aiLeft
-        restoreTrip(&next, snap.trip)
-        next.seeds = snap.seeds
-        next.pool = snap.pool
-        next.baskets = snap.baskets
-        next.settingsDirty = snap.settingsDirty
-        next.settings.learned = snap.learned
+        let message: String = applyUndo(&next, snap)
+        leaveTrip(next.trip?.id)
         withAnimation(Motion.change) {
             s = next
         }
         save()
-        show("復原了上一步。", false)
+        show(message, false)
+    }
+
+    /// 現在沒有這趟，而且按復原會拿回一趟、那趟又不在其他排好的（不要這一版、收進去過的旅行）：是哪一趟。
+    /// 給開一趟那一頁放復原，提示條過了還按得到
+    var undoTrip: Trip? {
+        guard s.trip == nil, canUndo, let snap = undoStack.last, let trip = snap.trip else { return nil }
+        let onShelf: Bool = s.shelf.contains { (x: Shelved) -> Bool in x.trip.id == trip.id }
+        return onShelf ? nil : trip
+    }
+
+    /// 要換到別趟之前：等同意的那句不送、留著，打到一半的字跟著原本那趟收好，換成那一趟的
+    private func leaveTrip(_ next: String?) {
+        let old: String? = s.trip?.id
+        if old == next { return }
+        if case .consent(let text, let ask) = talkStage {
+            keepPending(text, ask)
+        }
+        if !talkBusy { talkStage = .idle }
+        if let old {
+            draftBox[old] = TalkDrafts(now: drafts, later: keptTalk)
+        }
+        var back: TalkDrafts = TalkDrafts()
+        if let next, let box = draftBox.removeValue(forKey: next) {
+            back = box
+        }
+        drafts = back.now
+        keptTalk = back.later
     }
 
     /// 只顯示一句話，不改資料
@@ -332,6 +372,8 @@ final class AppStore {
         undoTop = nil
         talkStage = .idle
         drafts = [:]
+        keptTalk = [:]
+        draftBox = [:]
         s = fresh
         save()
     }
@@ -429,7 +471,7 @@ extension AppStore {
 
     /// 這句要不要送給 AI：手機答不出、又有接 AI。沒網路、句數用完時，這種句子送不出去
     func talkNeedsAI(_ text: String, target: TalkTarget) -> Bool {
-        if !aiOn { return false }
+        if !aiOn || talkWantsRegen(text) { return false }
         return talkPhone(text, target: target) == nil
     }
 
@@ -475,6 +517,11 @@ extension AppStore {
     func talk(_ text: String, target: TalkTarget) -> Bool {
         let msg: String = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if msg.isEmpty || talkBusy || s.trip == nil { return false }
+        // 上一句還在等同意：那句沒送，字留著
+        if case .consent(let old, let ask) = talkStage {
+            keepPending(old, ask)
+            talkStage = .idle
+        }
         let day: Int = talkDayOf(target)
         let stop: String? = talkStopId(target)
         if let answer = talkPhone(msg, target: target) {
@@ -484,6 +531,11 @@ extension AppStore {
                 d.chat.append(ChatMsg(r: .me, t: msg, day: day, stop: stop))
                 d.chat.append(ChatMsg(r: .ai, t: answer, day: day, stop: stop, local: true, at: stamp))
             }
+            return true
+        }
+        // 只是叫整趟重排：手機自己做，不送 AI、不算句數、不用網路
+        if talkWantsRegen(msg) {
+            talkSend(msg, target, nil, retry: nil)
             return true
         }
         let dest: AIDest? = aiDest
@@ -575,6 +627,15 @@ extension AppStore {
         let m: ChatMsg = s.chat[index]
         var target: TalkTarget = .day(m.day ?? 1)
         if let id = m.stop { target = .stop(id: id) }
+        // 有別句在等同意：那句沒送，字留著
+        if case .consent(let old, let pending) = talkStage {
+            keepPending(old, pending)
+            talkStage = .idle
+        }
+        if talkWantsRegen(m.t) {
+            talkSend(m.t, target, nil, retry: index)
+            return
+        }
         if let hold = talkHold {
             talkStage = .held(hold)
             Haptic.notify(.error)
@@ -590,12 +651,24 @@ extension AppStore {
         talkSend(m.t, target, aiDest, retry: index)
     }
 
-    /// 那一列是空的才把字放回去，不蓋掉他後來打的
+    /// 那一列是空的才把字放回去，不蓋掉他正在打的；正在打別的就先收著，那一列空了再放（keptBack）
     private func keepDraft(_ msg: String, _ target: TalkTarget) {
-        let typed: String = drafts[target] ?? ""
-        if typed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let typed: String = (drafts[target] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty {
             drafts[target] = msg
+        } else if typed != msg {
+            var list: [String] = keptTalk[target] ?? []
+            if !list.contains(msg) { list.append(msg) }
+            keptTalk[target] = list
         }
+    }
+
+    /// 那一列送出去、空了：之前沒送出去、收著的那句放回來
+    func keptBack(_ target: TalkTarget) {
+        let typed: String = (drafts[target] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard typed.isEmpty, var list = keptTalk[target], !list.isEmpty else { return }
+        drafts[target] = list.removeFirst()
+        keptTalk[target] = list
     }
 
     /// 真的送出去：先記下我說的（再送一次就清掉沒收到的記號），再問 AI 或本機指令，回來再套上改動。
@@ -626,20 +699,21 @@ extension AppStore {
             }
         }
         let me: Int = retry ?? (s.chat.count - 1)
+        let tripId: String? = trip.id
         Task { @MainActor in
             if let dest {
                 do {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
                     let out: BrainOut = try await askAI(prompt, dest)
                     self.countAISentence(trip.id)
-                    self.talkFinish(out, local: false, me: me, said: msg, day: day, stop: stop, clock: clock)
+                    self.talkFinish(out, local: false, tripId: tripId, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {
                     // 沒回好、讀不懂：這趟不動，不退回本機指令（線框 A21）
-                    self.talkFail(me: me, said: msg, error)
+                    self.talkFail(tripId: tripId, me: me, said: msg, error)
                 }
             } else {
                 let out: BrainOut = localBrain(heard, trip, tripNow(clock))
-                self.talkFinish(out, local: true, me: me, said: msg, day: day, stop: stop, clock: clock)
+                self.talkFinish(out, local: true, tripId: tripId, me: me, said: msg, day: day, stop: stop, clock: clock)
             }
             self.talkStage = .idle
         }
@@ -647,13 +721,19 @@ extension AppStore {
 
     /// 把回來的動作套到行程上，對話裡記下改了什麼、每一天差多少、哪幾步沒做成。有改到行程才留復原
     private func talkFinish(
-        _ out: BrainOut, local: Bool, me: Int, said msg: String, day: Int, stop: String?, clock: ChatClock?
+        _ out: BrainOut, local: Bool, tripId: String?, me: Int, said msg: String, day: Int, stop: String?, clock: ChatClock?
     ) {
         // 等回覆的時候這趟換了、對話清掉了：回來的不套
-        guard me < s.chat.count, s.chat[me].r == .me, s.chat[me].t == msg, let current = s.trip else { return }
+        guard let current = s.trip, current.id == tripId, isSaid(s.chat, me, msg) else {
+            talkAway(out, local: local, tripId: tripId, me: me, said: msg, day: day, stop: stop)
+            return
+        }
         let now: TripNow? = tripNow(clock)
-        // 旅途中不整趟重排：去過的站會被洗掉
-        let blockRegen: Bool = out.regen == true && now != nil
+        // 旅途中、有去過的站（回來之後也是）不整趟重排：去過的站會被洗掉
+        let blockRegen: Bool = out.regen == true && (now != nil || tripVisited(current))
+        let blockText: String = now != nil ? NO_REGEN_ON_TRIP : NO_REGEN_VISITED
+        // 本機指令回的是「好，整趟重排一次。」，沒重排就不能這樣回
+        let reply: String = blockRegen && local ? blockText : out.reply
         let regen: Bool = out.regen == true && !blockRegen
         // 只有要確認的改動時，這一步還沒改到行程，不留復原
         let direct: Int = splitOps(current, out.ops).direct.count
@@ -679,7 +759,7 @@ extension AppStore {
             if !regen && !r.changes.isEmpty {
                 changes.append(contentsOf: dayDeltas(before, trip, d.settings))
             }
-            var said: ChatMsg = ChatMsg(r: .ai, t: out.reply, changes: changes, day: day, stop: stop)
+            var said: ChatMsg = ChatMsg(r: .ai, t: reply, changes: changes, day: day, stop: stop)
             said.local = local ? true : nil
             said.at = stamp
             if regen || !r.changes.isEmpty { said.undo = mark }
@@ -689,8 +769,8 @@ extension AppStore {
                 said.askOps = packOps(split.confirm)
             }
             d.chat.append(said)
-            if blockRegen {
-                d.chat.append(ChatMsg(r: .sys, t: NO_REGEN_ON_TRIP))
+            if blockRegen && !local {
+                d.chat.append(ChatMsg(r: .sys, t: blockText))
             }
             let notes: [String] = r.notes + warnings(trip)
             for n in notes {
@@ -703,13 +783,32 @@ extension AppStore {
         }
     }
 
+    /// 回來的時候已經換到別趟：回的話留在原本那一趟的對話裡，改動不套，現在這趟講一聲
+    private func talkAway(
+        _ out: BrainOut, local: Bool, tripId: String?, me: Int, said msg: String, day: Int, stop: String?
+    ) {
+        guard let tripId else { return }
+        var reply: ChatMsg = ChatMsg(r: .ai, t: out.reply, day: day, stop: stop)
+        reply.local = local ? true : nil
+        reply.at = Date().timeIntervalSince1970
+        let hadChanges: Bool = out.regen == true || !out.ops.isEmpty
+        act { (d: inout AppState) -> String? in
+            guard let name = leaveReply(&d, tripId, me, msg, reply, hadChanges) else { return nil }
+            return hadChanges ? "「\(name)」的那句有回覆了，改動沒有套上去。" : "「\(name)」的那句有回覆了，切回去看得到。"
+        }
+    }
+
     /// 沒收到回覆：這趟不動，在我說的那句記下來，可以再送一次
-    private func talkFail(me: Int, said msg: String, _ error: Error) {
+    private func talkFail(tripId: String?, me: Int, said msg: String, _ error: Error) {
         Haptic.notify(.error)
         let code: String = talkErrorCode(error)
         mutate { (d: inout AppState) -> Void in
-            guard me < d.chat.count, d.chat[me].r == .me, d.chat[me].t == msg else { return }
-            d.chat[me].failed = code
+            if d.trip?.id == tripId {
+                guard isSaid(d.chat, me, msg) else { return }
+                d.chat[me].failed = code
+            } else if let tripId {
+                leaveFail(&d, tripId, me, msg, code)
+            }
         }
     }
 
@@ -742,7 +841,7 @@ extension AppStore {
                 d.chat.append(ChatMsg(r: .sys, t: n))
             }
             // 旅途中不整趟重排，就不提重排
-            if tweaked && now == nil {
+            if tweaked && now == nil && !tripVisited(trip) {
                 d.chat.append(ChatMsg(r: .sys, t: "之後改行程會照這個排。想整趟照這個重排，說「重排」。"))
             }
             return nil
