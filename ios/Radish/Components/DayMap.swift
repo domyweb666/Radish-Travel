@@ -1,6 +1,7 @@
 // iPhone 上的地圖：用系統內建的 Apple 地圖元件（MapKit 的 SwiftUI Map）。
 // 對應 mobile/src/sheets/DayMap.tsx。定位只在按了「我在哪」之後才問，只問使用期間。
-// compact 是這一天的路線（線框 A8）用的矮版：半頁裡上面放地圖，下面還看得到每一段怎麼去。
+// compact 是這一天的路線（線框 A8）用的矮版：地圖只給看、手指拖不動，手指放在上面往下滑是捲半頁。
+// 要移鏡頭按「我在哪」「看整條路線」，這兩顆是程式改鏡頭，不受拖不動影響。
 import CoreLocation
 import MapKit
 import Observation
@@ -33,7 +34,7 @@ struct MapPoint: Identifiable {
 }
 
 private let MAP_H: CGFloat = 380  // domy-ignore: 地圖的高度，TS 的 MAP_H，只有這裡用
-private let MAP_H_COMPACT: CGFloat = 190  // domy-ignore: 這一天的路線（線框 A8）半頁裡的地圖高度
+private let MAP_H_COMPACT: CGFloat = 150  // domy-ignore: 這一天的路線半頁裡的地圖高度。線框 A8 畫 190，半頁下緣還要釘總分鐘和按鈕，縮矮才整張看得到
 private let MAP_PAD: Double = 1.5  // domy-ignore: 看整條路線時四邊多留的比例（TS 是四邊各留 60 點）
 private let MAP_MIN_SPAN: Double = 0.01  // domy-ignore: 只有一個點時至少看這麼大一塊（經緯度）
 private let MAP_ME_SPAN: Double = 0.02  // domy-ignore: 移到「我在哪」時看多大一塊，TS 的 latitudeDelta
@@ -180,7 +181,8 @@ struct DayMap: View {
     private var map: some View {
         let line: [CLLocationCoordinate2D] = coords
         let showMe: Bool = locator.me
-        return Map(position: $position) {
+        let modes: MapInteractionModes = compact ? [] : .all
+        return Map(position: $position, interactionModes: modes) {
             MapPolyline(coordinates: line)
                 .stroke(C.accent, style: StrokeStyle(lineWidth: MAP_LINE, lineCap: .round, dash: MAP_DASH))
             ForEach(Array(points.enumerated()), id: \.element.id) { index, p in

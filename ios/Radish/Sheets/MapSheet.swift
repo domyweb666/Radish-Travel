@@ -1,5 +1,6 @@
-// 這一天的路線（S12，線框 A8）：地圖、每一段怎麼去、路上大約幾分鐘（估），最下面一顆「請 AI 提一個改法」。
-// 半頁，可以拉到全高。分鐘數照 Plan.swift 的 dayLegs，總數含從住的地方出發和回去（跟這一天清單加總的方式一樣）。
+// 這一天的路線（S12，線框 A8）：地圖、每一段怎麼去，下緣釘著路上大約幾分鐘（估）和「請 AI 提一個改法」。
+// 半頁，可以拉到全高。下緣那一塊不跟著捲，半頁一打開就看得到；兩面都一樣，「這次會改」那一面釘的是改完幾分鐘和兩顆鈕。
+// 分鐘數照 Plan.swift 的 dayLegs，總數含從住的地方出發和回去（跟這一天清單加總的方式一樣）。
 // 按「請 AI 提一個改法」之後，同一張換成「這次會改」那一面：哪幾站換時段、改完路上大約幾分鐘（估）、少幾分鐘（估），
 // 「照這樣改」（可以復原）或「不用改」都回到路線那一面。能送 AI 就問 AI（只准同一天換時段），不能送就手機自己算；
 // 規則、提示詞、試套都在 RadishCore/RouteSuggest.swift。
@@ -31,7 +32,8 @@ private func routeLegs(_ h: HotelPt, _ stops: [Stop], _ legs: [Leg?]) -> [RouteL
     return out
 }
 
-/// 路上大約幾分鐘（估）。距離不明的那幾段沒算進去，要講出來
+/// 路上大約幾分鐘（估）。釘在半頁下緣，寫短一點；「含從住的地方出發和回去」寫在每一段下面的小字。
+/// 距離不明的那幾段沒算進去，要講出來
 private func routeTotal(_ legs: [Leg?]) -> String {
     var total: Int = 0
     var unknown: Int = 0
@@ -42,7 +44,7 @@ private func routeTotal(_ legs: [Leg?]) -> String {
             unknown += 1
         }
     }
-    var out: String = "\(legs.count) 段・路上大約 \(total) 分鐘（估），含從住的地方出發和回去"
+    var out: String = "\(legs.count) 段・路上大約 \(total) 分鐘（估）"
     if unknown > 0 {
         out += "。有 \(unknown) 段距離不明，沒算進去"
     }
@@ -50,10 +52,15 @@ private func routeTotal(_ legs: [Leg?]) -> String {
 }
 
 /// 沒拿出改法時，路線那一面寫的一句。detail 是小字（錯誤代碼、為什麼這次是手機算的）
-private struct RouteNote {
+private struct RouteNote: Identifiable {
+    /// 每一句都不一樣，連寫兩次一樣的話也要捲回最上面
+    let id: UUID = UUID()
     var text: String
     var detail: String?
 }
+
+/// 捲回最上面用的代號
+private let ROUTE_TOP: String = "route-top"
 
 struct MapSheet: View {
     let day: Int
@@ -72,19 +79,77 @@ struct MapSheet: View {
     }
 
     var body: some View {
-        SheetScaffold("第 \(day) 天的路線", onClose: { sheets.close() }) {
-            if let trip = store.s.trip {
-                if let plan {
-                    suggestFace(plan)
-                } else {
-                    content(trip)
+        ScrollViewReader { (proxy: ScrollViewProxy) in
+            SheetScaffold("第 \(day) 天的路線", onClose: { sheets.close() }) {
+                VStack(alignment: .leading, spacing: T.Space.s4) {
+                    faces
                 }
-            } else {
-                DomyText("現在沒有這趟。", .body, tone: .secondary)
+                .id(ROUTE_TOP)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                footer
+            }
+            // 按鈕釘在下緣，按的時候可能正捲在下面：寫了一句話、換了一面，都捲回最上面才看得到
+            .onChange(of: note?.id) { (_: UUID?, now: UUID?) in
+                if now != nil {
+                    toTop(proxy)
+                }
+            }
+            .onChange(of: plan != nil) { (_: Bool, _: Bool) in
+                toTop(proxy)
             }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    @ViewBuilder
+    private var faces: some View {
+        if let trip = store.s.trip {
+            if let plan {
+                suggestFace(plan)
+            } else {
+                content(trip)
+            }
+        } else {
+            DomyText("現在沒有這趟。", .body, tone: .secondary)
+        }
+    }
+
+    /// 釘在半頁下緣的那一塊。沒有這趟、這天沒有站就不出現
+    @ViewBuilder
+    private var footer: some View {
+        if let trip = store.s.trip {
+            if let plan {
+                footerBox {
+                    suggestFooter(plan)
+                }
+            } else if !stopsOf(trip).isEmpty {
+                footerBox {
+                    routeFooter(trip)
+                }
+            }
+        }
+    }
+
+    private func footerBox<Inner: View>(@ViewBuilder _ inner: () -> Inner) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Hairline()
+            VStack(alignment: .leading, spacing: T.Space.s3) {
+                inner()
+            }
+            .padding(.top, T.Space.s3)
+            .padding(.horizontal, T.Size.screenMargin)
+            .padding(.bottom, T.Space.s3)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(C.canvas.ignoresSafeArea(edges: .bottom))
+    }
+
+    private func toTop(_ proxy: ScrollViewProxy) {
+        withAnimation(Motion.transition) {
+            proxy.scrollTo(ROUTE_TOP, anchor: .top)
+        }
     }
 
     private func stopsOf(_ trip: Trip) -> [Stop] {
@@ -115,22 +180,26 @@ struct MapSheet: View {
         if stops.isEmpty {
             DomyText("這天沒有排站。", .body, tone: .secondary)
         } else {
+            if let note {
+                noteCard(note)
+            }
             VStack(alignment: .leading, spacing: T.Space.s2) {
                 DayMap(points: pointsOf(h, stops), compact: true)
                 DomyText("底圖要網路，沒網路時地圖上只剩點，下面每一段照樣看得到。", .caption, tone: .secondary)
             }
-            DomyText(routeTotal(legs), .subheadline, numeric: true)
-                .accessibilityIdentifier("route-total")
             legSection(routeLegs(h, stops, legs))
-            if let note {
-                noteCard(note)
-            }
-            askButton
         }
     }
 
+    @ViewBuilder
+    private func routeFooter(_ trip: Trip) -> some View {
+        DomyText(routeTotal(dayLegs(trip, store.s.settings, day)), .subheadline, weight: .semibold, numeric: true)
+            .accessibilityIdentifier("route-total")
+        askButton
+    }
+
     private func legSection(_ rows: [RouteLeg]) -> some View {
-        DomySection(footer: "手機算的，沒有問 AI：照直線距離加三成估，沒有查路線。真的要走的時候，從每一站跳去 Naver 地圖。") {
+        DomySection(footer: "總分鐘含從住的地方出發和回去。手機算的，沒有問 AI：照直線距離加三成估，沒有查路線。真的要走的時候，從每一站跳去 Naver 地圖。") {
             ForEach(rows) { (row: RouteLeg) in
                 TextRow(row.title, note: row.note)
             }
@@ -174,24 +243,28 @@ struct MapSheet: View {
                     TextRow(routeMoveLine(m))
                 }
             }
-            VStack(alignment: .leading, spacing: T.Space.s1) {
-                DomyText("改完路上大約 \(p.after) 分鐘（估）", .subheadline, weight: .semibold, numeric: true)
-                DomyText("比原本少 \(p.saved) 分鐘（估）。原本大約 \(p.before) 分鐘（估）。", .footnote, tone: .secondary, numeric: true)
-            }
-            .accessibilityElement(children: .combine)
-            HStack(spacing: T.Space.s2) {
-                DomyButton("照這樣改", fullWidth: true) {
-                    apply(p)
-                }
-                .accessibilityIdentifier("route-apply")
-                DomyButton("不用改", variant: .secondary, fullWidth: true) {
-                    back()
-                }
-                .accessibilityIdentifier("route-skip")
-            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("route-suggest")
+    }
+
+    @ViewBuilder
+    private func suggestFooter(_ p: RoutePlan) -> some View {
+        VStack(alignment: .leading, spacing: T.Space.s1) {
+            DomyText("改完路上大約 \(p.after) 分鐘（估）", .subheadline, weight: .semibold, numeric: true)
+            DomyText("比原本少 \(p.saved) 分鐘（估）。原本大約 \(p.before) 分鐘（估）。", .footnote, tone: .secondary, numeric: true)
+        }
+        .accessibilityElement(children: .combine)
+        HStack(spacing: T.Space.s2) {
+            DomyButton("照這樣改", fullWidth: true) {
+                apply(p)
+            }
+            .accessibilityIdentifier("route-apply")
+            DomyButton("不用改", variant: .secondary, fullWidth: true) {
+                back()
+            }
+            .accessibilityIdentifier("route-skip")
+        }
     }
 
     /* ---------- 動作 ---------- */
@@ -232,7 +305,7 @@ struct MapSheet: View {
         Task { @MainActor in
             do {
                 let out: BrainOut = try await askAI(prompt)
-                app.countAISentence()
+                app.countAISentence(trip.id)
                 asking = false
                 // 等的時候這趟可能變了（例：別的地方改了），照現在的行程試套
                 guard let current = app.s.trip else { return }
