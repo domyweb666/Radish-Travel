@@ -13,18 +13,24 @@ const PORT = Number(process.env.PORT) || 8787;
 const MODEL = (process.env.CLAUDE_MODEL || '').trim();
 const BODY_MAX = 1024 * 1024;
 const TIMEOUT_MS = 170 * 1000;
+// 同時只跑一句，後面最多再排這麼多句，多的直接回 429
+const WAIT_MAX = 2;
 const TOKEN = crypto.randomBytes(16).toString('hex');
 const IS_WIN = process.platform === 'win32';
 
-// 在空資料夾裡跑，不給任何工具、不載 MCP、不存對話：它只能回文字，碰不到這台電腦的檔案
-const CWD = path.join(os.tmpdir(), 'radish-claude-bridge');
+// 在這次開機專用的空資料夾裡跑，關掉時刪
+const CWD = fs.mkdtempSync(path.join(os.tmpdir(), 'radish-claude-bridge-'));
 // 換掉 Claude Code 自己的系統提示，不然它會把 app 送來的提示詞當成可疑的貼上內容。
 // 只用英數和空白，萬一要走 shell 也不會被引號弄壞
 const SYSTEM =
   'You are the backend of a travel planning app. The user message is the full request built by the app itself. Follow it and output exactly the JSON object it asks for, with no other text.';
 
+// 不給工具、不載 MCP、不存對話、不載 skill。
+// --setting-sources 給空字串：使用者、專案、本機三種設定都不讀，~/.claude/CLAUDE.md 和裡面的 hooks 也就不會進來。
+// 光靠 --tools '' 擋不住讀檔：CLI 看到 `@路徑` 會自己把檔案內容附進去，那一步不算工具，要靠 childEnv 的開關和 cleanPrompt。
 function cliArgs() {
   const args = ['-p', '--output-format', 'text', '--no-session-persistence', '--strict-mcp-config'];
+  args.push('--disable-slash-commands', '--setting-sources', '');
   if (MODEL) args.push('--model', MODEL);
   args.push('--system-prompt', SYSTEM, '--tools', '');
   return args;
@@ -80,12 +86,37 @@ function shellLine(args) {
   return ['claude', ...args.map((a) => (a === '' ? '""' : /[\s"]/.test(a) ? `"${a}"` : a))].join(' ');
 }
 
+// 只帶 CLI 跑得起來、找得到登入、連得出去要的環境變數；其他的（各家 API 金鑰、外層 Claude Code 的設定）不給
+const ENV_KEEP = new Set(
+  (
+    'PATH PATHEXT SYSTEMROOT SYSTEMDRIVE WINDIR COMSPEC OS PROCESSOR_ARCHITECTURE PROGRAMDATA PROGRAMFILES PROGRAMFILES(X86) PROGRAMW6432 ' +
+    'HOME USERPROFILE HOMEDRIVE HOMEPATH APPDATA LOCALAPPDATA USER USERNAME LOGNAME SHELL TEMP TMP TMPDIR LANG LC_ALL LC_CTYPE TZ ' +
+    'XDG_CONFIG_HOME XDG_DATA_HOME HTTP_PROXY HTTPS_PROXY NO_PROXY NODE_EXTRA_CA_CERTS NODE_USE_SYSTEM_CA ' +
+    'CLAUDE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN CLAUDE_CODE_GIT_BASH_PATH'
+  ).split(' '),
+);
+
 function childEnv() {
-  const env = { ...process.env };
-  // 從 Claude Code 裡面開這支時，別讓子程序以為自己是巢狀的 session
-  delete env.CLAUDECODE;
-  delete env.CLAUDE_CODE_ENTRYPOINT;
+  const env = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (ENV_KEEP.has(k.toUpperCase())) env[k] = v;
+  }
+  // CLI 自己的開關：不處理 `@路徑` 附檔、不載 CLAUDE.md、不載自動記憶、不附 git 狀態
+  env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1';
+  env.CLAUDE_CODE_DISABLE_CLAUDE_MDS = '1';
+  env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1';
+  env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = '1';
   return env;
+}
+
+// 第二層：就算哪一版 CLI 不認上面的開關，提示詞裡也沒有會被當成附檔或指令的半形符號。
+// app 的 aiPrompt 沒用到 @，換成全形不影響它。
+const WIDE = { '/': '／', '!': '！', '#': '＃' };
+function cleanPrompt(text) {
+  return text
+    .replace(/@/g, '＠')
+    .replace(/^[\s\p{C}]+/u, '')
+    .replace(/^[/!#]+/, (m) => [...m].map((ch) => WIDE[ch]).join(''));
 }
 
 function startCli(args) {
@@ -138,13 +169,19 @@ class CliError extends Error {
   }
 }
 
+// CLI 的原話可能有這台電腦的路徑：只印在這個終端機，手機那頭只拿到固定的一句
+function cliFailed(message, detail) {
+  if (detail) console.log(`[${stamp()}] CLI 說：${String(detail).slice(0, 200)}`);
+  return new CliError(502, `${message}，細節看電腦的終端機`);
+}
+
 function runCli(prompt) {
   return new Promise((resolve, reject) => {
     let child;
     try {
       child = startCli(cliArgs());
     } catch (e) {
-      return reject(new CliError(502, String(e.message || e).slice(0, 200)));
+      return reject(cliFailed('CLI 開不起來', e.message));
     }
     running = child;
     let out = '';
@@ -164,7 +201,7 @@ function runCli(prompt) {
     child.on('error', (e) => {
       clearTimeout(timer);
       running = null;
-      reject(new CliError(502, String(e.message || e).slice(0, 200)));
+      reject(cliFailed('CLI 開不起來', e.message));
     });
     child.on('close', (code) => {
       clearTimeout(timer);
@@ -172,13 +209,12 @@ function runCli(prompt) {
       if (timedOut) return reject(new CliError(504, 'timeout'));
       const text = out.trim();
       if (code !== 0) {
-        const msg = (err.trim() || text || `claude 結束碼 ${code}`).slice(0, 200);
-        return reject(new CliError(502, msg));
+        return reject(cliFailed(`claude 結束碼 ${code}`, err.trim() || text));
       }
-      if (!text) return reject(new CliError(502, (err.trim() || 'claude 沒有回任何文字').slice(0, 200)));
+      if (!text) return reject(cliFailed('claude 沒有回任何文字', err.trim()));
       resolve(text);
     });
-    child.stdin.end(prompt, 'utf8');
+    child.stdin.end(cleanPrompt(prompt), 'utf8');
   });
 }
 
@@ -215,8 +251,9 @@ function send(res, code, obj) {
 }
 
 function tokenOk(t) {
-  if (typeof t !== 'string' || t.length !== TOKEN.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(t), Buffer.from(TOKEN));
+  // 先 sha256 再比：兩邊一定都是 32 位元組，不管送來什麼字 timingSafeEqual 都不會丟例外
+  const hash = (s) => crypto.createHash('sha256').update(s, 'utf8').digest();
+  return typeof t === 'string' && crypto.timingSafeEqual(hash(t), hash(TOKEN));
 }
 
 let CLI_VERSION = '';
@@ -236,43 +273,57 @@ function handleAsk(req, res) {
     }
     chunks.push(d);
   });
-  req.on('end', async () => {
-    if (tooBig) return;
-    let prompt = '';
-    try {
-      const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      if (data && typeof data.prompt === 'string') prompt = data.prompt;
-    } catch {
-      /* 下面一起擋 */
-    }
-    if (!prompt.trim()) return send(res, 400, { error: '要給 {"prompt": "..."}' });
-
-    const ahead = waiting + (running ? 1 : 0);
-    console.log(`[${stamp()}] 收到一句（${prompt.length} 字）${ahead ? `，前面還有 ${ahead} 句在排` : ''}`);
-    const t0 = Date.now();
-    try {
-      const text = await enqueue(() => {
-        // 排隊時 app 那頭已經放棄了，就不用再跑
-        if (res.destroyed) throw new CliError(499, 'app 已經斷線');
-        return runCli(prompt);
-      });
-      const sec = ((Date.now() - t0) / 1000).toFixed(1);
-      console.log(`[${stamp()}] 回了，花了 ${sec} 秒，成功`);
-      send(res, 200, { text });
-    } catch (e) {
-      const sec = ((Date.now() - t0) / 1000).toFixed(1);
-      const status = e instanceof CliError ? e.status : 502;
-      const why = status === 504 ? '超過 170 秒' : status === 499 ? 'app 已經斷線，沒跑' : `CLI 失敗（${status}）`;
-      console.log(`[${stamp()}] 花了 ${sec} 秒，失敗：${why}`);
-      send(res, status === 499 ? 502 : status, { error: status === 504 ? 'timeout' : String(e.message || e).slice(0, 200) });
-    }
+  req.on('end', () => {
+    if (!tooBig) answer(res, chunks).catch((e) => oops(res, e));
   });
   req.on('error', () => {
     /* 連線斷掉就算了 */
   });
 }
 
-const server = http.createServer((req, res) => {
+async function answer(res, chunks) {
+  let prompt = '';
+  try {
+    const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    if (data && typeof data.prompt === 'string') prompt = data.prompt;
+  } catch {
+    /* 下面一起擋 */
+  }
+  if (!prompt.trim()) return send(res, 400, { error: '要給 {"prompt": "..."}' });
+
+  if (waiting >= WAIT_MAX) return send(res, 429, { error: '前面還有好幾句在排，等一下再試' });
+  const ahead = waiting + (running ? 1 : 0);
+  console.log(`[${stamp()}] 收到一句（${prompt.length} 字）${ahead ? `，前面還有 ${ahead} 句在排` : ''}`);
+  const t0 = Date.now();
+  try {
+    const text = await enqueue(() => {
+      // 排隊時 app 那頭已經放棄了，就不用再跑
+      if (res.destroyed) throw new CliError(499, 'app 已經斷線');
+      return runCli(prompt);
+    });
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    console.log(`[${stamp()}] 回了，花了 ${sec} 秒，成功`);
+    send(res, 200, { text });
+  } catch (e) {
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    const status = e instanceof CliError ? e.status : 502;
+    const why = status === 504 ? '超過 170 秒' : status === 499 ? 'app 已經斷線，沒跑' : `CLI 失敗（${status}）`;
+    console.log(`[${stamp()}] 花了 ${sec} 秒，失敗：${why}`);
+    send(res, status === 499 ? 502 : status, { error: e instanceof CliError ? e.message : 'CLI 失敗' });
+  }
+}
+
+// 沒料到的例外：記在終端機，回 500，程式繼續跑
+function oops(res, e) {
+  console.log(`[${stamp()}] 出錯了：${e && e.stack ? e.stack : e}`);
+  try {
+    send(res, 500, { error: '電腦那頭出錯了，細節看終端機' });
+  } catch {
+    res.destroy();
+  }
+}
+
+function handle(req, res) {
   let url;
   try {
     url = new URL(req.url || '/', 'http://localhost');
@@ -296,9 +347,17 @@ const server = http.createServer((req, res) => {
   }
   req.resume();
   send(res, 404, { error: '只有 /ping 和 /ask' });
+}
+
+const server = http.createServer((req, res) => {
+  try {
+    handle(req, res);
+  } catch (e) {
+    oops(res, e);
+  }
 });
-// CLI 最多跑 170 秒，排隊還要再等，別讓 Node 自己先把連線斷掉
-server.requestTimeout = 0;
+// 這是「把請求整個送完」的時限，不算 CLI 跑的時間，所以不會打斷等回答的連線
+server.requestTimeout = 60 * 1000;
 server.headersTimeout = 30 * 1000;
 
 // ---------- 找區網 IP ----------
@@ -360,6 +419,13 @@ function shutdown() {
   if (server.closeAllConnections) server.closeAllConnections();
   setTimeout(() => process.exit(0), 3000).unref();
 }
+process.on('exit', () => {
+  try {
+    fs.rmSync(CWD, { recursive: true, force: true });
+  } catch {
+    /* 刪不掉就留給系統清 */
+  }
+});
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 process.on('SIGHUP', shutdown);
