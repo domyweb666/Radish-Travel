@@ -26,6 +26,8 @@ struct TripFormValue: Equatable {
     var baseDone: Bool = false
     var stayName: String = ""
     var tweaks: [Tweak] = []
+    /// 想怎麼玩（可以不填）。只有開一趟有這一格
+    var wish: String = ""
 }
 
 extension TripFormValue {
@@ -98,16 +100,91 @@ private struct FormField<Content: View>: View {
     }
 }
 
+/// 想怎麼玩那一格（線框 New-Form）：多行，正在打的時候右上角有「收鍵盤」
+private struct WishField: View {
+    @Binding var text: String
+    let helper: String
+    @FocusState private var focused: Bool
+
+    init(text: Binding<String>, helper: String) {
+        self._text = text
+        self.helper = helper
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: T.Space.s2) {
+            HStack(alignment: .center, spacing: T.Space.s2) {
+                DomyText("想怎麼玩（可以不填）", .subheadline, weight: .semibold)
+                    .fillLeading()
+                if focused {
+                    DomyButton("收鍵盤", variant: .plain, size: .compact) {
+                        focused = false
+                    }
+                    .padding(.vertical, -T.Space.s3)
+                    .padding(.trailing, -T.Space.s4)
+                    .accessibilityIdentifier("start-wish-done")
+                }
+            }
+            input
+            DomyText(helper, .footnote, tone: .secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var input: some View {
+        let shape = RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
+        let hint: Text = Text("例如：想去弘大和聖水逛街，晚上吃烤肉").foregroundStyle(C.textSecondary)
+        return TextField("", text: $text, prompt: hint, axis: .vertical)
+            .lineLimit(3...5)  // domy-ignore: 線框這一格三行，多的在框裡捲
+            .font(T.TypeScale.body.font)
+            .foregroundStyle(C.textPrimary)
+            .tint(C.accent)
+            .focused($focused)
+            .padding(.horizontal, T.Space.s4)
+            .padding(.vertical, T.Space.s3)
+            .frame(minHeight: T.Size.field)
+            .background(C.surface, in: shape)
+            .overlay(
+                shape.strokeBorder(
+                    focused ? C.accent : C.fieldBorder,
+                    lineWidth: focused ? T.Size.hairline * 1.5 : T.Size.hairline)
+            )
+            .accessibilityLabel("想怎麼玩（可以不填）")
+            .accessibilityHint(helper)
+            .accessibilityIdentifier("start-wish")
+    }
+}
+
 struct TripForm: View {
     @Environment(AppStore.self) private var store
     @Binding var value: TripFormValue
     let minStart: String
     let fallbackBase: BaseKey
+    /// 要不要放「想怎麼玩」那一格。開一趟放，行程設定不放
+    let showWish: Bool
 
-    init(value: Binding<TripFormValue>, minStart: String, fallbackBase: BaseKey) {
+    init(value: Binding<TripFormValue>, minStart: String, fallbackBase: BaseKey, showWish: Bool = false) {
         self._value = value
         self.minStart = minStart
         self.fallbackBase = fallbackBase
+        self.showWish = showWish
+    }
+
+    /// 字數上限跟講的那一列一樣
+    private var wishText: Binding<String> {
+        return Binding<String>(
+            get: { value.wish },
+            set: { (text: String) in value.wish = String(text.prefix(TALK_MAX)) }
+        )
+    }
+
+    /// 那一格下面：誰排、什麼時候會送出去、沒送成會怎樣
+    private var wishHelper: String {
+        if value.wish.count >= TALK_MAX { return "最多 \(TALK_MAX) 個字，後面打的不會留。" }
+        if !store.aiOn { return "現在沒有接 AI：行程照下面選的排，這句先留著，之後可以再送。" }
+        var out: String = "行程先由手機照下面選的排好，再把這句送給 AI 照著改。"
+        if !store.aiAgreedHere { out += "送之前會先問你。" }
+        return out + "沒送成的話，這句會留著。"
     }
 
     /// 出發日那一欄的小標
@@ -160,6 +237,9 @@ struct TripForm: View {
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s5) {
             whereField
+            if showWish {
+                WishField(text: wishText, helper: wishHelper)
+            }
             startField
             daysField
             arriveField

@@ -15,8 +15,24 @@ struct TripSettingsSheet: View {
     @Environment(Sheets.self) private var sheets
     /// 正在改的草稿。還沒動過是 nil，這時顯示的是這趟現在的樣子
     @State private var draft: TripFormValue?
+    /// 有改過還沒存就按關閉：問一聲
+    @State private var askClose: Bool = false
 
     init() {}
+
+    /// 改過、還沒存
+    private func dirty(_ trip: Trip) -> Bool {
+        guard let now = draft else { return false }
+        return now != formOf(trip)
+    }
+
+    private func close(_ trip: Trip) {
+        if dirty(trip) {
+            askClose = true
+        } else {
+            sheets.close()
+        }
+    }
 
     private func formNow(_ trip: Trip) -> TripFormValue {
         return draft ?? formOf(trip)
@@ -95,7 +111,7 @@ struct TripSettingsSheet: View {
             set: { (v: TripFormValue) in draft = v }
         )
         let minStart: String = trip.start < store.today ? trip.start : store.today
-        return SheetScaffold("行程設定", onClose: { sheets.close() }) {
+        return SheetScaffold("行程設定", onClose: { close(trip) }) {
             TripForm(value: binding, minStart: minStart, fallbackBase: store.s.settings.base)
             notice(regen, blocked)
             if !missing.isEmpty {
@@ -109,6 +125,14 @@ struct TripSettingsSheet: View {
                 save(form, regen)
             }
             .accessibilityIdentifier("settings-save")
+        }
+        // 改過還沒存就不給往下滑關掉，免得改的不見。關閉鈕還在，按了會問
+        .interactiveDismissDisabled(dirty(trip))
+        .alert("改的還沒存", isPresented: $askClose) {
+            Button("不存，關掉", role: .destructive) { sheets.close() }
+            Button("繼續改", role: .cancel) {}
+        } message: {
+            Text("關掉的話，剛剛改的不會存，這趟照原本的。")
         }
     }
 

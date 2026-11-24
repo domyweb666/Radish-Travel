@@ -7,11 +7,20 @@ import SwiftUI
 /// 這次開 app 已經出現過的剛排好那張卡（記的是 planMarkOf）。
 /// 關掉 app 再開就清空：剛排好那張卡只在排好之後第一次看到的那段時間出現
 @MainActor
-private enum PlannedSeen {
+enum PlannedSeen {
     static var marks: Set<String> = []
+
+    /// 這一版還是排好的樣子、那張卡該不該在。跟 AI 講的 talkFinish 也用：開一趟時寫的那句改完，卡要留著
+    static func fresh(_ trip: Trip) -> Bool {
+        if let saved = trip.planMark {
+            return saved == planMarkOf(trip) && marks.contains(saved)
+        }
+        // 還沒記過：剛排好的，或更新前就排好的舊行程。舊行程動過的就不出現
+        return planUntouched(trip)
+    }
 }
 
-/// 寫這一版是誰排的、照你說的排了哪些，右上角「不要這一版」（可以復原，回到開一趟）。
+/// 寫這一版是誰排的、照你說的排了哪些、開一趟時寫的那句現在怎樣（AI 照它改了哪些，或還沒送），右上角「不要這一版」（可以復原，回到開一趟）。
 /// 只在出發前、這一版還沒動過時出現；改過一站、關掉 app 再開，就不出現了
 struct PlannedCard: View {
     @Environment(AppStore.self) private var store
@@ -24,12 +33,7 @@ struct PlannedCard: View {
     private var visible: Bool {
         let phase: Phase = phaseOf(trip.start, trip.days, store.today, store.s.debugDay)
         guard case .plan = phase else { return false }
-        let now: String = planMarkOf(trip)
-        if let saved = trip.planMark {
-            return saved == now && PlannedSeen.marks.contains(saved)
-        }
-        // 還沒記過：剛排好的，或更新前就排好的舊行程。舊行程動過的就不出現
-        return planUntouched(trip)
+        return PlannedSeen.fresh(trip)
     }
 
     var body: some View {
@@ -40,7 +44,7 @@ struct PlannedCard: View {
     }
 
     private var card: some View {
-        let text: PlanCardText = planCardText(trip, store.s.settings)
+        let text: PlanCardText = planCardText(trip, store.s.settings, store.s.chat, store.talkBusy)
         return Card {
             HStack(alignment: .center, spacing: T.Space.s2) {
                 DomyText(text.head, .footnote, tone: .secondary)
@@ -53,6 +57,10 @@ struct PlannedCard: View {
             }
             .padding(.vertical, -T.Space.s2)
             DomyText(text.body, .subheadline)
+            if let wish = text.wish {
+                DomyText(wish, .subheadline)
+                    .accessibilityIdentifier("planned-wish")
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("這一版怎麼排的")

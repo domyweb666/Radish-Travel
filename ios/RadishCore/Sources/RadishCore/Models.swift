@@ -182,6 +182,8 @@ struct Trip: Codable, Hashable, Sendable {
     var aiUsed: Int?  // 這趟問了 AI 幾句（AI 有回的才算，見 Chat.swift 的 aiLeft）。只多不少，跟 AppState.aiLog 對
     var id: String?  // 這趟的代號，重排、放一邊、復原都不變，用來認是不是同一趟。syncAIUsed 補上，舊檔沒有
     var planTweaks: [Tweak]?  // 排這一版的時候用的調整。跟 tweaks 不一樣，就是排好之後才說的、還沒照它排。舊檔沒有
+    var wish: String?  // 開一趟時寫的那句「想怎麼玩」，重排、復原都留著。沒寫就沒有，舊檔也沒有
+    var wishChanges: [String]?  // 這一版裡照那句改了哪些。復原、重排之後就沒有了（重排不帶）
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -302,6 +304,7 @@ struct ChatMsg: Codable, Hashable, Sendable {
     var failed: String?  // 我說的那句沒有收到回覆。字是錯誤代碼，不知道就是空字串；有回覆了就清掉
     var undo: String?  // 這一輪改動在復原紀錄裡的記號。還是最後一步時才能「復原這次」
     var undone: Bool?  // 這一輪按過「復原這次」了
+    var wish: Bool?  // true：我說的這句就是開一趟時寫的「想怎麼玩」，講的是整趟
 }
 
 /// 排好了、先放在一邊的一趟。行程、對話、要先訂的勾選都跟著它

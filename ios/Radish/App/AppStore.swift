@@ -37,6 +37,8 @@ final class AppStore {
     /// 每個講的地方打到一半的字（每一天、每一站各一份），切分頁再回來還在。只放在記憶體，app 被關掉就沒了（❓39）
     /// 每一趟各一份：換了一趟就換成那一趟的
     var drafts: [TalkTarget: String] = [:]
+    /// 開一趟填到一半的。切分頁、去平常的我再回來都還在，開好了或整包換掉才清。只放在記憶體（❓39）
+    var startDraft: StartDraft = StartDraft()
     /// 今天（裝置當地），YYYY-MM-DD。app 回到前景時會更新
     private(set) var today: String = todayISO()
     /// 平常的我裡有沒有填 Claude API 金鑰。金鑰本身在鑰匙圈和 CLAUDE_KEY，這裡只是讓畫面知道要重畫
@@ -157,6 +159,7 @@ final class AppStore {
                 // 舊檔的趟沒有代號，先補上
                 syncAIUsed(&state)
                 s = state
+                refillWishes()
             } else {
                 let stamp = Int(Date().timeIntervalSince1970)
                 let keep = fileURL.deletingLastPathComponent()
@@ -347,6 +350,26 @@ final class AppStore {
         keptTalk = back.later
     }
 
+    /// 開一趟時寫的、還沒送給 AI 的那句：打到一半的字只放在記憶體，重開 app 之後照行程裡記的放回第 1 天那一列
+    private func refillWishes() {
+        if let t = s.trip, let wish = heldWish(t, s.chat, s.debugDay) {
+            drafts[.day(1)] = wish
+        }
+        for x in s.shelf {
+            guard let id = x.trip.id, let wish = heldWish(x.trip, x.chat, x.debugDay) else { continue }
+            var box: TalkDrafts = TalkDrafts()
+            box.now[.day(1)] = wish
+            draftBox[id] = box
+        }
+    }
+
+    /// 還沒送的那句。已經回來的那趟不用再放
+    private func heldWish(_ t: Trip, _ chat: [ChatMsg], _ debugDay: Int?) -> String? {
+        guard let wish = t.wish, wishStatus(t, chat, false) == WishStatus.held else { return nil }
+        if phaseOf(t.start, t.days, today, debugDay) == Phase.done { return nil }
+        return oneLine(wish)
+    }
+
     /// 只顯示一句話，不改資料
     func say(_ text: String) {
         show(text, false)
@@ -374,7 +397,9 @@ final class AppStore {
         drafts = [:]
         keptTalk = [:]
         draftBox = [:]
+        startDraft = StartDraft()
         s = fresh
+        refillWishes()
         save()
     }
 
@@ -408,6 +433,18 @@ struct TalkPending: Equatable {
     var moved: Bool = false
     /// 沒收到回覆、要再送一次的那句在對話裡第幾則。新的一句是 nil
     var retry: Int?
+    /// 開一趟按「幫我排」送的那句。按先不要的時候，要講清楚行程在、那句沒送
+    var wish: Bool = false
+}
+
+/// 開一趟時寫的那句沒送給 AI 的原因
+enum WishHold: Equatable {
+    case offline
+    case quota
+    /// 沒接 AI，本機指令也做不了
+    case noAI
+    /// 按了先不要
+    case declined
 }
 
 enum TalkStage: Equatable {
@@ -416,6 +453,8 @@ enum TalkStage: Equatable {
     case consent(text: String, ask: TalkPending)
     /// 要 AI 的這句沒有送出去，字留在講的那一列
     case held(TalkHold)
+    /// 剛開好一趟，寫的那句沒有送出去，字留在第 1 天講的那一列。行程已經排好
+    case wishHeld(WishHold)
     /// 送出了，等回覆。同一時間只送一句
     case busy
 }
@@ -466,7 +505,50 @@ extension AppStore {
 
     /// 這句手機自己答得出的話，回答案（❓15 暫定：手機先答）
     func talkPhone(_ text: String, target: TalkTarget) -> String? {
+        if talkWhole(text, target) { return wishPhone(text, s, talkNow) }
         return phoneAnswer(text, s, talkDayOf(target), talkStopId(target), talkNow)
+    }
+
+    /// 這句是不是開一趟時寫的、還沒送成的那句。是的話講的是整趟，不照在看的那一天聽
+    private func talkWhole(_ text: String, _ target: TalkTarget) -> Bool {
+        guard case .day = target, let trip = s.trip else { return false }
+        return wishPending(trip, s.chat, text)
+    }
+
+    /// 那句現在沒有人可以處理：沒接 AI，手機答不出、本機指令也做不了
+    private func wishNoAI(_ text: String, _ target: TalkTarget) -> Bool {
+        guard aiDest == nil, let trip = s.trip else { return false }
+        if talkWantsRegen(text) || talkPhone(text, target: target) != nil { return false }
+        return !wishLocalCan(text, trip, talkNow)
+    }
+
+    /// 開一趟時寫的那句：行程已經排好、存好了，再當第一句走跟講的那一列一樣的流程（talk）。
+    /// 送不出去就把字放在第 1 天那一列。回 true：要升起剛剛那一則（等同意、等回覆、答了、講清楚沒有送）
+    func talkWish() -> Bool {
+        guard let wish = s.trip?.wish, !wish.isEmpty else { return false }
+        let target: TalkTarget = .day(1)
+        if talkBusy {
+            keepDraft(wish, target)
+            show("行程排好了。上一句還在等回覆，你寫的那句還沒有送給 AI，留在第 1 天講的那一列。", false)
+            return false
+        }
+        if wishNoAI(wish, target) {
+            keepDraft(wish, target)
+            talkStage = .wishHeld(.noAI)
+            return true
+        }
+        talk(wish, target: target)
+        switch talkStage {
+        case .consent(let text, let ask):
+            var first: TalkPending = ask
+            first.wish = true
+            talkStage = .consent(text: text, ask: first)
+        case .held(let why):
+            talkStage = .wishHeld(why == .offline ? WishHold.offline : WishHold.quota)
+        case .idle, .busy, .wishHeld:
+            break
+        }
+        return true
     }
 
     /// 這句要不要送給 AI：手機答不出、又有接 AI。沒網路、句數用完時，這種句子送不出去
@@ -524,11 +606,15 @@ extension AppStore {
         }
         let day: Int = talkDayOf(target)
         let stop: String? = talkStopId(target)
+        let whole: Bool = talkWhole(msg, target)
         if let answer = talkPhone(msg, target: target) {
             talkStage = .idle
             let stamp: Double = Date().timeIntervalSince1970
+            var mine: ChatMsg = ChatMsg(r: .me, t: msg, day: day, stop: stop)
+            mine.wish = whole ? true : nil
+            let said: ChatMsg = mine
             mutate { (d: inout AppState) -> Void in
-                d.chat.append(ChatMsg(r: .me, t: msg, day: day, stop: stop))
+                d.chat.append(said)
                 d.chat.append(ChatMsg(r: .ai, t: answer, day: day, stop: stop, local: true, at: stamp))
             }
             return true
@@ -537,6 +623,13 @@ extension AppStore {
         if talkWantsRegen(msg) {
             talkSend(msg, target, nil, retry: nil)
             return true
+        }
+        // 開一趟時寫的那句，本機指令聽不懂就留著，等接上 AI 再送
+        if whole && wishNoAI(msg, target) {
+            keepDraft(msg, target)
+            talkStage = .idle
+            show("現在沒有接 AI，這句還沒有送出去，字留著。", false)
+            return false
         }
         let dest: AIDest? = aiDest
         if let dest {
@@ -563,12 +656,17 @@ extension AppStore {
         case .askAgain(let now):
             var again: TalkPending = TalkPending(target: ask.target, dest: now, moved: true)
             again.retry = ask.retry
+            again.wish = ask.wish
             talkStage = .consent(text: text, ask: again)
             Haptic.notify(.error)
         case .gone:
             keepPending(text, ask)
-            talkStage = .idle
-            show("現在沒有接 AI，這句沒有送出去。", false)
+            if ask.wish {
+                talkStage = .wishHeld(.noAI)
+            } else {
+                talkStage = .idle
+                show("現在沒有接 AI，這句沒有送出去。", false)
+            }
         case .send(let dest):
             mutate { (d: inout AppState) -> Void in
                 agreeAI(&d, dest)
@@ -576,7 +674,11 @@ extension AppStore {
             talkStage = .idle
             if let hold = talkHold {
                 keepPending(text, ask)
-                talkStage = .held(hold)
+                if ask.wish {
+                    talkStage = .wishHeld(hold == .offline ? WishHold.offline : WishHold.quota)
+                } else {
+                    talkStage = .held(hold)
+                }
                 Haptic.notify(.error)
                 return
             }
@@ -589,11 +691,11 @@ extension AppStore {
         }
     }
 
-    /// 說明按「先不要」：什麼都不送，講的字放回那一列
+    /// 說明按「先不要」：什麼都不送，講的字放回那一列。開一趟寫的那句再講清楚行程在、那句沒送
     func talkDecline() {
         guard case .consent(let text, let ask) = talkStage else { return }
         keepPending(text, ask)
-        talkStage = .idle
+        talkStage = ask.wish ? TalkStage.wishHeld(.declined) : TalkStage.idle
     }
 
     /// 等同意的那句沒送：字放回那一列。再送一次的那句本來就還在對話裡，不用放
@@ -614,7 +716,12 @@ extension AppStore {
         switch talkStage {
         case .consent:
             talkDecline()
-        case .held:
+            // 開一趟寫的那句，往下滑掉說明：半頁沒了，用提示條講
+            if case .wishHeld = talkStage {
+                talkStage = .idle
+                show("行程排好了。你寫的那句沒有送給 AI，留在第 1 天講的那一列。", false)
+            }
+        case .held, .wishHeld:
             talkStage = .idle
         case .idle, .busy:
             break
@@ -654,11 +761,13 @@ extension AppStore {
     /// 那一列是空的才把字放回去，不蓋掉他正在打的；正在打別的就先收著，那一列空了再放（keptBack）
     private func keepDraft(_ msg: String, _ target: TalkTarget) {
         let typed: String = (drafts[target] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        // 那一列只有一行
+        let line: String = oneLine(msg)
         if typed.isEmpty {
-            drafts[target] = msg
-        } else if typed != msg {
+            drafts[target] = line
+        } else if typed != line {
             var list: [String] = keptTalk[target] ?? []
-            if !list.contains(msg) { list.append(msg) }
+            if !list.contains(line) { list.append(line) }
             keptTalk[target] = list
         }
     }
@@ -683,8 +792,14 @@ extension AppStore {
         if let i = retry { history = Array(s.chat.prefix(i)) }
         // 按下去那一刻的「現在」：AI 和套用改動都用同一個，免得送出到回來之間跨過時段
         let clock: ChatClock? = phase.map { (p: Phase) -> ChatClock in chatClock(p) }
-        let focus: String = talkFocus(trip, stop == nil ? day : nil, stop)
-        let heard: String = talkLocal(msg, trip, day, stop, stop == nil)
+        // 開一趟時寫的那句講的是整趟：不說在看哪一天，本機指令也不補「第 1 天」
+        var whole: Bool = talkWhole(msg, target)
+        if let i = retry, i < s.chat.count { whole = s.chat[i].wish == true }
+        let focus: String = whole ? WISH_FOCUS : talkFocus(trip, stop == nil ? day : nil, stop)
+        let heard: String = whole ? msg : talkLocal(msg, trip, day, stop, stop == nil)
+        var mine: ChatMsg = ChatMsg(r: .me, t: msg, day: day, stop: stop)
+        mine.wish = whole ? true : nil
+        let saying: ChatMsg = mine
         talkStage = .busy
         mutate { (d: inout AppState) -> Void in
             // 還沒按的確認卡過期：行程接下來會變，那幾步不一定還對
@@ -695,7 +810,7 @@ extension AppStore {
             if let i = retry, i < d.chat.count {
                 d.chat[i].failed = nil
             } else {
-                d.chat.append(ChatMsg(r: .me, t: msg, day: day, stop: stop))
+                d.chat.append(saying)
             }
         }
         let me: Int = retry ?? (s.chat.count - 1)
@@ -735,6 +850,9 @@ extension AppStore {
         // 本機指令回的是「好，整趟重排一次。」，沒重排就不能這樣回
         let reply: String = blockRegen && local ? blockText : out.reply
         let regen: Bool = out.regen == true && !blockRegen
+        // 開一趟時寫的那句：照它改了哪些記在這一版上，剛排好那張卡要寫
+        let whole: Bool = s.chat[me].wish == true
+        let fresh: Bool = whole && !regen && PlannedSeen.fresh(current)
         // 只有要確認的改動時，這一步還沒改到行程，不留復原
         let direct: Int = splitOps(current, out.ops).direct.count
         let willChange: Bool = regen || direct > 0
@@ -756,6 +874,12 @@ extension AppStore {
             d.trip = trip
             d.seeds = seeds
             changes.append(contentsOf: r.changes)
+            if whole && !changes.isEmpty {
+                trip.wishChanges = changes
+                // 那張卡還在的話就留著：記成照那句改完的樣子，之後再改才收掉
+                if fresh { trip.planMark = planMarkOf(trip) }
+                d.trip = trip
+            }
             if !regen && !r.changes.isEmpty {
                 changes.append(contentsOf: dayDeltas(before, trip, d.settings))
             }
@@ -780,6 +904,9 @@ extension AppStore {
                 d.chat.append(ChatMsg(r: .sys, t: "AI 自己加的地點還沒核對過，去之前查一下。"))
             }
             return nil
+        }
+        if fresh, let made = s.trip?.planMark {
+            PlannedSeen.marks.insert(made)
         }
     }
 

@@ -46,6 +46,8 @@ func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = f
     next.aiUsed = old.aiUsed
     // 這一版照哪些調整排的，記下來：之後才說的不能講成照它排的
     next.planTweaks = d.tweaks ?? []
+    // 開一趟時寫的那句留著；照它改過的站被重排掉了，wishChanges 不帶
+    next.wish = old.wish
     return next
 }
 

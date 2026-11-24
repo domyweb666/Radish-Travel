@@ -234,6 +234,10 @@ struct TalkConsent: View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             DomyText("送出之前，先講清楚", .title2)
                 .accessibilityAddTraits(.isHeader)
+            if ask.wish {
+                DomyText("行程已經照你選的排好了。按「先不要」行程一樣在，只是你寫的那句不會送。", .body, tone: .strong)
+                    .accessibilityIdentifier("chat-consent-wish")
+            }
             if let line = why(ask) {
                 DomyText(line, .body, tone: .strong)
                     .accessibilityIdentifier("chat-consent-why")
@@ -288,9 +292,15 @@ struct ReplySheet: View {
     @ViewBuilder private var content: some View {
         switch store.talkStage {
         case .consent(let text, _):
-            TalkConsent(text: text) { sheets.close() }
+            TalkConsent(text: text) {
+                // 開一趟寫的那句按先不要：半頁留著，講清楚行程在、那句沒送
+                if case .wishHeld = store.talkStage { return }
+                sheets.close()
+            }
         case .held(let why):
             held(why)
+        case .wishHeld(let why):
+            wishHeld(why)
         case .idle, .busy:
             if let me = store.lastTalk, me < store.s.chat.count {
                 round(me)
@@ -315,6 +325,38 @@ struct ReplySheet: View {
         closeButton("好")
     }
 
+    /// 剛開好一趟，寫的那句沒有送給 AI：行程在，那句留在第 1 天講的那一列
+    @ViewBuilder private func wishHeld(_ why: WishHold) -> some View {
+        DomyText("行程排好了。你寫的那句還沒有送給 AI。", .headline)
+            .accessibilityIdentifier("reply-wish-held")
+        if let wish = store.s.trip?.wish {
+            TalkMine(text: wish)
+        }
+        DomyText("\(wishWhy(why))這趟是手機照你選的排的。", .body, tone: .secondary)
+        DomyText("那句留在第 1 天講的那一列，隨時可以送。", .body, tone: .secondary)
+        closeButton("好")
+    }
+
+    private func wishWhy(_ why: WishHold) -> String {
+        switch why {
+        case .offline:
+            return "現在沒網路。"
+        case .quota:
+            return "這趟的 AI 句數用完了。"
+        case .noAI:
+            return "現在沒有接 AI，到「平常的我」可以接。"
+        case .declined:
+            return "你按了先不要，什麼都沒有送出去。"
+        }
+    }
+
+    /// 等回覆時寫的字。開一趟寫的那句，多講一句行程已經在了
+    private func waitLine(_ m: ChatMsg) -> String {
+        if !store.talkBusy { return "這句沒有回覆。" }
+        if m.wish == true { return "行程先由手機照你選的排好了。AI 正在看這句，回了會列出改了哪些。" }
+        return "想一下…"
+    }
+
     /// 最後一輪：我說的，下面是回的（或等回覆、沒收到回覆）
     @ViewBuilder private func round(_ me: Int) -> some View {
         let m: ChatMsg = store.s.chat[me]
@@ -323,7 +365,7 @@ struct ReplySheet: View {
         if let code = m.failed {
             failed(me, code)
         } else if after.isEmpty {
-            DomyText(store.talkBusy ? "想一下…" : "這句沒有回覆。", .body, tone: .secondary)
+            DomyText(waitLine(m), .body, tone: .secondary)
             closeButton("好，收起來")
         } else {
             ForEach(after, id: \.self) { (i: Int) in
@@ -358,6 +400,9 @@ struct ReplySheet: View {
     @ViewBuilder private func failed(_ me: Int, _ code: String) -> some View {
         Card {
             DomyText("這句沒有收到回覆，這趟沒有動。", .headline)
+            if me < store.s.chat.count, store.s.chat[me].wish == true {
+                DomyText("行程在，是手機照你選的排的。", .body, tone: .secondary)
+            }
             // ❓28：這次算不算句數，等收費方式定了再寫
             if !code.isEmpty {
                 DomyText("錯誤代碼：\(code)", .footnote, tone: .secondary)

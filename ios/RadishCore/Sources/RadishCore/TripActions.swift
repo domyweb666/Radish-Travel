@@ -272,10 +272,159 @@ private func planMonthDay(_ iso: String) -> String? {
     return "\(m)/\(d)"
 }
 
-/// 剛排好那張卡的兩行字：上面一行是誰排的，下面一段是照你說的排了哪些
+/// 剛排好那張卡的字：上面一行是誰排的，下面一段是照你說的排了哪些。
+/// wish 是開一趟時寫的那句現在怎樣（沒寫就是 nil）
 struct PlanCardText: Hashable, Sendable {
     let head: String
     let body: String
+    let wish: String?
+}
+
+/* ---------- 開一趟時寫的那句「想怎麼玩」現在怎樣 ---------- */
+
+enum WishStatus: Hashable, Sendable {
+    /// 沒寫
+    case empty
+    /// 還沒送給 AI（沒網路、沒接 AI、句數用完、按了先不要）
+    case held
+    /// 送出去了，等 AI 回
+    case waiting
+    /// 送出去了，沒收到回覆
+    case noReply
+    /// 照它改了，改的就在這一版裡。local 是手機改的
+    case changed(local: Bool)
+    /// 回了，有要使用者按「套用」才改的
+    case asking
+    /// 回了，使用者按了「套用」
+    case agreed
+    /// 回了，沒有改行程
+    case answered(local: Bool)
+    /// 改過，後來復原或重排了，這一版沒有
+    case gone
+}
+
+/// 對話裡那句在第幾則。還沒送過是 nil
+private func wishSaid(_ chat: [ChatMsg]) -> Int? {
+    return chat.lastIndex { (m: ChatMsg) -> Bool in m.r == .me && m.wish == true }
+}
+
+/// 回那句的那一則
+private func wishReply(_ chat: [ChatMsg]) -> ChatMsg? {
+    guard let i = wishSaid(chat) else { return nil }
+    for m in chat.dropFirst(i + 1) {
+        if m.r == .me { return nil }
+        if m.r == .ai { return m }
+    }
+    return nil
+}
+
+/// 行程和對話對起來看，不另外記：這樣復原、重排、換趟之後講的都還是真的
+func wishStatus(_ t: Trip, _ chat: [ChatMsg], _ busy: Bool) -> WishStatus {
+    if (t.wish ?? "").isEmpty { return .empty }
+    let reply: ChatMsg? = wishReply(chat)
+    if !(t.wishChanges ?? []).isEmpty { return .changed(local: reply?.local == true) }
+    guard let i = wishSaid(chat) else { return .held }
+    guard let r = reply else {
+        let last: Int? = chat.lastIndex { (m: ChatMsg) -> Bool in m.r == .me }
+        let waiting: Bool = busy && last == i && chat[i].failed == nil
+        return waiting ? WishStatus.waiting : WishStatus.noReply
+    }
+    if r.askOps != nil { return .asking }
+    if r.asked == true { return .agreed }
+    if !(r.changes ?? []).isEmpty { return .gone }
+    return .answered(local: r.local == true)
+}
+
+/// 去掉空白和換行再比：講的那一列只有一行，換行會變成空白
+private func wishKey(_ s: String) -> String {
+    return s.components(separatedBy: CharacterSet.whitespacesAndNewlines).joined()
+}
+
+/// 現在要送的這句，是不是開一趟時寫的、還沒送成的那句
+func wishPending(_ t: Trip, _ chat: [ChatMsg], _ msg: String) -> Bool {
+    guard let wish = t.wish else { return false }
+    let key: String = wishKey(wish)
+    if key.isEmpty || key != wishKey(msg) { return false }
+    let now: WishStatus = wishStatus(t, chat, true)
+    return now == WishStatus.held || now == WishStatus.noReply
+}
+
+/// 講的那一列只有一行：換行變成空白
+func oneLine(_ s: String) -> String {
+    let lines: [String] = s.components(separatedBy: CharacterSet.newlines)
+    let kept: [String] = lines.filter { (x: String) -> Bool in !x.isEmpty }
+    return kept.joined(separator: " ")
+}
+
+/// 開一趟時打的那一格：頭尾空白拿掉，沒打字是 nil
+func cleanWish(_ raw: String) -> String? {
+    let text: String = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return text.isEmpty ? nil : text
+}
+
+/// 卡上引那句：太長就截
+private func wishQuote(_ t: Trip) -> String {
+    let text: String = oneLine(t.wish ?? "")
+    let short: String = text.count > 40 ? String(text.prefix(39)) + "…" : text
+    return "「\(short)」"
+}
+
+/// 照那句改了哪些：最多列三項
+private func wishChangeLine(_ t: Trip, _ chat: [ChatMsg], _ local: Bool) -> String {
+    let who: String = local ? "手機" : "AI "
+    let list: [String] = t.wishChanges ?? []
+    let shown: [String] = Array(list.prefix(3))
+    var out: String = who + "照你寫的" + wishQuote(t) + "改了：" + shown.joined(separator: "；")
+    out += list.count > 3 ? "；一共 \(list.count) 項，全部在「問 AI」看得到。" : "。"
+    if wishReply(chat)?.askOps != nil { out += "還有要你點頭才改的，在「問 AI」。" }
+    return out
+}
+
+/// 剛排好那張卡上，那句現在怎樣的一段
+func wishLine(_ t: Trip, _ chat: [ChatMsg], _ busy: Bool) -> String? {
+    let q: String = wishQuote(t)
+    switch wishStatus(t, chat, busy) {
+    case .empty:
+        return nil
+    case .held:
+        return "你寫的\(q)還沒有送給 AI，行程沒有照它改。在第 1 天講的那一列隨時可以送。"
+    case .waiting:
+        return "你寫的\(q)正在問 AI，還沒有改。"
+    case .noReply:
+        return "你寫的\(q)沒有收到 AI 的回覆，行程沒有照它改。要的話再講一次。"
+    case .changed(let local):
+        return wishChangeLine(t, chat, local)
+    case .asking:
+        return "AI 看了你寫的\(q)，有要你點頭才改的，在「問 AI」按「套用」才會改。"
+    case .agreed:
+        return "AI 看了你寫的\(q)，它提的改動你按了「套用」。"
+    case .answered(let local):
+        return local ? "你寫的\(q)是手機回的，沒有問 AI，行程沒有改。" : "AI 回了你寫的\(q)，行程沒有改。"
+    case .gone:
+        return "照你寫的\(q)改過，但這一版沒有那些改動。"
+    }
+}
+
+/// 剛排好那張卡上面那一行：這一版是誰排的。底子一律是手機照他選的排，AI 改過才寫 AI 改過
+private func planHead(_ t: Trip, _ status: WishStatus) -> String {
+    if t.planBy == .ai {
+        var head: String = "AI 照你說的排的"
+        if let at = t.planAt, let md = planMonthDay(at) {
+            head += "・" + md
+        }
+        return head
+    }
+    let plain: String = "這一版是 app 內建的排法排的"
+    switch status {
+    case .empty, .held:
+        return plain + "，沒有問 AI"
+    case .changed(let local), .answered(let local):
+        if local { return plain + "，沒有問 AI" }
+        if status == WishStatus.answered(local: false) { return plain }
+        return "先由手機照你選的排好，AI 再照你寫的那句改過"
+    case .waiting, .noReply, .asking, .agreed, .gone:
+        return plain
+    }
 }
 
 /// 喜歡的那幾類各排了幾個。沒說喜歡什麼就是空字串
@@ -302,14 +451,9 @@ private func planCatLine(_ t: Trip, _ st: Settings) -> String {
 
 /// 剛排好那張卡要寫的字。平常的我有設過，沒講到的寫「先照平常的我排」；沒設過才寫「先照一般的排法」
 /// （.uiux/03-線框/方向說明-暫定.md：A4 跟 A1 的平常的我要對得起來）
-func planCardText(_ t: Trip, _ st: Settings) -> PlanCardText {
-    var head: String = "這一版是 app 內建的排法排的，沒有問 AI"
-    if t.planBy == .ai {
-        head = "AI 照你說的排的"
-        if let at = t.planAt, let md = planMonthDay(at) {
-            head += "・" + md
-        }
-    }
+/// chat、busy 是用來講開一趟時寫的那句現在怎樣
+func planCardText(_ t: Trip, _ st: Settings, _ chat: [ChatMsg] = [], _ busy: Bool = false) -> PlanCardText {
+    let head: String = planHead(t, wishStatus(t, chat, busy))
     var bits: [String] = []
     bits.append("住\(HOTEL[need: baseOf(t, st)].n)一帶")
     let cats: String = planCatLine(t, st)
@@ -323,8 +467,11 @@ func planCardText(_ t: Trip, _ st: Settings) -> PlanCardText {
     if most > 0 { bits.append("一天最多 \(most) 個主要景點") }
     let tweaks: String = tweakSummary(t)
     if !tweaks.isEmpty { bits.append("這趟照你選的「\(tweaks)」調過") }
-    let rest: String = st.tuned ? "你沒講到的，先照平常的我排。" : "你沒講到的，先照一般的排法。"
-    return PlanCardText(head: head, body: bits.joined(separator: "；") + "。" + rest)
+    // 有寫那句的時候，那句不一定照做了，所以只能說你沒選到的
+    let left: String = t.wish == nil ? "你沒講到的" : "你沒選到的"
+    let rest: String = st.tuned ? "\(left)，先照平常的我排。" : "\(left)，先照一般的排法。"
+    let body: String = bits.joined(separator: "；") + "。" + rest
+    return PlanCardText(head: head, body: body, wish: wishLine(t, chat, busy))
 }
 
 /// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。復原拿得回行程和對話

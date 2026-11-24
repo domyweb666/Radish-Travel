@@ -287,10 +287,37 @@ func localBrain(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> BrainOut {
         if now != nil { return BrainOut(reply: NO_REGEN_ON_TRIP, ops: []) }
         return BrainOut(reply: "這趟沒有動。手機只會照現在的設定整趟重排，要的話只說「重排」兩個字。", ops: [])
     }
-    return BrainOut(
-        reply: "這一版還沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「這趟想輕鬆一點」「重排」。",
-        ops: []
-    )
+    return BrainOut(reply: LOCAL_LOST, ops: [])
+}
+
+/// 本機指令聽不懂時回的話
+let LOCAL_LOST: String =
+    "這一版還沒接上 AI，我只聽得懂幾種說法：「第 3 天上午下午對調」「第 2 天跟第 4 天對調」「把景福宮移到第 4 天上午」「不要樂天世界」「第 3 天輕鬆一點」「這趟想輕鬆一點」「重排」。"
+
+/* ---------- 開一趟時寫的那句「想怎麼玩」 ---------- */
+
+/// 給 AI 的那一行：這句講的是整趟（平常這一行寫在看哪一天）
+let WISH_FOCUS: String =
+    "這句是使用者開這趟時寫的「想怎麼玩」，講的是整趟。行程剛由 app 內建的排法照他選的排好，你照這句在上面改；沒講到的不要動，做不到的在 reply 說清楚。"
+
+/// 那句手機自己答得出的話，回答案。寫在「想怎麼玩」的多半是想要什麼，裡面有「附近」「幾站」這些字也不算在問；
+/// 真的是問句才給手機答
+func wishPhone(_ raw: String, _ d: AppState, _ now: TripNow?) -> String? {
+    let marks: [String] = ["？", "?", "嗎", "有哪些"]
+    let asks: Bool = marks.contains { (w: String) -> Bool in raw.contains(w) }
+    if !asks { return nil }
+    return phoneAnswer(raw, d, 1, nil, now)
+}
+
+/// 沒接 AI 時，本機指令做不做得了那句。只有一件事、而且聽得懂才算：
+/// 講了好幾件的，做了一件就當作送過，其他的會掉
+func wishLocalCan(_ raw: String, _ t: Trip, _ now: TripNow? = nil) -> Bool {
+    let ends: CharacterSet = CharacterSet(charactersIn: "。！!.～~ \n")
+    let msg: String = raw.trimmingCharacters(in: ends)
+    if msg.isEmpty { return false }
+    let cuts: [String] = ["，", ",", "。", "；", ";", "、", "\n", "還有", "然後"]
+    if cuts.contains(where: { (w: String) -> Bool in msg.contains(w) }) { return false }
+    return localBrain(msg, t, now).reply != LOCAL_LOST
 }
 
 /* ---------- 讀不可信的 JSON：照 JavaScript 的規則把值轉成數字、字、真假 ---------- */
