@@ -61,14 +61,21 @@
 
 ## 🧩 剩下的工作（工作包，接續時派給子代理）
 
-- [ ] A：句數不被復原和重排退掉｜復原、整趟重排、照新設定重排後 `aiUsed` 不變，有測試｜`AppStore.swift`、`TripScreen.swift`（replan）、`RadishCore/Tests`｜無
-- [ ] B：同意要記送去哪裡｜換成金鑰或連電腦後，第一次送之前再問一次，說明寫對地方；舊存檔讀得出來｜`AppStore.swift`、`Models.swift`、`ReplySheet.swift`、`MeEditors.swift`、`MapSheet.swift`｜依賴 A、C（共用 AppStore、MapSheet）
-- [ ] C：路線半頁的地圖不擋捲動｜打開就看得到總分鐘和「請 AI 提一個改法」，捲動不會拖地圖｜`MapSheet.swift`、`DayMap.swift`｜無
-- [ ] D：唯讀 code review 片 2–6 和接 AI 的程式｜列出正確性問題，附檔案行號和會壞的情況，不改檔｜只讀｜無
-- [ ] E：開一趟 B 版｜表單多一格「想怎麼玩（可以不填）」。沒填照現在；有填就先用 `generate()` 排，再把那句當第一句問 AI 照著改，第一次先看同意說明；沒網路或沒接 AI 時行程照樣排出來，並老實說那句沒有送｜`StartTrip.swift`、`TripForm.swift`、`Models.swift`（TripDraft）、`AppStore.swift`、`TripCards.swift`｜依賴 A、B；有填那句的做法是 Agent 的建議，照做，寫進最後的報告給多米看
-- [ ] F：補截圖和測試｜上面第 3 點列的每個畫面至少一張截圖，全部看過，跟線框不一樣的列出來｜`RadishUITests/`、必要時加測試用啟動參數｜依賴 A、B、C、E
-- [ ] G：D 找到的問題修完｜逐條修或寫明不修的原因｜看 D 的清單｜依賴 D
-- [ ] H：真的打一次 Anthropic API｜多米用自己的金鑰在 app 裡填一次、講一句；回 400 就拿掉 fallbacks｜`Chat.swift`｜要多米，金鑰不經過對話
+2026-11-24 接續會話的即時進度（做完打勾；主對話統一 commit）：
+
+- [x] A：句數不被復原和重排退掉（db68c1e，加 Trip.id 和 AppState.aiLog）
+- [x] C：路線半頁總分鐘和按鈕釘在下緣、地圖 interactionModes 空的（f078724）
+- [x] D：code review 兩份都回來了，問題拆進下面 G
+- [ ] B：同意要記送去哪裡｜AppStore、Models、Chat、RouteSuggest、ReplySheet、MapSheet、MeEditors、MeScreen
+- [ ] G-a：一站、照片、記一筆（拿掉照片立刻刪檔、那一句會被復原退掉、過敏卡「複製了」、VoiceOver、今天沒站說拔完、移站警告講別天、照片寫回舊清單、從舊頁回來的字、同一帶、講的那一列和鍵盤）
+- [ ] G-b：排進去的規則（restoreSeed 重複 id、emptiestSlot 放到過去、planMark 不含 tweaks、pool 不分趟、放一邊的 b_ 打勾）
+- [ ] G-d：電腦轉接（`@路徑` 讀得到電腦的檔、CLAUDE.md 被帶進去、非 ASCII 權杖讓程式掛掉、README 跟事實不符）
+- [ ] G-e：日期用裝置行事曆（佛曆、民國曆年份會錯）、通知重排交錯、鑰匙圈存失敗沒人知道、相機權限
+- [ ] G-c（等 B、G-a、G-b）：換趟和復原｜切趟、開新趟不清復原紀錄，復原會讓一趟不見（AppStore.undo、TripsScreen、StartTrip）；mutate 寫的東西被復原一起退；整趟重排沒擋有去過的站（TripScreen replan、talkFinish blockRegen 回來後也要擋）；「收起來」沒去過的整趟丟掉、去過的丟花費匯率（MoreSheet:110、TripCards:141、TripActions:59）；nav.tripDay 和 drafts 換趟不清；flush 失敗沒設回 dirty；setClaudeKey／setBridge 看 save 的回傳
+- [ ] G-f（等 B）：講的那條線｜retryTalk 沒查同意；等同意時再講一句，原本那句消失（talk 先 keepDraft）；brainFromText 沒 JSON 或沒 reply 當成「好了。」、max_tokens 沒當失敗；localBrain 套用前就說做好了；applyOps 超過 20 步和不認得的 op 靜靜丟掉；接 AI 時「重排」沒用；phoneNext 今天沒站說拔完；清金鑰說「之後只用手機」但電腦還連著；「全部清掉」沒清鑰匙圈和照片；提示條在半頁後面也沒有 VoiceOver 播報；用更多復原 AI 的改動，對話寫「之後又改過了」
+- [ ] E（等 G-c）：開一趟 B 版；順便修：切分頁填到一半全空、四題答到一半 tuned 變 true 就消失、過午夜還能開昨天出發的趟；TripSettingsSheet 下拉關掉改到一半全丟
+- [ ] F：補截圖和測試（已知問題 3 列的畫面），全部看過
+- [ ] H：真的打一次 Anthropic API（要多米，金鑰不經過對話）。review 對過格式，試打和正式請求都不會被格式拒絕，但沒實際打
 
 ## 🗑️ 這次會話的雜訊（下次別重新討論）
 
