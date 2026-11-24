@@ -602,11 +602,80 @@ func aiMetered() -> Bool {
 
 /// 這趟還剩幾句。nil 是不限。
 /// 算法：AI 有回的才算一句（改了、沒改、只是回答都算）；手機答的、本機指令、沒網路沒送、
-/// 沒回好、被結束沒收到、Claude 不回答的都不算；復原不退句數
+/// 沒回好、被結束沒收到、Claude 不回答的都不算。
+/// 一趟的句數只多不少：復原、整趟重排、照新設定重排、放一邊再切回來、收掉再復原，都不退也不歸零。
+/// 每一趟各算各的，用 Trip.id 認，開新的一趟從 0 算
 func aiLeft(_ trip: Trip, firstTrip: Bool, metered: Bool) -> Int? {
     if !metered { return nil }
     let limit: Int = firstTrip ? AI_FIRST_TRIP_LIMIT : AI_NEXT_TRIP_LIMIT
     return max(0, limit - (trip.aiUsed ?? 0))
+}
+
+/// 還沒有代號的趟補一個代號（剛開的、舊檔裡的），再把每一趟的 aiUsed 和 aiLog 對齊，取多的那個。
+/// 開著的和放一邊的都算。每次改完狀態、讀檔、復原之後都叫一次，所以換回舊的那一份行程，句數也不會變少
+func syncAIUsed(_ d: inout AppState) {
+    // 先全部記進 aiLog，再全部寫回去：同一趟可能有兩份，兩份要一樣
+    if var t = d.trip {
+        let id: String = aiTripId(&t)
+        d.aiLog[id] = max(d.aiLog[id] ?? 0, t.aiUsed ?? 0)
+        d.trip = t
+    }
+    for i in d.shelf.indices {
+        var t: Trip = d.shelf[i].trip
+        let id: String = aiTripId(&t)
+        d.aiLog[id] = max(d.aiLog[id] ?? 0, t.aiUsed ?? 0)
+        d.shelf[i].trip = t
+    }
+    if var t = d.trip {
+        aiFill(&t, d.aiLog)
+        d.trip = t
+    }
+    for i in d.shelf.indices {
+        var t: Trip = d.shelf[i].trip
+        aiFill(&t, d.aiLog)
+        d.shelf[i].trip = t
+    }
+}
+
+private func aiTripId(_ t: inout Trip) -> String {
+    if let id = t.id, !id.isEmpty { return id }
+    let made: String = newId("k")
+    t.id = made
+    return made
+}
+
+private func aiFill(_ t: inout Trip, _ log: [String: Int]) {
+    guard let id = t.id, let n = log[id] else { return }
+    if n > (t.aiUsed ?? 0) { t.aiUsed = n }
+}
+
+/// AI 回了一句：tripId 那一趟加一。等回覆的時候那一趟放一邊、收掉了也照算，不會算到別趟頭上
+func countAI(_ d: inout AppState, _ tripId: String) {
+    syncAIUsed(&d)
+    d.aiLog[tripId] = (d.aiLog[tripId] ?? 0) + 1
+    syncAIUsed(&d)
+}
+
+/// 復原時換回之前那一份行程。句數不跟著退：回到的是哪一趟，就用那一趟問過的句數
+func restoreTrip(_ d: inout AppState, _ trip: Trip?) {
+    // 換掉之前先把現在的句數記下來
+    syncAIUsed(&d)
+    d.trip = trip
+    syncAIUsed(&d)
+}
+
+/// 整包換掉（貼上備份）時，備份裡有、手機裡也有的那幾趟，句數取多的。
+/// 手機裡沒有的照備份的算；全部清掉之後就沒有紀錄可以對
+func carryAILog(_ next: inout AppState, _ old: AppState) {
+    var before: AppState = old
+    syncAIUsed(&before)
+    syncAIUsed(&next)
+    var ids: [String] = next.shelf.compactMap { (x: Shelved) -> String? in x.trip.id }
+    if let id = next.trip?.id { ids.append(id) }
+    for id in ids {
+        next.aiLog[id] = max(next.aiLog[id] ?? 0, before.aiLog[id] ?? 0)
+    }
+    syncAIUsed(&next)
 }
 
 /// 有連電腦的 CLI 就用它，再來是自己填的金鑰，最後才是後端

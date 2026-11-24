@@ -151,12 +151,7 @@ struct TripScreen: View {
     private func replan() {
         store.act(undoable: true) { (d: inout AppState) -> String? in
             guard let old = d.trip else { return nil }
-            let own: (flight: Double, spend: [Spend]?, rate: Double?) = ownOf(old)
-            var next: Trip = generate(draftOf(old), d.settings)
-            next.flight = own.flight
-            next.spend = own.spend
-            next.rate = own.rate
-            d.trip = next
+            d.trip = replanTrip(old, draftOf(old), d.settings)
             d.settingsDirty = false
             return "照新的設定重排了。手動改過的地方也一起重排了。"
         }

@@ -79,12 +79,13 @@ final class AppStore {
         return aiLeft(trip, firstTrip: s.baskets.isEmpty && s.shelf.isEmpty, metered: aiMetered())
     }
 
-    /// AI 有回一句：這趟的句數加一。不留復原，復原行程也不退句數
-    func countAISentence() {
+    /// AI 有回一句：那一趟的句數加一，沒給代號就是現在這趟。不留復原，復原行程也不退句數。
+    /// 給代號（送出時的那一趟），等回覆的時候換了一趟也不會算錯
+    func countAISentence(_ tripId: String? = nil) {
+        let target: String? = tripId ?? s.trip?.id
+        guard let id = target else { return }
         mutate { (d: inout AppState) -> Void in
-            guard var trip = d.trip else { return }
-            trip.aiUsed = (trip.aiUsed ?? 0) + 1
-            d.trip = trip
+            countAI(&d, id)
         }
     }
 
@@ -133,7 +134,9 @@ final class AppStore {
         let manager = FileManager.default
         if manager.fileExists(atPath: fileURL.path) {
             let data: Data? = try? Data(contentsOf: fileURL)
-            if let data, let state = AppState.hydrate(data) {
+            if let data, var state = AppState.hydrate(data) {
+                // 舊檔的趟沒有代號，先補上
+                syncAIUsed(&state)
                 s = state
             } else {
                 let stamp = Int(Date().timeIntervalSince1970)
@@ -230,6 +233,8 @@ final class AppStore {
         let prev = s
         var draft = s
         let message: String? = change(&draft)
+        // 剛開的一趟補代號；每一趟的句數只多不少
+        syncAIUsed(&draft)
         if undoable {
             undoStack.append(
                 Snapshot(
@@ -280,7 +285,8 @@ final class AppStore {
         canUndo = !undoStack.isEmpty
         undoTop = undoStack.last?.mark
         var next = s
-        next.trip = snap.trip
+        // 句數不在復原的範圍，規則在 Chat.swift 的 aiLeft
+        restoreTrip(&next, snap.trip)
         next.seeds = snap.seeds
         next.pool = snap.pool
         next.baskets = snap.baskets
@@ -303,14 +309,16 @@ final class AppStore {
         notice = nil
     }
 
-    /// 整包換掉（清除全部、匯入）。復原紀錄會清空
+    /// 整包換掉（清除全部、匯入）。復原紀錄會清空。匯入的備份裡有同一趟，句數取多的
     func replaceAll(_ next: AppState) {
+        var fresh: AppState = next
+        carryAILog(&fresh, s)
         undoStack = []
         canUndo = false
         undoTop = nil
         talkStage = .idle
         drafts = [:]
-        s = next
+        s = fresh
         save()
     }
 
@@ -558,7 +566,7 @@ extension AppStore {
                 do {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
                     let out: BrainOut = try await askAI(prompt)
-                    self.countAISentence()
+                    self.countAISentence(trip.id)
                     self.talkFinish(out, local: false, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {
                     // 沒回好、讀不懂：這趟不動，不退回本機指令（線框 A21）
@@ -592,12 +600,7 @@ extension AppStore {
             let before: Trip = trip
             var changes: [String] = []
             if regen {
-                let own: (flight: Double, spend: [Spend]?, rate: Double?) = ownOf(trip)
-                var fresh: Trip = generate(draftOf(trip), d.settings, true)
-                fresh.flight = own.flight
-                fresh.spend = own.spend
-                fresh.rate = own.rate
-                trip = fresh
+                trip = replanTrip(trip, draftOf(trip), d.settings, true)
                 d.settingsDirty = false
                 changes.append("整趟照現在的設定重排了")
             }

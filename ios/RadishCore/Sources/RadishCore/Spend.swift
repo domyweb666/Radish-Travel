@@ -34,6 +34,19 @@ func ownOf(_ t: Trip) -> (flight: Double, spend: [Spend]?, rate: Double?) {
     return (flight: t.flight, spend: t.spend, rate: t.rate)
 }
 
+/// 同一趟整趟重排：照 d 和 st 重新排，ownOf 那三樣、這趟的代號、問了 AI 幾句都留著。
+/// 重排同一趟一律走這裡，不要直接用 generate() 換掉（那是開新的一趟，句數從 0 算）
+func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = false) -> Trip {
+    var next: Trip = generate(d, st, shuffle)
+    let own: (flight: Double, spend: [Spend]?, rate: Double?) = ownOf(old)
+    next.flight = own.flight
+    next.spend = own.spend
+    next.rate = own.rate
+    next.id = old.id
+    next.aiUsed = old.aiUsed
+    return next
+}
+
 /// 使用者打的金額 → 韓元整數。打錯或空的是 0
 func parseKrw(_ text: String) -> Double {
     // TS：parseInt(text.replace(/\D/g, ''), 10) || 0，再跟上限取小的

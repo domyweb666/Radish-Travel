@@ -179,7 +179,8 @@ struct Trip: Codable, Hashable, Sendable {
     var planBy: PlanBy?  // 這一版是誰排的。nil 當成 app 內建的排法（舊檔、現在的開一趟都是）
     var planAt: String?  // AI 排好的那一天，YYYY-MM-DD。內建的排法不寫
     var planMark: String?  // 剛排好那張卡第一次出現時，這一版的樣子（planMarkOf）。之後對不上就是改過了
-    var aiUsed: Int?  // 這趟問了 AI 幾句（AI 有回的才算，見 Chat.swift 的 aiLeft）
+    var aiUsed: Int?  // 這趟問了 AI 幾句（AI 有回的才算，見 Chat.swift 的 aiLeft）。只多不少，跟 AppState.aiLog 對
+    var id: String?  // 這趟的代號，重排、放一邊、復原都不變，用來認是不是同一趟。syncAIUsed 補上，舊檔沒有
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -322,6 +323,7 @@ struct AppState: Codable, Hashable, Sendable {
     var guideSeen: Bool = false  // 「這趟」的操作說明看過了嗎
     var remind: Bool = false  // 出發前提醒還沒訂的站（本機通知）
     var debugDay: Int?  // 測試用：假裝今天是第幾天
+    var aiLog: [String: Int] = [:]  // 每一趟問了 AI 幾句，用 Trip.id 記。不進復原紀錄，所以復原退不掉
 }
 
 extension AppState {
@@ -342,6 +344,7 @@ extension AppState {
         out.guideSeen = try box.decodeIfPresent(Bool.self, forKey: .guideSeen) ?? false
         out.remind = try box.decodeIfPresent(Bool.self, forKey: .remind) ?? false
         out.debugDay = try box.decodeIfPresent(Int.self, forKey: .debugDay)
+        out.aiLog = try box.decodeIfPresent([String: Int].self, forKey: .aiLog) ?? [:]
         self = out
     }
 
