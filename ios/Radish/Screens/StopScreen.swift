@@ -1,7 +1,7 @@
 // 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、韓文名、找路，
 // 下面是移到別的時段、換一個，右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
 // 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
-// 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」），只給看。
+// 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」、剛拿掉又從舊的入口進來的），只給看。
 // 每一塊的畫面在 StopScreenParts.swift；換一個、不去這一站、過敏告知卡是這一頁自己開的半頁，給司機看是全螢幕。
 import SwiftUI
 
@@ -29,7 +29,7 @@ struct StopScreen: View {
             if let trip, let found {
                 StopPage(id: id, trip: trip, found: found)
             } else if let place {
-                // 附近還有什麼的「看那站」：還沒排進這趟的地方，只給看
+                // 不在這趟裡的地方，只給看：附近還有什麼的「看那站」，或剛拿掉、從舊的入口進來的
                 StopPreview(place: place)
             } else {
                 StopGone()
@@ -61,7 +61,7 @@ private struct StopGone: View {
     }
 }
 
-/// 還沒排進這趟的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver。
+/// 不在這趟裡的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver。
 /// 不給移時段、換一個、不想去、拔起來；要排進來在附近還有什麼那張半頁按
 private struct StopPreview: View {
     @Environment(AppStore.self) private var store
@@ -73,7 +73,17 @@ private struct StopPreview: View {
     @State private var allergy: Bool = false
 
     private var it: Stop {
-        planToStop(place, "還沒排進這趟。這是首爾資料包裡的地點，從附近還有什麼看到的。")
+        planToStop(place, why)
+    }
+
+    /// 這一頁不知道是從哪裡點進來的，只講確定的事
+    private var why: String {
+        let placeId: String = place.id
+        let later: Bool = store.s.seeds.contains { (x: Seed) -> Bool in x.stop?.id == placeId }
+        if later {
+            return "現在不在這趟裡，放在「下次再來」。"
+        }
+        return "現在不在這趟裡。這是首爾資料包裡的地點。"
     }
 
     var body: some View {
@@ -114,7 +124,7 @@ private struct StopPreview: View {
                     .fillLeading()
             }
             TagRow {
-                Tag("還沒排進這趟", tone: .accent)
+                Tag("不在這趟裡", tone: .accent)
                 Tag(place.s == .L ? "主要景點" : "順路小地方")
                 if place.b == true {
                     Tag("要先訂", tone: .accent)

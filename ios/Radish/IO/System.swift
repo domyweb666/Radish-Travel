@@ -42,8 +42,37 @@ func askReminders() async -> AskResult {
     }
 }
 
-/// 把排好的通知整批換成這一份。這個 app 沒有別種通知，所以先全部取消再重排。早上九點提醒
+/// 重排通知排成一條隊：前一次做完才做下一次，而且只有最後一次的內容算數。
+/// 不排隊的話，前一次的「加」可能落在後一次的「清空」之後，關掉提醒了還會響
+@MainActor
+private enum ReminderLine {
+    static var latest: Int = 0
+    static var tail: Task<Void, Never>?
+}
+
+/// 還是最後一次嗎。後面又來了一次，前面的就不用再排下去
+@MainActor
+private func isLatestReminders(_ turn: Int) -> Bool {
+    return turn == ReminderLine.latest
+}
+
+/// 把排好的通知整批換成這一份。綁在主執行緒上，號碼才會照呼叫的順序拿
+@MainActor
 func syncReminders(_ list: [Reminder]) async {
+    ReminderLine.latest += 1
+    let turn: Int = ReminderLine.latest
+    let before: Task<Void, Never>? = ReminderLine.tail
+    let job: Task<Void, Never> = Task { @MainActor in
+        await before?.value
+        guard isLatestReminders(turn) else { return }
+        await replaceReminders(list, turn)
+    }
+    ReminderLine.tail = job
+    await job.value
+}
+
+/// 真的去換。這個 app 沒有別種通知，所以先全部取消再重排。早上九點提醒
+private func replaceReminders(_ list: [Reminder], _ turn: Int) async {
     let center = UNUserNotificationCenter.current()
     center.delegate = NoticeDelegate.shared
     center.removeAllPendingNotificationRequests()
@@ -51,13 +80,9 @@ func syncReminders(_ list: [Reminder]) async {
     let settings = await center.notificationSettings()
     guard settings.authorizationStatus == .authorized else { return }
     for item in list {
-        let parts: [Int] = item.on.split(separator: "-").compactMap { Int($0) }
-        guard parts.count == 3 else { continue }
-        var when = DateComponents()
-        when.year = parts[0]
-        when.month = parts[1]
-        when.day = parts[2]
-        when.hour = 9
+        guard let when: DateComponents = reminderTime(item.on) else { continue }
+        let still: Bool = await isLatestReminders(turn)
+        guard still else { return }
         let content = UNMutableNotificationContent()
         content.title = item.title
         content.body = item.body

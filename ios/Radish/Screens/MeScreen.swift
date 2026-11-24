@@ -125,8 +125,8 @@ struct MeScreen: View {
             row("Claude API 金鑰", store.claudeKeySet ? maskedClaudeKey(CLAUDE_KEY) : "沒有填", .claude)
             // 開發測試用：連自己電腦的 Claude CLI，有連就先用它
             row("連電腦的 Claude CLI", store.bridgeSet ? maskedBridge(BRIDGE_URL) : "沒有連", .bridge)
-            // 線框 A17：同意過才寫「可以收回」。收回之後下次要送給 AI 前會再問一次
-            row("送給 AI 的資料", store.s.aiConsent ? "已同意・可以收回" : "還沒同意", .ai)
+            // 線框 A17：寫現在會送去哪裡、那個地方同意了沒。收回之後下次要送給 AI 前會再問一次
+            row("送給 AI 的資料", aiText, .ai)
             SettingsRow("複製備份") {
                 copyBackup()
             }
@@ -139,8 +139,25 @@ struct MeScreen: View {
         }
     }
 
+    /// 例：Anthropic・已同意。點進去可以收回
+    private var aiText: String {
+        guard let dest = store.aiDest else {
+            return store.s.aiAgreed.isEmpty ? "沒有接 AI" : "沒有接 AI・可以收回"
+        }
+        let name: String
+        switch dest.kind {
+        case .bridge: name = "你連的電腦"
+        case .key: name = "Anthropic"
+        case .server: name = "蘿蔔旅行伺服器"
+        }
+        return store.aiAgreedHere ? "\(name)・已同意" : "\(name)・還沒同意"
+    }
+
+    /// 備份不帶送給 AI 的同意：還原到哪支手機，就由那支手機自己問
     private func copyBackup() {
-        let data: Data? = try? JSONEncoder().encode(store.s)
+        var out: AppState = store.s
+        revokeAI(&out)
+        let data: Data? = try? JSONEncoder().encode(out)
         if let data, let text = String(data: data, encoding: .utf8) {
             UIPasteboard.general.string = text
             store.say("備份複製好了，貼到備忘錄存起來。")

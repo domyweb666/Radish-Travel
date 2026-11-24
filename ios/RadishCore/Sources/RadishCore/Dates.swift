@@ -73,9 +73,11 @@ private func utcDay(_ days: Int) -> Int {
     return (((days + 4) % 7) + 7) % 7
 }
 
-/// 裝置當地的今天
-func todayISO(_ now: Date = Date()) -> String {
-    let cal: Calendar = Calendar.current
+/// 裝置當地的今天，一律是西元。
+/// 手機的行事曆可能設成佛曆、日本曆、民國曆（年份會變 2569、8、115），所以 device 只拿它的時區來用
+func todayISO(_ now: Date = Date(), device: Calendar = Calendar.current) -> String {
+    var cal: Calendar = Calendar(identifier: .gregorian)
+    cal.timeZone = device.timeZone
     let c: DateComponents = cal.dateComponents([.year, .month, .day], from: now)
     let y: Int = c.year ?? 1970
     let m: Int = c.month ?? 1

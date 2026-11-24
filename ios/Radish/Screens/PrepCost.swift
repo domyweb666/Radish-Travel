@@ -17,8 +17,10 @@ private func overLimit(_ text: String, _ limit: Int) -> String? {
 
 struct PrepCost: View {
     @Environment(AppStore.self) private var store
-    /// 機票那一格正在打的字
+    /// 機票那一格正在打的字。打完才存一次，打的時候粗估先照打的算
     @State private var flight: String = ""
+    /// 上次存的或放進框裡的字。跟框裡一樣就是沒改。nil 是還沒放進去
+    @State private var flightBase: String? = nil
 
     // 出發之後常用的是記帳，放最上面；出發前先看粗估
     private var gone: Bool {
@@ -28,19 +30,28 @@ struct PrepCost: View {
     }
 
     var body: some View {
-        if let trip = store.s.trip {
+        if let saved = store.s.trip {
+            let trip: Trip = shown(saved)
             VStack(alignment: .leading, spacing: T.Space.s6) {
                 if gone {
                     PrepSpent()
                 }
                 estimateCard(trip)
                 rowsSection(trip)
-                flightField(trip)
+                flightField
                 if !gone {
                     PrepSpent()
                 }
             }
         }
+    }
+
+    /// 畫面上用的那一份：機票正在打、還沒存的，先照打的算
+    private func shown(_ saved: Trip) -> Trip {
+        guard let base = flightBase, flight != base else { return saved }
+        var out: Trip = saved
+        out.flight = parseFlight(flight)
+        return out
     }
 
     private func estimateCard(_ trip: Trip) -> some View {
@@ -63,33 +74,54 @@ struct PrepCost: View {
         }
     }
 
-    private func flightField(_ trip: Trip) -> some View {
+    private var flightField: some View {
         DomyTextField(
             "機票（每人，NT$）", text: $flight, placeholder: "例如 12000",
             helper: "自己填，會加進上面的粗估。", keyboard: .numberPad
         )
         .accessibilityIdentifier("spend-flight")
-        .onAppear {
-            flight = trip.flight != 0 ? plainNumber(trip.flight) : ""
+        .onAppear { fillFlight() }
+        .onChange(of: flight) { (_: String, text: String) in
+            if let cut = overLimit(text, 6) {
+                flight = cut
+            }
         }
-        .onChange(of: flight) { _, text in
-            setFlight(text)
+        // 按了復原，框裡的字跟著變回去
+        .onChange(of: store.s.trip?.flight ?? 0) { (_: Double, now: Double) in
+            if parseFlight(flight) != now { fillFlight() }
         }
+        .onFieldDone { saveFlight() }
     }
 
-    private func setFlight(_ text: String) {
-        if let cut = overLimit(text, 6) {
-            flight = cut
-            return
-        }
-        let digits: String = text.filter { (ch: Character) -> Bool in ch.isASCII && ch.isNumber }
-        let typed: Double = Double(Int(digits) ?? 0)
-        let n: Double = min(200000, max(0, typed))
-        if store.s.trip?.flight == n { return }
-        store.mutate { (d: inout AppState) -> Void in
+    /// 把存著的機票放進框裡
+    private func fillFlight() {
+        let n: Double = store.s.trip?.flight ?? 0
+        let text: String = n != 0 ? plainNumber(n) : ""
+        flight = text
+        flightBase = text
+    }
+
+    /// 打完了存一次，可以復原。沒有變就不留一步
+    private func saveFlight() {
+        guard let base = flightBase, flight != base else { return }
+        guard let trip = store.s.trip else { return }
+        let n: Double = parseFlight(flight)
+        let text: String = n != 0 ? plainNumber(n) : ""
+        flight = text
+        flightBase = text
+        if trip.flight == n { return }
+        store.act(undoable: true) { (d: inout AppState) -> String? in
             d.trip?.flight = n
+            return n != 0 ? "機票改成每人 \(money(n))。" : "機票清掉了。"
         }
     }
+}
+
+/// 機票那一格的字變成數字，最多 20 萬
+private func parseFlight(_ text: String) -> Double {
+    let digits: String = text.filter { (ch: Character) -> Bool in ch.isASCII && ch.isNumber }
+    let typed: Double = Double(Int(digits) ?? 0)
+    return min(200000, max(0, typed))
 }
 
 /// 對照表列的幾個金額（韓元），看一眼就知道大概多少台幣
@@ -101,8 +133,10 @@ struct PrepSpent: View {
     // 記完一筆要把兩格清空
     @State private var krw: String = ""
     @State private var note: String = ""
-    /// 匯率那一格正在打的字
+    /// 匯率那一格正在打的字。打完才存一次，打的時候換算先照打的算
     @State private var rate: String = ""
+    /// 上次存的或放進框裡的字。跟框裡一樣就是沒改。nil 是還沒放進去
+    @State private var rateBase: String? = nil
 
     private var tripDay: Int? {
         guard let phase = store.phase else { return nil }
@@ -116,18 +150,27 @@ struct PrepSpent: View {
     }
 
     var body: some View {
-        if let trip = store.s.trip {
+        if let saved = store.s.trip {
+            let trip: Trip = shown(saved)
             // 最上面那一格同時是換算器：邊打邊換。真的花了再按「記一筆」
             VStack(alignment: .leading, spacing: T.Space.s6) {
                 krwField(trip)
                 convertedCard(trip)
                 noteField
                 addButton
-                rateField(trip)
+                rateField
                 quickTable(trip)
                 records(trip)
             }
         }
+    }
+
+    /// 畫面上用的那一份：匯率正在打、還沒存的，先照打的算
+    private func shown(_ saved: Trip) -> Trip {
+        guard let base = rateBase, rate != base else { return saved }
+        var out: Trip = saved
+        out.rate = parseRate(rate)
+        return out
     }
 
     private func krwHelper(_ trip: Trip) -> String? {
@@ -191,34 +234,46 @@ struct PrepSpent: View {
         note = ""
     }
 
-    private func rateField(_ trip: Trip) -> some View {
+    private var rateField: some View {
         DomyTextField(
             "1000 韓元換多少台幣", text: $rate, placeholder: "例如 23",
             helper: "自己填，照你實際換到的匯率。這個 app 不會去抓匯率。", keyboard: .decimalPad
         )
         .accessibilityIdentifier("spend-rate")
-        .onAppear {
-            if let r = trip.rate, r != 0 {
-                rate = plainNumber(r)
-            } else {
-                rate = ""
+        .onAppear { fillRate() }
+        .onChange(of: rate) { (_: String, text: String) in
+            if let cut = overLimit(text, 6) {
+                rate = cut
             }
         }
-        .onChange(of: rate) { _, text in
-            setRate(text)
+        // 按了復原，框裡的字跟著變回去
+        .onChange(of: store.s.trip?.rate ?? 0) { (_: Double, now: Double) in
+            let shownNow: Double = parseRate(rate) ?? 0
+            if shownNow != now { fillRate() }
         }
+        .onFieldDone { saveRate() }
     }
 
-    private func setRate(_ text: String) {
-        if let cut = overLimit(text, 6) {
-            rate = cut
-            return
-        }
+    /// 把存著的匯率放進框裡
+    private func fillRate() {
+        let r: Double = store.s.trip?.rate ?? 0
+        let text: String = r != 0 ? plainNumber(r) : ""
+        rate = text
+        rateBase = text
+    }
+
+    /// 打完了存一次，可以復原。沒有變就不留一步
+    private func saveRate() {
+        guard let base = rateBase, rate != base else { return }
+        guard let trip = store.s.trip else { return }
+        let text: String = rate
+        rateBase = text
         let r: Double? = parseRate(text)
-        let now: Double? = store.s.trip?.rate
-        if now == r { return }
-        store.mutate { (d: inout AppState) -> Void in
+        if trip.rate == r { return }
+        store.act(undoable: true) { (d: inout AppState) -> String? in
             d.trip?.rate = r
+            if let r { return "匯率改成 1000 韓元換 NT$ \(plainNumber(r))。" }
+            return text.isEmpty ? "匯率清掉了。" : "這個匯率看不懂，先當成沒填。"
         }
     }
 

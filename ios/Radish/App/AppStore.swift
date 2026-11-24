@@ -47,6 +47,8 @@ final class AppStore {
     private(set) var claudeKeySet: Bool = !CLAUDE_KEY.isEmpty
     /// 有沒有連電腦的 Claude CLI（開發測試用）。網址在鑰匙圈和 BRIDGE_URL
     private(set) var bridgeSet: Bool = !BRIDGE_URL.isEmpty
+    /// 要 AI 的句子現在會送去哪裡，沒接 AI 是 nil。判斷在 Chat.swift 的 aiRoute，這裡留一份讓畫面知道要重畫
+    private(set) var aiDest: AIDest? = aiDestNow()
 
     @ObservationIgnored private var undoStack: [Snapshot] = []
     @ObservationIgnored private var noticeId = 0
@@ -66,16 +68,20 @@ final class AppStore {
         self.fileURL = fileURL
     }
 
-    /// 接上 AI 了沒：有填 Claude API 金鑰，或建置時設了後端網址。畫面讀這個才會在填金鑰後跟著變
+    /// 接上 AI 了沒：有連電腦的 CLI、有填 Claude API 金鑰，或建置時設了後端網址。畫面讀這個才會在填金鑰後跟著變
     var aiOn: Bool {
-        return claudeKeySet || bridgeSet || aiReady()
+        return aiDest != nil
+    }
+
+    /// 現在會送去的那個地方同意過了嗎。換到沒同意過的地方就是 false
+    var aiAgreedHere: Bool {
+        return aiAllowed(s, aiDest)
     }
 
     /// 這趟還剩幾句可以問 AI。nil 是不限（自己的金鑰、自己電腦的 CLI、沒接 AI）。規則在 Chat.swift 的 aiLeft
     var talkLeft: Int? {
         guard let trip = s.trip else { return nil }
-        _ = claudeKeySet
-        _ = bridgeSet
+        _ = aiDest
         return aiLeft(trip, firstTrip: s.baskets.isEmpty && s.shelf.isEmpty, metered: aiMetered())
     }
 
@@ -100,6 +106,7 @@ final class AppStore {
             CLAUDE_KEY = clean
         }
         claudeKeySet = !CLAUDE_KEY.isEmpty
+        aiDest = aiDestNow()
     }
 
     /// 存或清掉連電腦 Claude CLI 的網址（nil 或空字串是中斷連線）
@@ -113,6 +120,7 @@ final class AppStore {
             BRIDGE_URL = clean
         }
         bridgeSet = !BRIDGE_URL.isEmpty
+        aiDest = aiDestNow()
     }
 
     nonisolated static func defaultURL() -> URL {
@@ -309,10 +317,16 @@ final class AppStore {
         notice = nil
     }
 
-    /// 整包換掉（清除全部、匯入）。復原紀錄會清空。匯入的備份裡有同一趟，句數取多的
-    func replaceAll(_ next: AppState) {
+    /// 整包換掉（清除全部、匯入）。復原紀錄會清空。匯入的備份裡有同一趟，句數取多的。
+    /// imported 為 true（貼上備份）時，送給 AI 的同意留這支手機自己的；false（全部清掉）一起清
+    func replaceAll(_ next: AppState, imported: Bool) {
         var fresh: AppState = next
         carryAILog(&fresh, s)
+        if imported {
+            keepAgreed(&fresh, s)
+        } else {
+            revokeAI(&fresh)
+        }
         undoStack = []
         canUndo = false
         undoTop = nil
@@ -342,10 +356,22 @@ enum TalkHold: Equatable {
     case quota
 }
 
+/// 等同意的那一句
+struct TalkPending: Equatable {
+    /// 在哪裡講的
+    let target: TalkTarget
+    /// 說明上寫的、要他同意送去的那個地方
+    let dest: AIDest
+    /// 等他按的時候地方換了，這是重新問的
+    var moved: Bool = false
+    /// 沒收到回覆、要再送一次的那句在對話裡第幾則。新的一句是 nil
+    var retry: Int?
+}
+
 enum TalkStage: Equatable {
     case idle
-    /// 第一次要送給 AI：等「同意並送出」（S03，線框 New-Consent）
-    case consent(text: String, target: TalkTarget)
+    /// 第一次要送到這個地方：等「同意並送出」（S03，線框 New-Consent）
+    case consent(text: String, ask: TalkPending)
     /// 要 AI 的這句沒有送出去，字留在講的那一列
     case held(TalkHold)
     /// 送出了，等回覆。同一時間只送一句
@@ -460,44 +486,75 @@ extension AppStore {
             }
             return true
         }
-        let remote: Bool = aiOn
-        if remote {
+        let dest: AIDest? = aiDest
+        if let dest {
             if let hold = talkHold {
                 keepDraft(msg, target)
                 talkStage = .held(hold)
                 Haptic.notify(.error)
                 return false
             }
-            if !s.aiConsent {
-                talkStage = .consent(text: msg, target: target)
+            if !aiAllowed(s, dest) {
+                talkStage = .consent(text: msg, ask: TalkPending(target: target, dest: dest))
                 return true
             }
         }
-        talkSend(msg, target, remote, retry: nil)
+        talkSend(msg, target, dest, retry: nil)
         return true
     }
 
-    /// 第一次的說明按「同意並送出」
-    func talkConsent() {
-        guard case .consent(let text, let target) = talkStage else { return }
-        mutate { (d: inout AppState) -> Void in
-            d.aiConsent = true
-        }
-        talkStage = .idle
-        if let hold = talkHold {
-            keepDraft(text, target)
-            talkStage = .held(hold)
+    /// 說明按「同意並送出」。shown 是按下去那一刻畫面上寫的地方：記的是它，也只送去它。
+    /// 等他按的時候地方換了就不送、不記，照新的地方重新問
+    func talkConsent(_ shown: AIDest) {
+        guard case .consent(let text, let ask) = talkStage else { return }
+        switch consentStep(shown, aiDestNow()) {
+        case .askAgain(let now):
+            var again: TalkPending = TalkPending(target: ask.target, dest: now, moved: true)
+            again.retry = ask.retry
+            talkStage = .consent(text: text, ask: again)
             Haptic.notify(.error)
-            return
+        case .gone:
+            keepPending(text, ask)
+            talkStage = .idle
+            show("現在沒有接 AI，這句沒有送出去。", false)
+        case .send(let dest):
+            mutate { (d: inout AppState) -> Void in
+                agreeAI(&d, dest)
+            }
+            talkStage = .idle
+            if let hold = talkHold {
+                keepPending(text, ask)
+                talkStage = .held(hold)
+                Haptic.notify(.error)
+                return
+            }
+            if let i = ask.retry, !canRetry(i, text) {
+                // 等同意的時候換了一趟、對話清掉了：那句不在了，不送
+                keepPending(text, ask)
+                return
+            }
+            talkSend(text, ask.target, dest, retry: ask.retry)
         }
-        talkSend(text, target, aiOn, retry: nil)
     }
 
-    /// 第一次的說明按「先不要」：什麼都不送，講的字放回那一列
+    /// 說明按「先不要」：什麼都不送，講的字放回那一列
     func talkDecline() {
-        guard case .consent(let text, let target) = talkStage else { return }
-        keepDraft(text, target)
+        guard case .consent(let text, let ask) = talkStage else { return }
+        keepPending(text, ask)
         talkStage = .idle
+    }
+
+    /// 等同意的那句沒送：字放回那一列。再送一次的那句本來就還在對話裡，不用放
+    private func keepPending(_ text: String, _ ask: TalkPending) {
+        if let i = ask.retry, canRetry(i, text) { return }
+        keepDraft(text, ask.target)
+    }
+
+    /// 對話裡第 index 則還是那句沒收到回覆的
+    private func canRetry(_ index: Int, _ text: String) -> Bool {
+        guard index >= 0, index < s.chat.count else { return false }
+        let m: ChatMsg = s.chat[index]
+        return m.r == .me && m.t == text && m.failed != nil
     }
 
     /// 剛剛那一則收起來的時候：還在等同意的當作先不要；沒送出去的那句已經留在那一列了
@@ -523,7 +580,14 @@ extension AppStore {
             Haptic.notify(.error)
             return
         }
-        talkSend(m.t, target, aiOn, retry: index)
+        // 收回同意、換了地方之後再送一次，也要先問
+        if let dest = aiDest, !aiAllowed(s, dest) {
+            var ask: TalkPending = TalkPending(target: target, dest: dest)
+            ask.retry = index
+            talkStage = .consent(text: m.t, ask: ask)
+            return
+        }
+        talkSend(m.t, target, aiDest, retry: index)
     }
 
     /// 那一列是空的才把字放回去，不蓋掉他後來打的
@@ -534,8 +598,9 @@ extension AppStore {
         }
     }
 
-    /// 真的送出去：先記下我說的（再送一次就清掉沒收到的記號），再問 AI 或本機指令，回來再套上改動
-    private func talkSend(_ msg: String, _ target: TalkTarget, _ remote: Bool, retry: Int?) {
+    /// 真的送出去：先記下我說的（再送一次就清掉沒收到的記號），再問 AI 或本機指令，回來再套上改動。
+    /// dest 是同意過的那個地方，nil 是沒接 AI（走本機指令）。送的那一刻地方換了，askAI 會擋下來
+    private func talkSend(_ msg: String, _ target: TalkTarget, _ dest: AIDest?, retry: Int?) {
         guard let trip = s.trip else { return }
         let day: Int = talkDayOf(target)
         let stop: String? = talkStopId(target)
@@ -562,10 +627,10 @@ extension AppStore {
         }
         let me: Int = retry ?? (s.chat.count - 1)
         Task { @MainActor in
-            if remote {
+            if let dest {
                 do {
                     let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
-                    let out: BrainOut = try await askAI(prompt)
+                    let out: BrainOut = try await askAI(prompt, dest)
                     self.countAISentence(trip.id)
                     self.talkFinish(out, local: false, me: me, said: msg, day: day, stop: stop, clock: clock)
                 } catch {

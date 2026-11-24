@@ -79,8 +79,11 @@ struct MoveSheet: View {
             let err: String? = moveItem(&trip, stopId, day, part)
             d.trip = trip
             if let err { return err }
-            if let warn = warnings(trip).first { return warn }
-            return "「\(name)」移到第 \(day) 天\(PART[need: part])了。"
+            // 只講移去的那一天：別天本來就太滿的，跟這一步沒關係
+            let done: String = "「\(name)」移到第 \(day) 天\(PART[need: part])了。"
+            let big: Int = bigCount(trip, day)
+            if big > 2 { return done + "那天現在有 \(big) 個主要景點，會很累。" }
+            return done
         }
         sheets.close()
     }

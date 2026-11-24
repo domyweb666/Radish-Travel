@@ -16,7 +16,7 @@ final class TripsTests: XCTestCase {
         d.chat = [ChatMsg(r: .me, t: "第 2 天輕鬆一點")]
         d.baskets = []
         d.settingsDirty = false
-        d.aiConsent = false
+        d.aiAgreed = []
         d.guideSeen = false
         d.remind = false
         d.debugDay = 2

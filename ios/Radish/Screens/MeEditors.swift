@@ -591,7 +591,7 @@ private struct MeImportSheet: View {
             importErr = "這段不是蘿蔔旅行的備份。請回備忘錄把整段重新複製一次。"
             return
         }
-        store.replaceAll(state)
+        store.replaceAll(state, imported: true)
         backup = ""
         close()
         store.say("還原好了。")
@@ -608,7 +608,7 @@ private struct MeResetSheet: View {
         SheetScaffold("全部清掉？", onClose: close) {
             DomyText("所有的旅行、下次再來、設定都會回到一開始的樣子，救不回來。想留著的話，先回上一頁按「複製備份」。", .body)
             DomyButton("清掉", variant: .destructive, fullWidth: true) {
-                store.replaceAll(AppState())
+                store.replaceAll(AppState(), imported: false)
                 close()
                 store.say("全部清掉了。")
             }
@@ -623,13 +623,57 @@ private struct MeResetSheet: View {
 
 /* ---------- 送給 AI 的資料（線框 A17） ---------- */
 
+/// 現在會送去哪裡、那個地方同意了沒、同意過哪幾個地方。收回是全部一起收回
 private struct MeAiSheet: View {
     @Environment(AppStore.self) private var store
     let close: () -> Void
 
+    private var whereText: String {
+        guard let dest = store.aiDest else {
+            return "現在沒有接 AI，你講的話不會送出去。接了之後，要 AI 幫忙的句子會連同下面這些一起送。"
+        }
+        return "要 AI 幫忙的句子，會連同下面這些一起送出去。\(aiWhereText(dest))"
+    }
+
+    /// 這個地方同意了沒
+    @ViewBuilder private func destSection(_ dest: AIDest) -> some View {
+        DomySection {
+            SettingsRow("現在會送到", value: aiDestName(dest))
+            SettingsRow("這個地方", value: store.aiAgreedHere ? "同意過了" : "還沒同意")
+        }
+        if !store.aiAgreedHere {
+            DomyText("第一次要送到這裡之前，會先跟你講清楚，同意了才送。", .footnote, tone: .secondary)
+        }
+    }
+
+    @ViewBuilder private var agreedSection: some View {
+        if store.s.aiAgreed.isEmpty {
+            DomyText("還沒同意送到任何地方。", .footnote, tone: .secondary)
+        } else {
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                DomyText("同意過的地方", .subheadline, weight: .semibold)
+                ForEach(store.s.aiAgreed, id: \.self) { (dest: AIDest) in
+                    DomyText("・\(aiDestName(dest))", .body)
+                }
+            }
+            DomyButton("收回同意", variant: .destructive, fullWidth: true) {
+                store.mutate { (d: inout AppState) -> Void in
+                    revokeAI(&d)
+                }
+                close()
+                store.say("全部收回了。下次要送給 AI 之前，會再問你一次。")
+            }
+            .accessibilityIdentifier("me-ai-revoke")
+            DomyText("上面這些地方會一起收回。之後的句子不會再送出去；已經送過的，這裡收不回來。", .footnote, tone: .secondary)
+        }
+    }
+
     var body: some View {
         SheetScaffold("送給 AI 的資料", onClose: close) {
-            DomyText("要 AI 幫忙的句子，會連同下面這些一起送出去。\(AI_WHERE)", .body)
+            if let dest = store.aiDest {
+                destSection(dest)
+            }
+            DomyText(whereText, .body)
             VStack(alignment: .leading, spacing: T.Space.s2) {
                 ForEach(Array(AI_SENDS.enumerated()), id: \.offset) { _, line in
                     DomyText("・\(line)", .body)
@@ -637,19 +681,7 @@ private struct MeAiSheet: View {
             }
             DomyText(AI_NOT_SENT, .body)
             DomyText("手機自己答得出的（例如還剩幾站、有哪些要先訂），不會送出去。", .footnote, tone: .secondary)
-            if store.s.aiConsent {
-                DomyButton("收回同意", variant: .destructive, fullWidth: true) {
-                    store.mutate { (d: inout AppState) in
-                        d.aiConsent = false
-                    }
-                    close()
-                    store.say("收回了。下次要送給 AI 之前，會再問你一次。")
-                }
-                .accessibilityIdentifier("me-ai-revoke")
-                DomyText("收回之後，之後的句子不會再送出去；已經送過的，這裡收不回來。", .footnote, tone: .secondary)
-            } else {
-                DomyText("還沒同意過。第一次要送給 AI 的時候，會先跟你講清楚，同意了才送。", .body, tone: .secondary)
-            }
+            agreedSection
         }
     }
 }

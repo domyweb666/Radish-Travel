@@ -31,7 +31,13 @@ struct RadishApp: App {
                 .environment(sheets)
                 .environment(nav)
                 .tint(C.accent)
-                .task { store.load() }
+                .task {
+                    // 只有剛開 app 那一次：讀完檔，再刪以前拿掉的照片。之後復原紀錄可能還用得到，不能刪
+                    if !store.ready {
+                        store.load()
+                        PhotoStore.sweepRemoved(store.s, file: AppStore.defaultURL())
+                    }
+                }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active {
                         store.refreshToday()

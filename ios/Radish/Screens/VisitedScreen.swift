@@ -203,12 +203,54 @@ private struct BasketEditSheet: View {
         return out
     }
 
-    private func patch(_ change: (inout BasketItem) -> Void) {
+    /// 改這一站，留一步可以復原
+    private func patch(_ msg: String, _ change: (inout BasketItem) -> Void) {
         let id: String = basketId
         let at: Int = index
-        store.mutate { (d: inout AppState) -> Void in
-            _ = updateBasketItem(&d, id, at, change)
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            let done: BasketItem? = updateBasketItem(&d, id, at, change)
+            return done == nil ? nil : msg
         }
+    }
+
+    private func saveSay(_ say: String) {
+        guard let x = found else { return }
+        // 沒有變就不留一步
+        if (x.item.say ?? "") == say { return }
+        patch(say.isEmpty ? "那一句清掉了。" : "那一句記下來了。") { (it: inout BasketItem) -> Void in
+            it.say = say
+        }
+    }
+
+    /// 照片處理完才叫，中間清單可能變過，所以照現在的清單加
+    private func addPhoto(_ ref: String) {
+        guard let x = found else {
+            PhotoStore.removeLater(ref)
+            store.say("找不到這一站，照片沒有加上去。")
+            return
+        }
+        if (x.item.photos ?? []).count >= PhotoStore.max {
+            PhotoStore.removeLater(ref)
+            store.say("這一站已經有 \(PhotoStore.max) 張了，這張沒有加上去。")
+            return
+        }
+        patch("加了一張照片。") { (it: inout BasketItem) -> Void in
+            var list: [String] = it.photos ?? []
+            list.append(ref)
+            it.photos = list
+        }
+    }
+
+    /// 只拿掉引用，檔案留到下次開 app 才刪，中間都能復原
+    private func removePhoto(_ ref: String) {
+        guard let x = found else { return }
+        let old: [String] = x.item.photos ?? []
+        if !old.contains(ref) { return }
+        patch("照片拿掉了。") { (it: inout BasketItem) -> Void in
+            let list: [String] = it.photos ?? []
+            it.photos = list.filter { (p: String) -> Bool in p != ref }
+        }
+        PhotoStore.removeLater(ref)
     }
 
     var body: some View {
@@ -218,12 +260,9 @@ private struct BasketEditSheet: View {
                 VisitNote(
                     say: x.item.say,
                     photos: x.item.photos ?? [],
-                    onSay: { (text: String) -> Void in
-                        patch { (it: inout BasketItem) -> Void in it.say = text }
-                    },
-                    onPhotos: { (next: [String]) -> Void in
-                        patch { (it: inout BasketItem) -> Void in it.photos = next }
-                    })
+                    onSay: { (text: String) -> Void in saveSay(text) },
+                    onAdd: { (ref: String) -> Void in addPhoto(ref) },
+                    onRemove: { (ref: String) -> Void in removePhoto(ref) })
                 DomyButton("好了", fullWidth: true, action: onClose)
                     .accessibilityIdentifier("album-edit-done")
             }

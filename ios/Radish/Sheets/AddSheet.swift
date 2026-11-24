@@ -5,6 +5,7 @@ import SwiftUI
 struct AddSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
+    @Environment(Nav.self) private var nav
     @State private var name: String = ""
     @State private var error: String?
 
@@ -50,13 +51,28 @@ struct AddSheet: View {
         return false
     }
 
+    /// 旅途中的現在；出發前、回來後是 nil
+    private var now: TripNow? {
+        guard let phase = store.phase else { return nil }
+        return tripNow(chatClock(phase))
+    }
+
+    /// 從「更多」的第幾天進來的。跟這趟分頁現在看的那一天是同一天（TripScreen 的 shownDay）
+    private func shownDay(_ trip: Trip) -> Int {
+        let today: Int? = now?.day
+        let day: Int = nav.tripDay ?? today ?? 1
+        return max(1, min(day, trip.days))
+    }
+
     private func addToTrip() {
         guard need() else { return }
         let place: String = n
+        let clock: TripNow? = now
+        let day: Int? = store.s.trip.map { (t: Trip) -> Int in shownDay(t) }
         store.act(undoable: true) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }
             var seeds: [Seed] = d.seeds
-            let message: String = addOwn(&trip, &seeds, place)
+            let message: String = addOwn(&trip, &seeds, place, day, clock)
             d.trip = trip
             d.seeds = seeds
             return message

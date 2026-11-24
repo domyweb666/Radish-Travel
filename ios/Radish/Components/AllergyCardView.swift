@@ -8,7 +8,8 @@ import UIKit
 
 struct AllergyCardView: View {
     let list: [String]
-    @State private var copied: Bool = false
+    /// 複製過的那一段。清單改了，韓文就不一樣，按鈕要變回「複製韓文」
+    @State private var copiedText: String = ""
 
     init(list: [String]) {
         self.list = list
@@ -22,9 +23,9 @@ struct AllergyCardView: View {
                     FieldLabel("中文意思")
                     DomyText(card.zh, .body)
                 }
-                DomyButton(copied ? "複製了" : "複製韓文", variant: .secondary, size: .compact, fullWidth: true) {
+                DomyButton(copiedText == card.kr ? "複製了" : "複製韓文", variant: .secondary, size: .compact, fullWidth: true) {
                     UIPasteboard.general.string = card.kr
-                    copied = true
+                    copiedText = card.kr
                 }
                 .accessibilityIdentifier("allergy-copy")
                 DomyText(

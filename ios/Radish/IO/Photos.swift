@@ -99,9 +99,70 @@ enum PhotoStore {
         }
     }
 
-    /// 拿掉一張照片時把檔案也刪掉。刪不掉不影響行程
-    static func remove(_ ref: String) {
-        try? FileManager.default.removeItem(at: url(ref))
+    /// 拿掉的照片：檔名先記在這裡，檔案不動，所以拿掉可以復原
+    private static let pendingKey: String = "radish-photos-to-remove"
+
+    /// 記下「下次開 app 再刪」。只記檔名
+    static func removeLater(_ ref: String) {
+        var list: [String] = UserDefaults.standard.stringArray(forKey: pendingKey) ?? []
+        if list.contains(ref) { return }
+        list.append(ref)
+        UserDefaults.standard.set(list, forKey: pendingKey)
+    }
+
+    /// 刪掉記下來的那幾張。只在剛開 app、讀完檔的時候叫（復原紀錄這時候是空的）。
+    /// 只看清單裡的檔名，不掃資料夾。存檔讀不出來就一張都不刪，清單留到下次。
+    /// 復原回來、現在還用得到的不刪，從清單拿掉
+    static func sweepRemoved(_ s: AppState, file: URL) {
+        let list: [String] = UserDefaults.standard.stringArray(forKey: pendingKey) ?? []
+        if list.isEmpty { return }
+        guard let main = try? Data(contentsOf: file), AppState.hydrate(main) != nil else { return }
+        guard let texts = savedTexts(file) else { return }
+        let used: Set<String> = refs(s)
+        var left: [String] = []
+        for ref in list {
+            // 只認自己存的檔名，空的或帶路徑的一律不碰
+            if !ref.hasSuffix(".jpg") || ref.contains("/") { continue }
+            if used.contains(ref) { continue }
+            let inText: Bool = texts.contains { (t: String) -> Bool in t.contains(ref) }
+            if inText { continue }
+            let at: URL = url(ref)
+            try? FileManager.default.removeItem(at: at)
+            if FileManager.default.fileExists(atPath: at.path) { left.append(ref) }
+        }
+        UserDefaults.standard.set(left, forKey: pendingKey)
+    }
+
+    /// 存檔和以前讀不出來另外留著的那幾份，原本的字。有一份讀不到就回 nil（那就先不刪）
+    private static func savedTexts(_ file: URL) -> [String]? {
+        let dir: URL = file.deletingLastPathComponent()
+        let stem: String = file.deletingPathExtension().lastPathComponent
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: dir.path) else { return nil }
+        var out: [String] = []
+        for name in names where name.hasPrefix(stem) {
+            guard let data = try? Data(contentsOf: dir.appendingPathComponent(name)) else { return nil }
+            out.append(String(decoding: data, as: UTF8.self))
+        }
+        return out
+    }
+
+    /// 現在用得到的照片：這趟、放一邊的、去過的、下次再來的站，連封面
+    private static func refs(_ s: AppState) -> Set<String> {
+        var out: Set<String> = []
+        var trips: [Trip] = s.shelf.map { (x: Shelved) -> Trip in x.trip }
+        if let trip = s.trip { trips.append(trip) }
+        for t in trips {
+            if let cover = t.cover { out.insert(cover) }
+            for slot in t.slots {
+                for it in slot.items { out.formUnion(it.photos ?? []) }
+            }
+        }
+        for b in s.baskets {
+            if let cover = b.cover { out.insert(cover) }
+            for it in b.items { out.formUnion(it.photos ?? []) }
+        }
+        for seed in s.seeds { out.formUnion(seed.stop?.photos ?? []) }
+        return out
     }
 
     /// 讀成可以直接塞進網頁的資料網址。做地圖網頁時用

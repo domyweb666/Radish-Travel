@@ -56,7 +56,10 @@ enum RouteVerdict {
 let ROUTE_ASK_FAILED: String = "這次沒問到，這天先不動。"
 
 /// 沒同意過送資料給 AI 時寫的那一句。同意流程在問 AI 分頁，這裡不做
-let ROUTE_NEED_CONSENT: String = "要先同意送資料給 AI，去問 AI 分頁講一句就會問你。"
+let ROUTE_NEED_CONSENT: String = "要先同意送資料給 AI，去問 AI 分頁講一句要 AI 幫忙的，就會問你。"
+
+/// 同意過別的地方、現在會送去的這個地方還沒同意時寫的那一句
+let ROUTE_NEW_DEST: String = "送給 AI 的地方跟你同意過的不一樣，要再同意一次。去問 AI 分頁講一句要 AI 幫忙的，就會問你。"
 
 /// 沒有拿出改法時寫的那一句
 func routeVerdictText(_ v: RouteVerdict, _ by: RouteBy) -> String {

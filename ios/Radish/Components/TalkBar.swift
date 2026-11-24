@@ -5,7 +5,9 @@
 // 這個檔是 SwiftUI 版才有的，mobile/ 沒有對應的 TS。
 //
 // 用法：`Screen(...) { ... }.talkBar("第 3 天", target: .day(3))`、`.talkBar(stop.n, target: .stop(id: id))`
+import Combine
 import SwiftUI
+import UIKit
 
 /// 小標最多幾個字：站名太長就截掉，不要把輸入框擠沒了
 private let TALK_TAG_MAX: Int = 7
@@ -45,6 +47,8 @@ struct TalkBar: View {
 
     @Environment(AppStore.self) private var store
     @FocusState private var focused: Bool
+    /// 鍵盤出來了：可能是這一列叫的，也可能是同一頁別的輸入框（一站的「那一句」）
+    @State private var keyboardUp: Bool = false
 
     init(label: String, target: TalkTarget, ids: String, hints: [String]? = nil, onSent: @escaping () -> Void) {
         self.label = label
@@ -88,12 +92,31 @@ struct TalkBar: View {
         }
         .padding(.top, T.Space.s2)
         .padding(.horizontal, T.Size.screenMargin)
-        // 鍵盤收著的時候讓出懸浮分頁列；鍵盤出來時分頁列在鍵盤後面，只留一點空
-        .padding(.bottom, focused ? T.Space.s2 : T.Size.tabBarBottom + T.Size.tabBar + T.Space.s3)
+        // 鍵盤收著的時候讓出懸浮分頁列；鍵盤出來時（不管哪個框叫的）分頁列在鍵盤後面，只留一點空
+        .padding(.bottom, lowered ? T.Space.s2 : tabBarRoom)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(C.canvas.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) { Hairline() }
-        .animation(Motion.transition, value: focused)
+        .animation(Motion.transition, value: lowered)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { (note: Notification) in
+            keyboardUp = coversTabBar(note)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { (_: Notification) in
+            keyboardUp = false
+        }
+        .onAppear { keyboardUp = false }
+    }
+
+    /// 懸浮分頁列佔的高度
+    private var tabBarRoom: CGFloat { T.Size.tabBarBottom + T.Size.tabBar + T.Space.s3 }
+
+    private var lowered: Bool { focused || keyboardUp }
+
+    /// 鍵盤有沒有高到蓋住分頁列。接實體鍵盤時只有一條或在畫面外，那就照沒有鍵盤排
+    private func coversTabBar(_ note: Notification) -> Bool {
+        guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return false }
+        let shown: CGFloat = UIScreen.main.bounds.height - end.minY
+        return shown > tabBarRoom
     }
 
     /// 輸入列上面那一行（A19、A20）。❓29 要不要賣、在哪賣還沒定（閘門 4），線框那格［ ］不放上來

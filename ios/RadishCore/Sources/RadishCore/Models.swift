@@ -309,6 +309,23 @@ struct Shelved: Codable, Identifiable, Hashable, Sendable {
     var debugDay: Int?
 }
 
+/// 要 AI 的句子送去哪一種地方
+enum AIKind: String, Codable, Sendable {
+    /// 連到的那台電腦上的 Claude CLI（BRIDGE_URL）
+    case bridge
+    /// 用自己填的金鑰直接打 Anthropic（CLAUDE_KEY）
+    case key
+    /// 蘿蔔旅行的後端（AI_ENDPOINT）
+    case server
+}
+
+/// 送去的那一個地方。同意是照這個記的：種類或位址有一樣不同，就是沒同意過的地方。
+/// origin 只有 scheme、主機、埠（http://192.168.1.23:8787），不含路徑、密碼、金鑰，所以可以進存檔
+struct AIDest: Codable, Hashable, Sendable {
+    var kind: AIKind
+    var origin: String
+}
+
 struct AppState: Codable, Hashable, Sendable {
     var settings: Settings = defaultSettings()
     var trip: Trip?  // 現在打開的這一趟
@@ -319,7 +336,7 @@ struct AppState: Codable, Hashable, Sendable {
     var chat: [ChatMsg] = []
     var baskets: [Basket] = []
     var settingsDirty: Bool = false  // 設定改過、還沒套到這趟
-    var aiConsent: Bool = false
+    var aiAgreed: [AIDest] = []  // 同意過把資料送去哪幾個地方。舊檔的 aiConsent 沒記送去哪，不算數
     var guideSeen: Bool = false  // 「這趟」的操作說明看過了嗎
     var remind: Bool = false  // 出發前提醒還沒訂的站（本機通知）
     var debugDay: Int?  // 測試用：假裝今天是第幾天
@@ -340,7 +357,10 @@ extension AppState {
         out.chat = try box.decodeIfPresent([ChatMsg].self, forKey: .chat) ?? []
         out.baskets = try box.decodeIfPresent([Basket].self, forKey: .baskets) ?? []
         out.settingsDirty = try box.decodeIfPresent(Bool.self, forKey: .settingsDirty) ?? false
-        out.aiConsent = try box.decodeIfPresent(Bool.self, forKey: .aiConsent) ?? false
+        // 舊檔只有 aiConsent（不知道同意的是送去哪裡），當成沒同意，下次送之前再問。
+        // 這一欄讀不懂也當成沒同意，不要讓整包讀不回來
+        let agreed: [AIDest]? = try? box.decodeIfPresent([AIDest].self, forKey: .aiAgreed)
+        out.aiAgreed = agreed ?? []
         out.guideSeen = try box.decodeIfPresent(Bool.self, forKey: .guideSeen) ?? false
         out.remind = try box.decodeIfPresent(Bool.self, forKey: .remind) ?? false
         out.debugDay = try box.decodeIfPresent(Int.self, forKey: .debugDay)

@@ -70,9 +70,27 @@ struct TripStopRow: View {
         .buttonStyle(RowPressStyle())
         .padding(.horizontal, -T.Space.s4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(part)，\(it.n)，\(it.why)")
+        .accessibilityLabel(spoken(part))
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("stop-row-\(it.id)")
+    }
+
+    /// 念給 VoiceOver 的：劃掉和小標籤看得到的，也要念得到
+    private func spoken(_ part: String) -> String {
+        var out: [String] = [part, it.n]
+        if it.status == .pulled {
+            out.append("去過了")
+        }
+        if it.b == true {
+            out.append("要先訂")
+        }
+        if it.ai == true {
+            out.append("AI 加的・未核對")
+        }
+        if !it.why.isEmpty {
+            out.append(it.why)
+        }
+        return out.joined(separator: "，")
     }
 
     private func texts(_ part: String) -> some View {
@@ -240,6 +258,10 @@ struct TripNextStop: View {
             Card {
                 if let next = left.first {
                     nextStop(next, all)
+                } else if all.isEmpty {
+                    // 一站都沒排，沒有東西可以拔，不能說都拔完了
+                    DomyText("今天沒有排站", .title2)
+                    DomyText("時間是你的。想找地方，看看下面「附近還有什麼」。", .body, tone: .secondary)
                 } else {
                     DomyText("今天的都拔完了", .title2)
                     DomyText("剩下的時間是你的。", .body, tone: .secondary)

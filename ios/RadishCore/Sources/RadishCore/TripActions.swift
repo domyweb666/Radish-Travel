@@ -96,6 +96,9 @@ func openShelved(_ d: inout AppState, _ id: String) -> String? {
     guard let i = found else { return nil }
     let x: Shelved = d.shelf.remove(at: i)
     shelveCurrent(&d)
+    // 收起來、不要這一版之後，要先訂的打勾還留著（給復原用）。那是上一趟的，不能併進這一趟
+    let rest: [String: Bool] = otherChecks(d.checks)
+    d.checks = rest
     d.trip = x.trip
     d.chat = x.chat
     d.debugDay = x.debugDay
@@ -137,7 +140,9 @@ enum PlanBy: String, Codable, Sendable {
     case app
 }
 
-/// 這一版的樣子，變成一小段字。站換了、移了、拔了、日期或住哪改了，算出來就不一樣
+/// 這一版的樣子，變成一小段字。站換了、移了、拔了、日期或住哪改了、這趟的調整改了，算出來就不一樣。
+/// 調整要算：排好之後才說「想輕鬆一點」沒有重排，剛排好那張卡不能寫成照它調過。
+/// 沒有調整時算法跟以前一樣，舊存檔記的還對得上
 func planMarkOf(_ t: Trip) -> String {
     var text: String = "\(t.start)|\(t.days)|\(t.base?.rawValue ?? "")"
     for s in t.slots {
@@ -145,6 +150,12 @@ func planMarkOf(_ t: Trip) -> String {
         for it in s.items {
             text += "," + it.id + (it.status == .pulled ? "p" : "")
         }
+    }
+    let tweaks: [String] = (t.tweaks ?? []).map { (k: Tweak) -> String in k.rawValue }
+    if !tweaks.isEmpty {
+        // 排序過再接：順序不同不算改過
+        let sorted: [String] = tweaks.sorted()
+        text += "|tw:" + sorted.joined(separator: ",")
     }
     // djb2：每次開 app 都要算出一樣的字，不能用 Swift 的 hashValue（每次開都不一樣）
     var h: UInt64 = 5381

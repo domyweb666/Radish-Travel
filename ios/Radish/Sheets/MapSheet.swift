@@ -280,11 +280,19 @@ struct MapSheet: View {
         if let hold = store.talkHold {
             return hold == .offline ? "現在沒網路，這次先用手機算。" : "這趟問 AI 的句數用完了，這次先用手機算。"
         }
-        if !store.s.aiConsent { return ROUTE_NEED_CONSENT }
+        if !store.aiAgreedHere {
+            return store.s.aiAgreed.isEmpty ? ROUTE_NEED_CONSENT : ROUTE_NEW_DEST
+        }
         return nil
     }
 
-    /// 能送 AI 就問 AI；沒接 AI、沒網路、句數用完、還沒同意送資料，就手機自己算
+    /// 現在可以送去的地方：接了 AI、有網路、還有句數、那個地方同意過。有一樣不成立就是 nil
+    private var sendTo: AIDest? {
+        guard let dest = store.aiDest, store.talkHold == nil, store.aiAgreedHere else { return nil }
+        return dest
+    }
+
+    /// 能送 AI 就問 AI；沒接 AI、沒網路、句數用完、現在會送去的地方還沒同意，就手機自己算
     private func ask() {
         guard let trip = store.s.trip, !asking else { return }
         let settings: Settings = store.s.settings
@@ -294,8 +302,7 @@ struct MapSheet: View {
         withAnimation(Motion.change) {
             note = nil
         }
-        let canAI: Bool = store.aiOn && store.talkHold == nil && store.s.aiConsent
-        if !canAI {
+        guard let dest = sendTo else {
             show(routePhone(trip, settings, d, now), by: .phone, why: phoneWhy)
             return
         }
@@ -304,7 +311,7 @@ struct MapSheet: View {
         asking = true
         Task { @MainActor in
             do {
-                let out: BrainOut = try await askAI(prompt)
+                let out: BrainOut = try await askAI(prompt, dest)
                 app.countAISentence(trip.id)
                 asking = false
                 // 等的時候這趟可能變了（例：別的地方改了），照現在的行程試套

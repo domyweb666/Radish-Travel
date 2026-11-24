@@ -29,6 +29,20 @@ struct Reminder: Hashable, Sendable {
     var body: String
 }
 
+/// 這一天早上九點，給系統排通知用。寫明是西元：不寫的話，系統會拿手機設的行事曆（佛曆、民國曆）去解讀年份。
+/// 日期拆不出來就是 nil
+func reminderTime(_ on: String) -> DateComponents? {
+    let parts: [Int] = on.components(separatedBy: "-").compactMap { (x: String) -> Int? in Int(x) }
+    guard parts.count == 3 else { return nil }
+    var when: DateComponents = DateComponents()
+    when.calendar = Calendar(identifier: .gregorian)
+    when.year = parts[0]
+    when.month = parts[1]
+    when.day = parts[2]
+    when.hour = 9
+    return when
+}
+
 /// 現在這趟和其他排好的，每一趟最多一則。沒有還沒訂的就沒有提醒
 func remindersOf(_ s: AppState, _ today: String) -> [Reminder] {
     var all: [(trip: Trip, checks: [String: Bool])] = []

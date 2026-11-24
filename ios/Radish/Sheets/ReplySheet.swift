@@ -6,23 +6,16 @@
 // 這個檔是 SwiftUI 版才有的；確認卡、這次改了照原本的 mobile/src/sheets/ChatSheet.tsx。
 import SwiftUI
 
-/// 送給 AI 的有哪些。第一次的說明、平常的我的「送給 AI 的資料」都用這份。照 aiPrompt 真的送的寫（❓23）
+/// 送給 AI 的有哪些。第一次的說明、平常的我的「送給 AI 的資料」都用這份。
+/// 照 aiPrompt、routePrompt 真的送的寫（❓23）；送去哪裡的字在 Chat.swift 的 aiWhereText
 let AI_SENDS: [String] = [
-    "這趟的行程：日期、每天排的站、幾個人、住哪一帶；旅途中還有今天第幾天、現在幾點、拔過哪幾站",
-    "平常的我裡的習慣，包括過敏和不吃的",
-    "前面幾句你跟 AI 說的話",
+    "這趟的行程：日期、每天排的站、拔過哪幾站、幾個人、住哪一帶、這趟的調整（例如帶長輩）；旅途中還有今天第幾天、現在幾點",
+    "你在看哪一天、哪一站",
+    "平常的我裡的習慣，包括過敏、不吃的、身體上要避開的、預算、你自己打的那一格",
+    "前面幾句你跟 AI 說的話，最多 8 則",
+    "請 AI 看某一天的路線時：那天每一站的大概座標、每一段怎麼走",
 ]
 let AI_NOT_SENT: String = "不會送：手機的定位、名字、聯絡方式、照片。"
-/// 送去哪裡：平常的我填了 Claude API 金鑰就直接送 Anthropic，沒填就經過蘿蔔旅行的後端
-var AI_WHERE: String {
-    if !BRIDGE_URL.isEmpty {
-        return "這些會送到你自己電腦（\(maskedBridge(BRIDGE_URL))）上的 Claude CLI，用那台電腦登入的 Claude 帳號回答，不經過蘿蔔旅行。"
-    }
-    if !CLAUDE_KEY.isEmpty {
-        return "這些會用你在平常的我填的 Claude API 金鑰，直接送到 Anthropic 的 Claude，不經過蘿蔔旅行。費用算在那把金鑰的 Anthropic 帳戶。"
-    }
-    return "這些會送到蘿蔔旅行的伺服器，再轉給 AI 服務（Anthropic 的 Claude）。"
-}
 
 /// 幾點說的：兩分鐘內寫「剛剛」，今天寫幾點幾分，更早的加日期
 private func talkWhen(_ at: Double) -> String {
@@ -212,7 +205,8 @@ struct TalkAnswer: View {
     }
 }
 
-/// 第一次要送給 AI 的說明（S03，線框 New-Consent）。按「同意並送出」才送；先不要的話，講的字留著
+/// 第一次要送到某個地方的說明（S03，線框 New-Consent）。按「同意並送出」才送；先不要的話，講的字留著。
+/// 同意過的地方不再問，換到沒同意過的地方再問一次
 struct TalkConsent: View {
     let text: String
     let onDecline: () -> Void
@@ -223,11 +217,29 @@ struct TalkConsent: View {
         self.onDecline = onDecline
     }
 
+    /// 為什麼又問一次。第一次問就不寫
+    private func why(_ ask: TalkPending) -> String? {
+        if ask.moved { return "送去的地方剛剛換了，這句還沒送出去。看一下新的地方，同意再送。" }
+        if !store.s.aiAgreed.isEmpty { return "送去的地方跟你之前同意的不一樣，所以再問一次。" }
+        return nil
+    }
+
     var body: some View {
+        if case .consent(_, let ask) = store.talkStage {
+            form(ask)
+        }
+    }
+
+    private func form(_ ask: TalkPending) -> some View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             DomyText("送出之前，先講清楚", .title2)
                 .accessibilityAddTraits(.isHeader)
-            DomyText("按「同意並送出」之後，會送出下面這些。\(AI_WHERE)", .body)
+            if let line = why(ask) {
+                DomyText(line, .body, tone: .strong)
+                    .accessibilityIdentifier("chat-consent-why")
+            }
+            DomyText("按「同意並送出」之後，會送出下面這些。\(aiWhereText(ask.dest))", .body)
+                .accessibilityIdentifier("chat-consent-where")
             VStack(alignment: .leading, spacing: T.Space.s2) {
                 TalkBullet(text: "你講的這句：「\(text)」")
                 ForEach(Array(AI_SENDS.enumerated()), id: \.offset) { _, line in
@@ -235,9 +247,9 @@ struct TalkConsent: View {
                 }
             }
             DomyText(AI_NOT_SENT, .body)
-            DomyText("只有第一次會問。之後在「平常的我」可以收回。", .footnote, tone: .secondary)
+            DomyText("同意過的地方不再問，換到別的地方會再問一次。之後在「平常的我」可以收回。", .footnote, tone: .secondary)
             DomyButton("同意並送出", fullWidth: true) {
-                store.talkConsent()
+                store.talkConsent(ask.dest)
             }
             .accessibilityIdentifier("chat-consent")
             DomyButton("先不要", variant: .secondary, fullWidth: true) {

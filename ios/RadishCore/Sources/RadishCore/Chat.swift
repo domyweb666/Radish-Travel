@@ -1,6 +1,6 @@
 // 用講的改行程。兩條路：
-// 1. 有設定 AI_ENDPOINT → 把提示詞送到自己的後端（後端再轉給 AI），拿回 {reply, ops}
-// 2. 沒設定 → 本機只聽得懂幾種固定說法
+// 1. 有接 AI → 把提示詞送去 aiRoute 那個地方（電腦 CLI、自己的金鑰、後端），拿回 {reply, ops}
+// 2. 沒接 → 本機只聽得懂幾種固定說法
 // 兩條路最後都走 applyOps，所以改動清單和復原是同一套。
 // 照 mobile/src/domain/chat.ts 搬。Op、AiPlace 在 TS 是放在 types.ts 最後面，這裡放在這個檔。
 import Foundation
@@ -584,8 +584,119 @@ let CLAUDE_VERSION: String = "2026-10-21"
 /// 被安全檢查擋下來時，由 Anthropic 那邊自動換一個模型再答一次
 let CLAUDE_FALLBACK_BETA: String = "server-side-fallback-2026-07-01"
 
+/// 這一刻要走的那條路。url 是整串網址（電腦 CLI 的網址裡有密碼），只在送的時候用，不存
+struct AIRoute {
+    let kind: AIKind
+    let url: String
+}
+
+/// 有連電腦的 CLI 就用它，再來是自己填的金鑰，最後才是後端。都沒有是 nil。
+/// 要不要同意、算不算句數、真的送出去，全部用這一個判斷
+func aiRoute() -> AIRoute? {
+    if !BRIDGE_URL.isEmpty { return AIRoute(kind: .bridge, url: BRIDGE_URL) }
+    if !CLAUDE_KEY.isEmpty { return AIRoute(kind: .key, url: CLAUDE_URL) }
+    if !AI_ENDPOINT.isEmpty { return AIRoute(kind: .server, url: AI_ENDPOINT) }
+    return nil
+}
+
+/// 網址只留 scheme、主機、埠。讀不出主機就是空字串
+func aiOrigin(_ raw: String) -> String {
+    guard let u = URL(string: raw), let scheme = u.scheme, let host = u.host, !host.isEmpty else { return "" }
+    var out: String = scheme.lowercased() + "://" + host.lowercased()
+    if let port = u.port { out += ":\(port)" }
+    return out
+}
+
+/// 那條路的終點，記同意、比對同意都用它
+func aiDestOf(_ route: AIRoute) -> AIDest {
+    return AIDest(kind: route.kind, origin: aiOrigin(route.url))
+}
+
+/// 現在會送去哪裡。沒接 AI 是 nil
+func aiDestNow() -> AIDest? {
+    guard let route = aiRoute() else { return nil }
+    return aiDestOf(route)
+}
+
 func aiReady() -> Bool {
-    return BRIDGE_URL.count > 0 || CLAUDE_KEY.count > 0 || AI_ENDPOINT.count > 0
+    return aiRoute() != nil
+}
+
+/* ---------- 同意把資料送給 AI：照送去的地方記 ---------- */
+
+/// 這個地方同意過了嗎。讀不出位址的不算同意過
+func aiAllowed(_ d: AppState, _ dest: AIDest?) -> Bool {
+    guard let dest = dest, !dest.origin.isEmpty else { return false }
+    return d.aiAgreed.contains(dest)
+}
+
+/// 記下同意送去這個地方。讀不出位址的不記
+func agreeAI(_ d: inout AppState, _ dest: AIDest) {
+    if dest.origin.isEmpty || d.aiAgreed.contains(dest) { return }
+    d.aiAgreed.append(dest)
+}
+
+/// 收回同意：全部的地方一起收回
+func revokeAI(_ d: inout AppState) {
+    d.aiAgreed = []
+}
+
+/// 貼上備份時用：備份不能替這支手機同意，留這支手機自己的
+func keepAgreed(_ next: inout AppState, _ old: AppState) {
+    next.aiAgreed = old.aiAgreed
+}
+
+/// 按「同意並送出」那一下要做什麼
+enum ConsentStep: Equatable, Sendable {
+    /// 畫面上寫的就是現在會送去的地方：記下來、送出去
+    case send(AIDest)
+    /// 等他按的時候地方換了：不送，照新的地方再問一次
+    case askAgain(AIDest)
+    /// 現在沒接 AI 了：不送
+    case gone
+}
+
+/// shown 是說明上寫的那個地方，now 是按下去那一刻會送去的地方
+func consentStep(_ shown: AIDest, _ now: AIDest?) -> ConsentStep {
+    guard let now = now else { return .gone }
+    return shown == now ? ConsentStep.send(now) : ConsentStep.askAgain(now)
+}
+
+/// 畫面上寫的位址，例：192.168.1.23:8787。讀不出來是空字串
+func aiHost(_ dest: AIDest) -> String {
+    guard let r = dest.origin.range(of: "://") else { return "" }
+    return String(dest.origin[r.upperBound...])
+}
+
+/// 清單上的短名字
+func aiDestName(_ dest: AIDest) -> String {
+    let host: String = aiHost(dest)
+    let tail: String = host.isEmpty ? "" : "（\(host)）"
+    switch dest.kind {
+    case .bridge:
+        return "你連的電腦" + tail
+    case .key:
+        return "Anthropic（你的金鑰）"
+    case .server:
+        return "蘿蔔旅行的伺服器" + tail
+    }
+}
+
+/// 送去哪裡，第一次的說明和平常的我都用這一段
+func aiWhereText(_ dest: AIDest) -> String {
+    let host: String = aiHost(dest)
+    let tail: String = host.isEmpty ? "" : "（\(host)）"
+    switch dest.kind {
+    case .bridge:
+        var out: String = "這些會送到你連的那台電腦\(tail)，由電腦上的 Claude CLI 用那台電腦登入的 Claude 帳號拿去問 Claude，不經過蘿蔔旅行的伺服器。"
+        out += "手機跟電腦要在同一個 Wi-Fi"
+        out += dest.origin.hasPrefix("https://") ? "。" : "，手機到電腦這一段沒有加密。"
+        return out
+    case .key:
+        return "這些會直接送到 Anthropic 的 Claude，用你自己填的 API 金鑰，費用算在你的 Anthropic 帳號，不經過蘿蔔旅行的伺服器。"
+    case .server:
+        return "這些會先送到蘿蔔旅行的伺服器\(tail)，再交給 Anthropic 的 Claude。"
+    }
 }
 
 /* ---------- 句數（❓28，2026-11-23 多米說「幫我設定好」，Agent 先定的） ---------- */
@@ -597,7 +708,7 @@ let AI_NEXT_TRIP_LIMIT: Int = 100
 /// 只有走蘿蔔旅行後端的才算句數（那是 app 出的錢）。
 /// 自己填 Claude API 金鑰、連自己電腦的 Claude CLI，費用是自己的，不限句數
 func aiMetered() -> Bool {
-    return BRIDGE_URL.isEmpty && CLAUDE_KEY.isEmpty && !AI_ENDPOINT.isEmpty
+    return aiRoute()?.kind == AIKind.server
 }
 
 /// 這趟還剩幾句。nil 是不限。
@@ -678,19 +789,23 @@ func carryAILog(_ next: inout AppState, _ old: AppState) {
     syncAIUsed(&next)
 }
 
-/// 有連電腦的 CLI 就用它，再來是自己填的金鑰，最後才是後端
-func askAI(_ prompt: String) async throws -> BrainOut {
-    if !BRIDGE_URL.isEmpty {
+/// 走哪條路看 aiRoute。dest 是使用者同意過的那個地方：跟現在會送去的不一樣就不送
+func askAI(_ prompt: String, _ dest: AIDest) async throws -> BrainOut {
+    // 路和金鑰先抓下來，後面都用這一份，等回覆時改設定也不會換地方
+    let key: String = CLAUDE_KEY
+    guard let route = aiRoute(), aiDestOf(route) == dest else { throw AskError.destChanged }
+    switch route.kind {
+    case .bridge:
         do {
-            return try await askRemote(prompt, BRIDGE_URL)
+            return try await askRemote(prompt, route.url)
         } catch AskError.http(401) {
             throw AskError.bridgeAuth
         }
+    case .key:
+        return try await askClaude(prompt, key)
+    case .server:
+        return try await askRemote(prompt, route.url)
     }
-    if !CLAUDE_KEY.isEmpty {
-        return try await askClaude(prompt, CLAUDE_KEY)
-    }
-    return try await askRemote(prompt, AI_ENDPOINT)
 }
 
 /// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期。
@@ -795,6 +910,8 @@ enum AskError: Error, Equatable, CustomStringConvertible {
     case refused
     /// 電腦上的轉接程式不認這組密碼（重開過會換密碼）
     case bridgeAuth
+    /// 送之前發現會送去的地方跟同意的不一樣，沒有送
+    case destChanged
 
     var description: String {
         switch self {
@@ -814,6 +931,8 @@ enum AskError: Error, Equatable, CustomStringConvertible {
             return "Claude 不回答這一句"
         case .bridgeAuth:
             return "電腦上的轉接程式重開過了，到平常的我重掃一次 QR code"
+        case .destChanged:
+            return "送去的地方剛剛換了，所以沒有送出去"
         }
     }
 }

@@ -300,13 +300,21 @@ struct TripsScreen: View {
         .frame(minHeight: T.Size.row)
     }
 
+    /// 排回這趟。沒排成（這趟已經有了、能排的時段都過了）就只講原因，不多一步復原
     private func restore(_ seedId: String) {
+        guard var trip = store.s.trip, let phase = store.phase else { return }
+        var seeds: [Seed] = store.s.seeds
+        let before: Int = seeds.count
+        let message: String = restoreSeed(&trip, &seeds, seedId, tripNow(chatClock(phase)))
+        if seeds.count == before {
+            store.say(message)
+            return
+        }
+        let nextTrip: Trip = trip
+        let nextSeeds: [Seed] = seeds
         store.act(undoable: true) { (d: inout AppState) -> String? in
-            guard var trip = d.trip else { return nil }
-            var seeds: [Seed] = d.seeds
-            let message: String = restoreSeed(&trip, &seeds, seedId)
-            d.trip = trip
-            d.seeds = seeds
+            d.trip = nextTrip
+            d.seeds = nextSeeds
             return message
         }
     }

@@ -154,28 +154,67 @@ struct StopVisitBlock: View {
                     say: it.say,
                     photos: it.photos ?? [],
                     onSay: { (say: String) -> Void in saveSay(say) },
-                    onPhotos: { (next: [String]) -> Void in savePhotos(next) })
+                    onAdd: { (ref: String) -> Void in addPhoto(ref) },
+                    onRemove: { (ref: String) -> Void in removePhoto(ref) })
             }
         }
     }
 
+    /// 這一站現在的樣子。被拿掉、換掉了就是 nil
+    private var now: Stop? {
+        guard let trip = store.s.trip else { return nil }
+        return findItem(trip, id)?.it
+    }
+
     private func saveSay(_ say: String) {
-        let stopId: String = id
-        store.mutate { (d: inout AppState) -> Void in
-            guard var trip = d.trip else { return }
-            guard let x = findItem(trip, stopId) else { return }
-            trip.slots[x.si].items[x.ii].say = say
-            d.trip = trip
+        guard let stop = now else { return }
+        // 沒有變就不留一步
+        if (stop.say ?? "") == say { return }
+        change(say.isEmpty ? "那一句清掉了。" : "那一句記下來了。") { (x: inout Stop) -> Void in
+            x.say = say
         }
     }
 
-    private func savePhotos(_ next: [String]) {
+    /// 照片處理完才叫，中間清單可能變過，所以照現在的清單加
+    private func addPhoto(_ ref: String) {
+        guard let stop = now else {
+            PhotoStore.removeLater(ref)
+            store.say("這一站不在這趟裡了，照片沒有加上去。")
+            return
+        }
+        if (stop.photos ?? []).count >= PhotoStore.max {
+            PhotoStore.removeLater(ref)
+            store.say("這一站已經有 \(PhotoStore.max) 張了，這張沒有加上去。")
+            return
+        }
+        change("加了一張照片。") { (x: inout Stop) -> Void in
+            var list: [String] = x.photos ?? []
+            list.append(ref)
+            x.photos = list
+        }
+    }
+
+    /// 只拿掉引用，檔案留到下次開 app 才刪，中間都能復原
+    private func removePhoto(_ ref: String) {
+        guard let stop = now else { return }
+        let old: [String] = stop.photos ?? []
+        if !old.contains(ref) { return }
+        change("照片拿掉了。") { (x: inout Stop) -> Void in
+            let list: [String] = x.photos ?? []
+            x.photos = list.filter { (p: String) -> Bool in p != ref }
+        }
+        PhotoStore.removeLater(ref)
+    }
+
+    /// 改這一站，留一步可以復原
+    private func change(_ msg: String, _ edit: (inout Stop) -> Void) {
         let stopId: String = id
-        store.mutate { (d: inout AppState) -> Void in
-            guard var trip = d.trip else { return }
-            guard let x = findItem(trip, stopId) else { return }
-            trip.slots[x.si].items[x.ii].photos = next
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            guard var trip = d.trip else { return nil }
+            guard let x = findItem(trip, stopId) else { return nil }
+            edit(&trip.slots[x.si].items[x.ii])
             d.trip = trip
+            return msg
         }
     }
 }
@@ -313,7 +352,7 @@ struct StopSwapPane: View {
                     DomyText("這一站已經換過三輪了。前面那幾個都合你的條件，挑一個就好。想要完全不同的，用講的跟我說。")
                 }
             } else if !alts.isEmpty {
-                DomySection(footer: "同一帶、差不多大小的三個。一站最多換三輪。") {
+                DomySection(footer: footer(alts.count)) {
                     ForEach(alts, id: \.id) { (p: Place) in
                         DomyListRow(meta: meta(p), title: p.n) {
                             onPick(p)
@@ -323,11 +362,19 @@ struct StopSwapPane: View {
                 }
             } else {
                 Card {
-                    DomyText("這一帶沒有別的候選了。")
+                    DomyText(it.a == nil ? "沒有別的候選了。" : "這一帶沒有別的候選了。")
                 }
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// 自己加的、AI 加的站沒有記在哪一帶，候選是從全首爾挑的
+    private func footer(_ count: Int) -> String {
+        if it.a == nil {
+            return "這一站沒有記在哪一帶，這 \(count) 個是從全首爾挑的，差不多大小。一站最多換三輪。"
+        }
+        return "這一帶和旁邊，差不多大小的 \(count) 個。一站最多換三輪。"
     }
 
     private func meta(_ p: Place) -> String {

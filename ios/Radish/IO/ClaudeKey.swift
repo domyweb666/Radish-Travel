@@ -31,14 +31,22 @@ enum SecretStore {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    /// 存起來（蓋掉舊的）。存成功回 true
+    /// 存起來（蓋掉舊的）。存成功回 true。先改舊的那一格，沒有舊的才新增；失敗時舊的還在
     @discardableResult
     static func save(_ slot: SecretSlot, _ value: String) -> Bool {
-        clear(slot)
+        let fields: [String: Any] = [
+            kSecValueData as String: Data(value.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        let updated: OSStatus = SecItemUpdate(base(slot) as CFDictionary, fields as CFDictionary)
+        if updated == errSecSuccess { return true }
+        guard updated == errSecItemNotFound else { return false }
         var item: [String: Any] = base(slot)
-        item[kSecValueData as String] = Data(value.utf8)
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
+        for (key, field) in fields {
+            item[key] = field
+        }
+        let added: OSStatus = SecItemAdd(item as CFDictionary, nil)
+        return added == errSecSuccess
     }
 
     static func clear(_ slot: SecretSlot) {

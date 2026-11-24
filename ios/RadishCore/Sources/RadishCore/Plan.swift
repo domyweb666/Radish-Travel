@@ -291,11 +291,16 @@ func seedOut(_ t: inout Trip, _ seeds: inout [Seed], _ id: String, _ why: String
     return x.it
 }
 
-/// 把「下次再來」的一站排回這趟：先放回原本的時段，不行就找最空的白天
-func restoreSeed(_ t: inout Trip, _ seeds: inout [Seed], _ seedId: String) -> String {
+/// 把「下次再來」的一站排回這趟：先放回原本的時段，不行就找最空的白天。
+/// 這趟已經有同一站就不加。now 有給（旅途中）時，過了的時段不放。沒排成的，那一站留在下次再來
+func restoreSeed(_ t: inout Trip, _ seeds: inout [Seed], _ seedId: String, _ now: TripNow? = nil) -> String {
     let found: Int? = seeds.firstIndex { (s: Seed) -> Bool in s.id == seedId }
     guard let i = found else { return "找不到那一站" }
     let seed: Seed = seeds[i]
+    // 下次再來是每一趟共用的，這趟可能早就排了同一站
+    if let kept = seed.stop, let dup = findItem(t, kept.id) {
+        return "「\(dup.it.n)」已經排在這趟第 \(dup.s.day) 天\(PART[need: dup.s.part])，沒有再排一次，先留在下次再來"
+    }
     var stop: Stop
     if let kept = seed.stop {
         stop = kept
@@ -306,32 +311,49 @@ func restoreSeed(_ t: inout Trip, _ seeds: inout [Seed], _ seedId: String) -> St
         )
     }
     var toIndex: Int? = nil
-    if let from = seed.from { toIndex = slotAt(t, from.day, from.part) }
-    if toIndex == nil { toIndex = emptiestSlot(t) }
-    guard let to = toIndex else { return "這趟每個時段都在路上，排不進去" }
+    var passed: String = ""
+    if let from = seed.from, let home = slotAt(t, from.day, from.part) {
+        if slotPast(now, from.day, from.part) {
+            passed = "第 \(from.day) 天\(PART[need: from.part])已經過了，"
+        } else {
+            toIndex = home
+        }
+    }
+    if toIndex == nil { toIndex = emptiestSlot(t, now) }
+    guard let to = toIndex else {
+        if hasAnySlot(t) { return "這趟能排的時段都過了，「\(stop.n)」先留在下次再來" }
+        return "這趟每個時段都在路上，排不進去"
+    }
     stop.status = .kept
     t.slots[to].items.append(stop)
     let toDay: Int = t.slots[to].day
     let toPart: Part = t.slots[to].part
     if toPart != .eve { t.slots[to].rest = false }
     seeds.remove(at: i)
+    if !passed.isEmpty {
+        return "\(passed)「\(stop.n)」改排在第 \(toDay) 天\(PART[need: toPart])"
+    }
     return "「\(stop.n)」排回第 \(toDay) 天\(PART[need: toPart])了"
 }
 
-/// 最空的白天時段，回 t.slots 的位置
-private func emptiestSlot(_ t: Trip) -> Int? {
-    var day: [Int] = []
+/// 這趟有沒有不在路上的時段（不管過了沒）
+private func hasAnySlot(_ t: Trip) -> Bool {
+    return t.slots.contains { (s: Slot) -> Bool in s.off != true }
+}
+
+/// 還能排東西的時段：不在路上、還沒過。回 t.slots 的位置，照行程順序
+private func openSlots(_ t: Trip, _ now: TripNow?) -> [Int] {
+    var out: [Int] = []
     var si: Int = 0
     for s in t.slots {
-        if s.off != true && s.part != .eve { day.append(si) }
+        if s.off != true && !slotPast(now, s.day, s.part) { out.append(si) }
         si += 1
     }
-    let mid: [Int] = day.filter { (i: Int) -> Bool in
-        let s: Slot = t.slots[i]
-        return s.day > 1 && s.day < t.days && bigCount(t, s.day) < 2
-    }
-    let pool: [Int] = mid.isEmpty ? day : mid
-    // 站最少的那個；一樣少就取前面的（TS 是穩定排序後拿第一個）
+    return out
+}
+
+/// 站最少的那個時段；一樣少就取前面的（TS 是穩定排序後拿第一個）
+private func fewestSlot(_ t: Trip, _ pool: [Int]) -> Int? {
     var best: Int? = nil
     var bestCount: Int = 0
     for i in pool {
@@ -341,12 +363,38 @@ private func emptiestSlot(_ t: Trip) -> Int? {
             bestCount = n
         }
     }
-    if let hit = best { return hit }
-    return t.slots.firstIndex { (s: Slot) -> Bool in s.off != true }
+    return best
 }
 
-func addOwn(_ t: inout Trip, _ seeds: inout [Seed], _ name: String) -> String {
-    let slot: Int? = emptiestSlot(t)
+/// 第 day 天最空的時段：先看白天，白天沒有才是晚上。這天沒有能排的就回 nil
+private func emptiestOnDay(_ t: Trip, _ day: Int, _ now: TripNow?) -> Int? {
+    let open: [Int] = openSlots(t, now).filter { (i: Int) -> Bool in t.slots[i].day == day }
+    let light: [Int] = open.filter { (i: Int) -> Bool in t.slots[i].part != .eve }
+    return fewestSlot(t, light.isEmpty ? open : light)
+}
+
+/// 最空的白天時段，回 t.slots 的位置。now 有給（旅途中）時，過了的時段不算
+private func emptiestSlot(_ t: Trip, _ now: TripNow?) -> Int? {
+    let open: [Int] = openSlots(t, now)
+    let day: [Int] = open.filter { (i: Int) -> Bool in t.slots[i].part != .eve }
+    let mid: [Int] = day.filter { (i: Int) -> Bool in
+        let s: Slot = t.slots[i]
+        return s.day > 1 && s.day < t.days && bigCount(t, s.day) < 2
+    }
+    let pool: [Int] = mid.isEmpty ? day : mid
+    if let hit = fewestSlot(t, pool) { return hit }
+    return open.first
+}
+
+/// 自己加一站。day 有給就先排那一天，那天沒有能排的時段才排別天（會講清楚）。
+/// now 有給（旅途中）時，過了的時段不放；都不行就放到下次再來
+func addOwn(
+    _ t: inout Trip, _ seeds: inout [Seed], _ name: String, _ day: Int? = nil, _ now: TripNow? = nil
+) -> String {
+    var slot: Int? = nil
+    if let d = day { slot = emptiestOnDay(t, d, now) }
+    let moved: Bool = day != nil && slot == nil
+    if slot == nil { slot = emptiestSlot(t, now) }
     let it: Stop = Stop(
         id: newId("m"), n: name, kr: "", a: nil, s: .L, c: .sight, lat: nil, lng: nil,
         status: .kept, swaps: 0, why: "你自己加的", mine: true
@@ -354,12 +402,16 @@ func addOwn(_ t: inout Trip, _ seeds: inout [Seed], _ name: String) -> String {
     guard let to = slot else {
         let seed: Seed = Seed(id: newId("s"), n: name, a: "自己加的", why: "這趟排不進去", stop: it, from: nil)
         seeds.insert(seed, at: 0)
+        if hasAnySlot(t) { return "這趟能排的時段都過了，「\(name)」先放到下次再來" }
         return "這趟排不進去，「\(name)」先放到下次再來"
     }
     t.slots[to].items.append(it)
-    t.slots[to].rest = false
     let toDay: Int = t.slots[to].day
     let toPart: Part = t.slots[to].part
+    if toPart != .eve { t.slots[to].rest = false }
+    if moved, let d = day {
+        return "第 \(d) 天沒有能排的時段了，「\(name)」排在第 \(toDay) 天\(PART[need: toPart])"
+    }
     return "「\(name)」排在第 \(toDay) 天\(PART[need: toPart])"
 }
 
