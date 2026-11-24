@@ -347,7 +347,6 @@ struct TripNextStop: View {
                     }
                 }
                 .fillLeading()
-                Radish(size: it.s, scale: 1.4)
                 Chevron()
             }
             .contentShape(Rectangle())

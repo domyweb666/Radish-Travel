@@ -125,7 +125,7 @@ final class ConsentTests: XCTestCase {
         let d: AppState = try XCTUnwrap(AppState.hydrate(old))
         XCTAssertTrue(d.aiAgreed.isEmpty)
         XCTAssertTrue(d.guideSeen)
-        XCTAssertEqual(d.pool, ["x1"])
+        XCTAssertEqual(d.pool, ["x1"], "沒有現在這趟，順路清單先留著")
         AI_ENDPOINT = "https://api.example.com/ask"
         XCTAssertFalse(aiAllowed(d, aiDestNow()), "要再問一次")
     }

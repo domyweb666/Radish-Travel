@@ -42,7 +42,7 @@ struct AddSheet: View {
             }
             .accessibilityIdentifier("add-go")
             DomyButton("順路有空再去", variant: .secondary, fullWidth: true) {
-                addToPool()
+                addLater()
             }
             .accessibilityIdentifier("add-later")
         }
@@ -57,9 +57,9 @@ struct AddSheet: View {
     /// 半頁開著的時候按復原換了一趟：打的字留著，先講清楚會排進哪一趟
     private func tripChanged() {
         if let trip = store.s.trip {
-            error = "現在換成「\(tripTitle(trip))」這趟了，按下去會排進這一趟。"
+            error = "現在換成「\(tripTitle(trip))」這趟了，按下去會加進這一趟。"
         } else {
-            error = "現在沒有這趟，還不能排進去。"
+            error = "現在沒有這趟，還不能加。"
         }
     }
 
@@ -96,12 +96,20 @@ struct AddSheet: View {
         sheets.close()
     }
 
-    private func addToPool() {
+    /// 放進這趟的順路清單。已經有同一個名字就不重複加，半頁留著、講清楚
+    private func addLater() {
         guard need() else { return }
+        guard let trip = store.s.trip else {
+            tripChanged()
+            return
+        }
         let place: String = n
+        if poolHas(trip, place) {
+            error = "「\(place)」已經在這趟的順路清單裡，沒有再加一次。"
+            return
+        }
         store.act(undoable: true) { (d: inout AppState) -> String? in
-            d.pool.append(place)
-            return "「\(place)」放進順路可去，不排時間。"
+            return addToPool(&d, place)
         }
         sheets.close()
     }

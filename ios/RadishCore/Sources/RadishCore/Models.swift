@@ -185,6 +185,7 @@ struct Trip: Codable, Hashable, Sendable {
     var wish: String?  // 開一趟時寫的那句「想怎麼玩」，重排、復原都留著。沒寫就沒有，舊檔也沒有
     var wishChanges: [String]?  // 這一版裡照那句改了哪些。復原、重排之後就沒有了（重排不帶）
     var wishOff: WishOff?  // 那句還沒送，使用者自己拿掉了，或改過字才講。沒有這回事是 nil，舊檔也沒有
+    var pool: [String]?  // 這趟的順路清單：自己加的、不排時間，有空再去。重排、放一邊都留著。空的是 nil，舊檔沒有
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -340,7 +341,7 @@ struct AppState: Codable, Hashable, Sendable {
     var trip: Trip?  // 現在打開的這一趟
     var shelf: [Shelved] = []  // 其他排好的
     var seeds: [Seed] = []
-    var pool: [String] = []  // 順路可去
+    var pool: [String] = []  // 還沒放進哪一趟的順路清單：舊檔不分趟的、不要這一版拿下來的。有了這趟就搬進去（movePool）
     var checks: [String: Bool] = [:]
     var chat: [ChatMsg] = []
     var baskets: [Basket] = []
@@ -374,6 +375,8 @@ extension AppState {
         out.remind = try box.decodeIfPresent(Bool.self, forKey: .remind) ?? false
         out.debugDay = try box.decodeIfPresent(Int.self, forKey: .debugDay)
         out.aiLog = try box.decodeIfPresent([String: Int].self, forKey: .aiLog) ?? [:]
+        // 舊檔的順路清單不分趟：有現在這趟就放進這趟，沒有就先留著
+        movePool(&out)
         self = out
     }
 

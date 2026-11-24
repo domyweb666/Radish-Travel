@@ -570,22 +570,85 @@ func planCardText(_ t: Trip, _ st: Settings, _ chat: [ChatMsg] = [], _ busy: Boo
     return PlanCardText(head: head, body: body, wish: wishLine(t, chat, busy))
 }
 
-/// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。復原拿得回行程和對話
+/// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。復原拿得回行程和對話。
+/// 順路清單是使用者自己加的，不跟著不見：先留著，有了下一趟就放進去
 @discardableResult
 func dropPlan(_ d: inout AppState) -> String? {
-    guard d.trip != nil else { return nil }
+    guard let trip = d.trip else { return nil }
+    let list: [String] = trip.pool ?? []
+    d.pool = mergePool(d.pool, list)
     clearCurrent(&d, true)
-    return "這一版拿掉了，可以重新開一趟。"
+    if list.isEmpty { return "這一版拿掉了，可以重新開一趟。" }
+    return "這一版拿掉了，可以重新開一趟。順路清單的 \(list.count) 個地方留著，會放進下一趟。"
+}
+
+/* ---------- 順路清單：自己加的、不排時間，每趟一份（2026-11-25 多米定） ---------- */
+
+/// 同一個名字：頭尾的空白不算，其他照字比
+private func poolKey(_ name: String) -> String {
+    return name.trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+/// 接在後面，已經有的名字不重複加
+private func mergePool(_ base: [String], _ more: [String]) -> [String] {
+    var out: [String] = base
+    for name in more {
+        let key: String = poolKey(name)
+        if key.isEmpty { continue }
+        let has: Bool = out.contains { (x: String) -> Bool in poolKey(x) == key }
+        if !has { out.append(name) }
+    }
+    return out
+}
+
+/// 這趟的順路清單裡已經有這個名字了嗎
+func poolHas(_ t: Trip, _ name: String) -> Bool {
+    let key: String = poolKey(name)
+    return (t.pool ?? []).contains { (x: String) -> Bool in poolKey(x) == key }
+}
+
+/// 還沒放進哪一趟的（舊檔不分趟的、不要這一版拿下來的）搬進現在這趟。搬過就清空；沒有這趟就先留著
+func movePool(_ d: inout AppState) {
+    if d.pool.isEmpty { return }
+    guard var trip = d.trip else { return }
+    let list: [String] = mergePool(trip.pool ?? [], d.pool)
+    trip.pool = list.isEmpty ? nil : list
+    d.trip = trip
+    d.pool = []
+}
+
+/// 加進現在這趟的順路清單。沒有這趟、沒有名字回 nil；已經有了就不重複加。回提示條要講的那一句
+@discardableResult
+func addToPool(_ d: inout AppState, _ name: String) -> String? {
+    guard var trip = d.trip else { return nil }
+    let place: String = poolKey(name)
+    if place.isEmpty { return nil }
+    if poolHas(trip, place) { return "「\(place)」已經在這趟的順路清單裡，沒有再加一次。" }
+    trip.pool = mergePool(trip.pool ?? [], [place])
+    d.trip = trip
+    return "「\(place)」放進這趟的順路清單，不排時間。"
+}
+
+/// 從現在這趟的順路清單拿掉。清單裡沒有就回 nil、什麼都不動
+@discardableResult
+func removeFromPool(_ d: inout AppState, _ name: String) -> String? {
+    guard var trip = d.trip, poolHas(trip, name) else { return nil }
+    let key: String = poolKey(name)
+    let left: [String] = (trip.pool ?? []).filter { (x: String) -> Bool in poolKey(x) != key }
+    trip.pool = left.isEmpty ? nil : left
+    d.trip = trip
+    return "「\(key)」從順路清單拿掉了。"
 }
 
 /* ---------- 復原 ---------- */
 
 /// 改之前的樣子，復原用。只放在記憶體。
-/// 只改這趟的那一步：還原行程、下次再來、順路、去過的旅行、學到的；對話、打勾不動。
+/// 只改這趟的那一步：還原行程（順路清單在裡面）、下次再來、去過的旅行、學到的；對話、打勾不動。
 /// 換掉現在這趟的那一步（切到別趟、開新的一趟、收起來、不要這一版）：連其他排好的、對話、要先訂的打勾一起還原
 struct UndoSnap: Sendable {
     var trip: Trip?
     var seeds: [Seed]
+    /// 還沒放進哪一趟的順路清單（AppState.pool）
     var pool: [String]
     var baskets: [Basket]
     var settingsDirty: Bool
@@ -639,11 +702,30 @@ func applyUndo(_ d: inout AppState, _ snap: UndoSnap) -> String {
     }
     d.seeds = snap.seeds
     d.pool = snap.pool
+    keepPoolOnce(&d, snap)
     d.baskets = snap.baskets
     d.settings.learned = snap.learned
     d.settingsDirty = dirty && d.trip != nil
     keepWishOffs(&d, offs)
     return text
+}
+
+/// 復原到搬移之前：那幾個回到還沒放進哪一趟的那一份，換趟時放到其他排好的那一趟就不能再留一份
+private func keepPoolOnce(_ d: inout AppState, _ snap: UndoSnap) {
+    if snap.pool.isEmpty { return }
+    let back: Set<String> = Set(snap.pool.map { (x: String) -> String in poolKey(x) })
+    for i in d.shelf.indices {
+        guard let list = d.shelf[i].trip.pool else { continue }
+        let id: String? = d.shelf[i].trip.id
+        // 搬移之前那一趟自己就有的，不是搬進來的
+        let old: Shelved? = snap.shelf.first(where: { (x: Shelved) -> Bool in x.trip.id == id })
+        let left: [String] = list.filter { (x: String) -> Bool in
+            if !back.contains(poolKey(x)) { return true }
+            guard let was = old else { return false }
+            return poolHas(was.trip, x)
+        }
+        d.shelf[i].trip.pool = left.isEmpty ? nil : left
+    }
 }
 
 private func wishOffs(_ d: AppState) -> [(id: String, off: WishOff?)] {

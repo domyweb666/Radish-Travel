@@ -1,5 +1,6 @@
 // 「更多」：不常用的動作收在這裡，從這趟右上角打開（線框 A7）。
-// 這一天：復原上一步、上午和下午對調、自己加一站；這趟：花費、行程設定、傳給旅伴看；「這趟不排了」單獨放最下面。
+// 這一天：復原上一步、上午和下午對調、自己加一站；這趟：花費、行程設定、傳給旅伴看；
+// 這趟的順路清單（有加過才有，每一列可以拿掉）；「這趟不排了」單獨放最下面。
 // 對應 mobile/src/sheets/MoreSheet.tsx。TS 的 onAdd、onSettings 改成 sheets.open(.add)、sheets.open(.settings)。
 import SwiftUI
 
@@ -37,7 +38,7 @@ struct MoreSheet: View {
         SheetScaffold("更多", onClose: { sheets.close() }) {
             daySection(trip)
             tripSection(trip)
-            poolSection
+            poolSection(trip)
             archiveSection
         }
         .sheet(item: $share) { (item: ShareItem) in
@@ -119,14 +120,26 @@ struct MoreSheet: View {
     }
 
     @ViewBuilder
-    private var poolSection: some View {
-        let pool: [String] = store.s.pool
+    private func poolSection(_ trip: Trip) -> some View {
+        let pool: [String] = trip.pool ?? []
         if !pool.isEmpty {
-            DomySection("你加的、順路有空再去") {
-                ForEach(Array(pool.enumerated()), id: \.offset) { pair in
-                    TextRow(pair.element)
+            DomySection("順路清單", footer: "你自己加的，有空再去。清單跟著這趟，拿掉可以復原。") {
+                ForEach(Array(pool.enumerated()), id: \.element) { pair in
+                    poolRow(pair.offset, pair.element)
                 }
             }
+        }
+    }
+
+    /// 順路清單的一列。拿掉之後半頁留著，提示條在半頁下緣
+    private func poolRow(_ index: Int, _ name: String) -> some View {
+        return TextRow(name) {
+            DomyButton("拿掉", variant: .plain, size: .compact, label: "拿掉：\(name)") {
+                store.act(undoable: true) { (d: inout AppState) -> String? in
+                    return removeFromPool(&d, name)
+                }
+            }
+            .accessibilityIdentifier("pool-remove-\(index)")
         }
     }
 

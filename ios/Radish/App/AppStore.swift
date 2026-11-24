@@ -272,6 +272,8 @@ final class AppStore {
         let message: String? = change(&draft)
         // 剛開的一趟補代號；每一趟的句數只多不少
         syncAIUsed(&draft)
+        // 還沒放進哪一趟的順路清單，有了這趟就放進去
+        movePool(&draft)
         let swap: Bool = tripSwapped(prev, draft)
         if undoable || swap {
             undoStack.append(undoSnap(prev, swap: swap, mark: mark))

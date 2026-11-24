@@ -2,7 +2,7 @@
 // 蘿蔔埋在土裡 → 左右搖三下（每下一個輕震）→ 用力拔出來放大（一個重震）→ 土屑飛出去 → 出現那一句（成功的震動）。
 // 整段大約兩秒，點一下可以提早關掉。開著「減少動態效果」時不搖不彈、字不往上滑，直接淡入拔好的樣子。
 // 字的順序照線框 A10（S08）：站名、那一句、最下面「點一下收起來」；前後沒有 AI 的話。
-// 歡呼的蘿蔔人留不留還沒定（❓48），先留著，放在那一句和「點一下收起來」中間。
+// 底下歡呼的蘿蔔人 2026-11-25 多米定拿掉（❓48），蘿蔔只留拔起來那一下。
 // 對應 mobile/src/components/PullMoment.tsx。
 // 用法：放在 `.fullScreenCover` 裡，外面加 `.presentationBackground(Color.clear)`，出現和收掉都關掉系統的滑入動畫
 // （淡入淡出這裡自己做）。底是不透明的畫布色，淡入完就看不到後面的畫面。
@@ -209,14 +209,13 @@ struct PullMoment: View {
         .frame(width: PULL_W, height: PULL_H, alignment: .bottom)
     }
 
-    /// 站名、那一句、歡呼的蘿蔔人（❓48 還沒定，先留著）、點一下收起來。照線框 A10 的順序
+    /// 站名、那一句、點一下收起來。照線框 A10 的順序
     private var words: some View {
         VStack(spacing: T.Space.s2) {
             DomyText(name, .title2, align: .center)
             DomyText(line, .largeTitle, align: .center)
-            RadishBuddy(action: .cheer, size: BUDDY_SIZE.card)
             DomyText("點一下收起來", .footnote, tone: .secondary, align: .center)
-                .padding(.top, T.Space.s2)
+                .padding(.top, T.Space.s3)
         }
         .opacity(text)
         .offset(y: reduceMotion ? 0 : CGFloat(1 - text) * T.Space.s3)

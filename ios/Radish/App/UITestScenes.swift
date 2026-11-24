@@ -77,6 +77,7 @@
             case "trips": return manyTrips()
             case "quota": return quota()
             case "route": return route()
+            case "pool": return poolTrip()
             default: return nil
             }
         }
@@ -107,6 +108,15 @@
             return d
         }
 
+        /// 旅途中，順路清單有三個地方
+        private static func poolTrip() -> AppState {
+            var d: AppState = onTrip()
+            _ = addToPool(&d, "望遠市場")
+            _ = addToPool(&d, "弘大那間二手書店")
+            _ = addToPool(&d, "漢江公園吃泡麵")
+            return d
+        }
+
         /// 回來三天了，去過前三天的站
         private static func done() -> AppState {
             var d: AppState = start()
@@ -116,7 +126,7 @@
             return d
         }
 
-        /// 去過的一趟（有花費、有沒去的站）、收起來的一趟、放一邊的一趟、現在這趟（講過一句）
+        /// 去過的一趟（有花費、有沒去的站、有順路清單）、收起來的一趟、放一邊的一趟、現在這趟（講過一句）
         private static func manyTrips() -> AppState {
             var d: AppState = start()
             var old: Trip = makeTrip(-40, 5, d.settings)
@@ -126,6 +136,7 @@
             old.rate = 23
             old.flight = 9800
             d.trip = old
+            _ = addToPool(&d, "望遠市場")
             _ = archiveTrip(&d)
             for i in d.baskets.indices {
                 d.baskets[i].id = "uitest"

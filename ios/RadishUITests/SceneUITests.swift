@@ -426,6 +426,25 @@ final class SceneUITests: RadishUITestCase {
         typeAndCheck("visit-say", "hello", "一站-鍵盤出來")
     }
 
+    /* ---------- 更多裡的順路清單 ---------- */
+
+    func test24順路清單與拿掉() {
+        openScene("pool")
+        see("open-more").tap()
+        bring("pool-remove-2", inSheet: true)
+        pause()
+        shot("順路清單")
+        tapId("pool-remove-0", inSheet: true)
+        // 半頁開著超過 0.8 秒，提示條才在半頁裡出現
+        pause(2)
+        shot("順路清單-拿掉之後的提示條")
+        XCTAssertFalse(byId("pool-remove-2").exists, "拿掉一個，清單沒有變短")
+        see("notice-undo").tap()
+        see("pool-remove-2")
+        pause()
+        shot("順路清單-復原之後")
+    }
+
     /* ---------- 深色、大字 ---------- */
 
     func test19深色的三個分頁() {

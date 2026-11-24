@@ -15,7 +15,7 @@ struct VisitedTrip: Sendable {
     let days: Int?
     let items: [BasketItem]
     let basketId: String?
-    /// 收起來時一起留的整趟：花費、匯率、沒去的站。現在這趟、舊檔沒有
+    /// 收起來時一起留的整趟：花費、匯率、沒去的站、順路清單。現在這趟、舊檔沒有
     var kept: Trip?
     var left: [String] = []
 
@@ -334,7 +334,7 @@ struct VisitedScreen: View {
         }
     }
 
-    /* ---------- 收起來時一起留的：花費、沒去的站 ---------- */
+    /* ---------- 收起來時一起留的：花費、沒去的站、順路清單 ---------- */
 
     private func twdText(_ krw: Double, _ trip: Trip) -> String? {
         guard let t = toTwd(krw, trip.rate) else { return nil }
@@ -348,7 +348,7 @@ struct VisitedScreen: View {
         return head + "，\(twd)（照你填的匯率算）。"
     }
 
-    /// 沒有記花費、站都去了就不顯示
+    /// 沒有記花費、站都去了、沒加過順路的就不顯示
     @ViewBuilder
     private func keptBlock(_ v: VisitedTrip) -> some View {
         if let trip = v.kept {
@@ -369,6 +369,14 @@ struct VisitedScreen: View {
         if !v.left.isEmpty {
             DomySection("排了、沒去的") {
                 ForEach(Array(v.left.enumerated()), id: \.offset) { pair in
+                    TextRow(pair.element)
+                }
+            }
+        }
+        let pool: [String] = v.kept?.pool ?? []
+        if !pool.isEmpty {
+            DomySection("順路清單", footer: "你自己加的，有空再去。有沒有去過，這裡沒有記。") {
+                ForEach(Array(pool.enumerated()), id: \.offset) { pair in
                     TextRow(pair.element)
                 }
             }
