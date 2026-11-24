@@ -50,11 +50,15 @@ class RadishUITestCase: XCTestCase {
         app.launch()
     }
 
+    /// 截圖檔名的開頭。流水號每條測試都從 1 開始，一個類別有很多條短測試時蓋掉這個，檔名才不會互蓋。
+    var shotPrefix: String {
+        String(describing: type(of: self)).replacingOccurrences(of: "UITests", with: "")
+    }
+
     /// 截一張圖。檔名前面自動加流水號，照走的順序排。
     func shot(_ name: String) {
         shotIndex += 1
-        let prefix = String(describing: type(of: self)).replacingOccurrences(of: "UITests", with: "")
-        let fileName = String(format: "%@-%02d-%@", prefix, shotIndex, name)
+        let fileName = String(format: "%@-%02d-%@", shotPrefix, shotIndex, name)
         let screenshot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = fileName

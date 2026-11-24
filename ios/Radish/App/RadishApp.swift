@@ -23,6 +23,10 @@ struct RadishApp: App {
         // 平常的我裡填的 Claude API 金鑰（存在鑰匙圈）。UI 測試從空白開始，不讀
         CLAUDE_KEY = args.contains("-uitest-reset") ? "" : SecretStore.load(.claudeKey)
         BRIDGE_URL = args.contains("-uitest-reset") ? "" : SecretStore.load(.bridge)
+        #if DEBUG
+            // UI 測試用的場景和假的 AI（UITestScenes.swift）。要在 AppStore 建起來之前
+            UITestScenes.prepare(args)
+        #endif
         _store = State(initialValue: AppStore())
     }
 

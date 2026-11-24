@@ -17,6 +17,13 @@ final class NetWatch {
     private let monitor: NWPathMonitor = NWPathMonitor()
 
     private init() {
+        #if DEBUG
+            // UI 測試用：假裝沒網路，不盯系統的
+            if ProcessInfo.processInfo.arguments.contains("-uitest-offline") {
+                online = false
+                return
+            }
+        #endif
         monitor.pathUpdateHandler = NetWatch.handler()
         monitor.start(queue: DispatchQueue(label: "org.domyweb.radish.network", qos: .utility))
     }
