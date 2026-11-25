@@ -537,6 +537,90 @@ final class SceneUITests: RadishUITestCase {
         shot("深色大字-給司機看")
     }
 
+    /// 從這趟推進檢查這趟，一頁一頁截
+    private func checkShots(_ title: String, _ count: Int) {
+        see("open-check").tap()
+        pause()
+        shot(title)
+        for index in 1...count {
+            drag(0.75, 0.3)
+            shot(title + "-往下捲\(index)")
+        }
+    }
+
+    func test29檢查這趟要先訂的() {
+        openScene("book")
+        checkShots("檢查這趟-要先訂的", 5)
+        bring("check-c2")
+        pause()
+        shot("檢查這趟-KETA在期限內")
+    }
+
+    func test30期限後的KETA與塔不開() {
+        openScene("late")
+        tapId("day-tab-2")
+        pause()
+        shot("期限後-這趟")
+        tapId("stop-row-p11")
+        see("stop-move")
+        pause()
+        shot("期限後-N首爾塔")
+        goBack()
+        drag(0.3, 0.75)
+        drag(0.3, 0.75)
+        see("open-check").tap()
+        pause()
+        bring("check-c2")
+        pause()
+        shot("檢查這趟-KETA期限後")
+    }
+
+    func test31須知按天() {
+        openScene("book")
+        see("open-notes").tap()
+        pause()
+        tapButton("按天")
+        tapId("day-tab-2")
+        pause()
+        shot("須知-按天")
+        drag(0.75, 0.3)
+        shot("須知-按天-往下捲")
+    }
+
+    func test32移到休館那天() {
+        openScene("closed")
+        tapId("day-tab-2")
+        pause()
+        tapId("stop-row-p0")
+        tapId("stop-move")
+        see("move-go")
+        tapId("move-2-eve", inSheet: true)
+        pause()
+        shot("移站-休館那天")
+        drag(0.68, 0.4)
+        pause()
+        shot("移站-休館那天-往下捲")
+    }
+
+    func test33要先訂的一站往下捲() {
+        openScene("checked")
+        tapId("day-tab-2")
+        pause()
+        tapId("stop-row-p6")
+        see("stop-move")
+        pause()
+        for index in 1...4 {
+            shot("後苑-\(index)")
+            drag(0.75, 0.25)
+        }
+    }
+
+    func test34大字的檢查這趟() {
+        openScene(
+            "book", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"])
+        checkShots("大字-檢查這趟", 3)
+    }
+
     /* ---------- 深色、大字 ---------- */
 
     func test19深色的三個分頁() {

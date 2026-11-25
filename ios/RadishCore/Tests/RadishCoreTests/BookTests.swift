@@ -437,6 +437,34 @@ final class BookTests: XCTestCase {
         XCTAssertEqual(decides(checked, "2026-11-25", "8:00"), 0)
     }
 
+    func test旅途中_開賣和最後決定日還沒到的提醒還在_整趟走完就沒有() throws {
+        // 12/7 到 12/11。第 5 天 12/11 要去：12/9 開賣、12/10 最後決定
+        let fact: (String) -> PlaceFact? = decideFact(1, 2)
+        let list: [Reminder] = remindersOf(garden(5), "2026-12-08", fact: fact)
+        XCTAssertEqual(list.count, 2, "旅途第 2 天，兩則都還在")
+        XCTAssertEqual(list.first?.at, taiwanSeconds("2026-12-09", 8 * 60 + 45))
+        let decide: Reminder = try XCTUnwrap(list.last)
+        XCTAssertEqual(decide.on, "2026-12-10")
+        XCTAssertNil(decide.at)
+        XCTAssertEqual(remindersOf(garden(5), "2026-12-07", fact: fact).count, 2, "出發那天")
+        // 開賣過了只剩最後決定日，不會多出合併那一則
+        let later: [Reminder] = remindersOf(garden(5), "2026-12-09", now: tw("2026-12-09", "20:00"), fact: fact)
+        XCTAssertEqual(later, [decide])
+        // 勾了就沒有
+        var checked: AppState = garden(5)
+        checked.checks["b_g"] = true
+        XCTAssertEqual(remindersOf(checked, "2026-12-08", fact: fact), [])
+        // 最後一天還算在旅途中，隔天才是走完
+        let last: (String) -> PlaceFact? = decideFact(0, 2)
+        XCTAssertEqual(remindersOf(garden(5), "2026-12-11", now: tw("2026-12-11", "8:00"), fact: last).count, 1)
+        XCTAssertEqual(remindersOf(garden(5), "2026-12-12", fact: last), [])
+        // 走完了：就算資料寫的日子還沒到也不提醒（去的那天排在行程外面）
+        var odd: AppState = garden(5)
+        odd.trip?.days = 1
+        XCTAssertEqual(remindersOf(odd, "2026-12-07", fact: fact).count, 2)
+        XCTAssertEqual(remindersOf(odd, "2026-12-08", fact: fact), [])
+    }
+
     /* ---------- 出發前再查一次 ---------- */
 
     private let calm: SeoulChecked = SeoulChecked(

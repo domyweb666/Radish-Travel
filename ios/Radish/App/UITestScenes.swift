@@ -80,6 +80,8 @@
             case "pool": return poolTrip()
             case "closed": return palace(shut: true)
             case "checked": return palace(shut: false)
+            case "book": return bookTrip()
+            case "late": return lateTrip()
             default: return nil
             }
         }
@@ -197,6 +199,28 @@
             return d
         }
 
+        /// 要先訂的站好幾種：有開賣時間、有取消期限、只知道怎麼訂、開賣過了
+        private static func bookTrip() -> AppState {
+            var d: AppState = palace(shut: false)
+            guard var trip = d.trip else { return d }
+            put(&trip, "p14a", 2, .eve)
+            put(&trip, "p33c", 3, .eve)
+            put(&trip, "p20a", 4, .am)
+            put(&trip, "p16b", 4, .eve)
+            d.trip = trip
+            return d
+        }
+
+        /// 2027 年才到，K-ETA 公告的期限過了。第 2 天有 N 首爾塔（那陣子展望台不開）
+        private static func lateTrip() -> AppState {
+            var d: AppState = start()
+            let wait: Int = max(10, diffDays(todayISO(), "2027-01-10"))
+            var trip: Trip = makeTrip(wait, 5, d.settings)
+            putFirst(&trip, "p11", 2)
+            d.trip = trip
+            return d
+        }
+
         /// 幾天後出發，第 2 天才會是那種日子。核對資料還沒有景福宮的時候，只照星期幾挑
         private static func palaceFrom(_ shut: Bool) -> Int {
             let known: Bool = factOf("p0") != nil
@@ -204,6 +228,8 @@
                 let iso: String = addDays(todayISO(), n + 1)
                 let tuesday: Bool = dowOf(iso) == 2
                 if tuesday != shut { continue }
+                // 同一天也排了昌德宮，要有開
+                if closedWhy("p6", iso) != nil { continue }
                 let closed: Bool = closedWhy("p0", iso) != nil
                 if !known || closed == shut { return n }
             }
