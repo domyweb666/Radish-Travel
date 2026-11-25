@@ -445,7 +445,7 @@ final class SceneUITests: RadishUITestCase {
         shot("順路清單-復原之後")
     }
 
-    /* ---------- 核對過的資料（資料還沒併進來時，那幾塊不會出現，有才檢查） ---------- */
+    /* ---------- 核對過的資料（資料在，那幾塊一定要出現） ---------- */
 
     /// 等一下，看那個識別碼在不在。不在不算錯
     private func has(_ id: String, _ seconds: TimeInterval = 4) -> Bool {
@@ -464,19 +464,17 @@ final class SceneUITests: RadishUITestCase {
     func test25這天休館() {
         openScene("closed")
         tapId("day-tab-2")
-        let closed: Bool = has("day-closed")
-        bring(closed ? "day-closed" : "stop-row-p0")
+        see("day-closed")
+        bring("day-closed")
         pause()
         shot("這天休館-這趟")
         tapId("stop-row-p0")
         see("stop-show")
         pause()
         shot("這天休館-一站")
-        if closed {
-            see("stop-closed")
-            bring("stop-open")
-            shot("這天休館-一站-開放")
-        }
+        see("stop-closed")
+        bring("stop-open")
+        shot("這天休館-一站-開放")
     }
 
     func test26核對過的一站與來源() {
@@ -484,15 +482,14 @@ final class SceneUITests: RadishUITestCase {
         openPalace()
         shot("核對過的一站")
         XCTAssertFalse(byId("stop-closed").exists, "有開的日子，不該寫休館")
-        if has("stop-source") {
-            bring("stop-source")
-            shot("核對過的一站-開放")
-            byId("stop-source").tap()
-            pause()
-            shot("核對過的一站-來源")
-            tapButton("關閉")
-            pause()
-        }
+        see("stop-open")
+        bring("stop-source")
+        shot("核對過的一站-開放")
+        byId("stop-source").tap()
+        pause()
+        shot("核對過的一站-來源")
+        tapButton("關閉")
+        pause()
         tapId("stop-show")
         see("driver-close")
         pause()
@@ -503,13 +500,14 @@ final class SceneUITests: RadishUITestCase {
         openScene("checked")
         tapId("day-tab-2")
         pause()
-        if !has("stop-row-p6") { return }
         tapId("stop-row-p6")
-        if has("stop-book") {
-            bring("stop-book")
-        }
+        see("stop-book")
+        bring("stop-book-more")
         pause()
         shot("要先訂的一站-怎麼訂")
+        tapId("stop-book-more")
+        pause()
+        shot("要先訂的一站-訂之前要知道的")
     }
 
     func test28深色大字的這天休館() {
@@ -519,9 +517,7 @@ final class SceneUITests: RadishUITestCase {
         openScene("closed", size)
         tapId("day-tab-2")
         pause()
-        if has("day-closed") {
-            bring("day-closed")
-        }
+        bring("day-closed")
         shot("深色大字-這天休館")
         tapId("stop-row-p0")
         see("stop-show")
@@ -561,10 +557,16 @@ final class SceneUITests: RadishUITestCase {
         tapId("day-tab-2")
         pause()
         shot("期限後-這趟")
+        let rowText: String = see("stop-row-p11").label
+        XCTAssertTrue(rowText.contains("這天要注意"), "N 首爾塔那一列沒有寫這天要注意")
         tapId("stop-row-p11")
         see("stop-move")
         pause()
+        // 那陣子展望台限制使用，寫在標題下面，進來就看得到
+        XCTAssertTrue(has("stop-caution"), "N 首爾塔沒有寫這天要注意")
         shot("期限後-N首爾塔")
+        bring("stop-open")
+        shot("期限後-N首爾塔-開放")
         goBack()
         drag(0.3, 0.75)
         drag(0.3, 0.75)
@@ -592,10 +594,9 @@ final class SceneUITests: RadishUITestCase {
         tapId("day-tab-2")
         pause()
         tapId("stop-row-p0")
-        tapId("stop-move")
-        see("move-go")
-        tapId("move-2-eve", inSheet: true)
-        pause()
+        openMove()
+        pickCell("move-2-eve")
+        see("move-closed")
         shot("移站-休館那天")
         drag(0.68, 0.4)
         pause()
@@ -609,9 +610,133 @@ final class SceneUITests: RadishUITestCase {
         tapId("stop-row-p6")
         see("stop-move")
         pause()
-        for index in 1...4 {
+        // 起點要在講的那一列上面，不然捲不動
+        for index in 1...5 {
             shot("後苑-\(index)")
-            drag(0.75, 0.25)
+            drag(0.66, 0.2)
+        }
+    }
+
+    /// 一站頁的移到別的時段：整顆露出來才按
+    private func openMove() {
+        see("stop-move")
+        // 字放大時講的那一列比較高，起點放高一點才捲得動
+        for _ in 0..<8 where byId("stop-move").frame.maxY > bottomLimit(false) {
+            drag(0.55, 0.25)
+        }
+        let button: XCUIElement = bring("stop-move")
+        XCTAssertGreaterThanOrEqual(button.frame.minY, 64, "移到別的時段被上面蓋住")
+        XCTAssertLessThanOrEqual(button.frame.maxY, bottomLimit(false) + 8, "移到別的時段沒有整顆露出來")
+        button.tap()
+        see("move-go")
+        pause()
+    }
+
+    /// 還沒選的時候點一格：格子在中間那塊捲，要整格在下面那塊字的上面才按
+    private func pickCell(_ id: String) {
+        let cell: XCUIElement = see(id)
+        let floor: CGFloat = see("move-summary").frame.minY
+        for _ in 0..<6 {
+            if cell.frame.maxY <= floor { break }
+            drag(0.6, 0.48)
+        }
+        XCTAssertLessThanOrEqual(cell.frame.maxY, floor, "\(id) 沒有整格露出來")
+        cell.tap()
+        pause()
+    }
+
+    func test35這個時段不開() {
+        openScene("part")
+        tapId("day-tab-2")
+        pause()
+        let rowText: String = bring("stop-row-p30c").label
+        XCTAssertTrue(rowText.contains("才開"), "古都食那一列沒有寫幾點才開：\(rowText)")
+        shot("時段不開-這趟")
+        tapId("stop-row-p30c")
+        see("stop-part-closed")
+        pause()
+        shot("時段不開-一站")
+        openMove()
+        shot("時段不開-移站")
+        pickCell("move-3-am")
+        see("move-part-closed")
+        shot("時段不開-移站-選了也不開的時段")
+    }
+
+    func test36下一站卡的時段不開() {
+        openScene("part-next")
+        bring("next-part-closed")
+        pause()
+        shot("下一站卡-時段不開")
+        // 卡上講過了，下面那一列不再講一次
+        let rowText: String = see("stop-row-p30c").label
+        XCTAssertFalse(rowText.contains("才開"), "下一站卡講過，下面那一列又講一次：\(rowText)")
+        bring("stop-row-p30c")
+        shot("下一站卡-時段不開-清單")
+    }
+
+    func test37下一站卡的這天要注意() {
+        openScene("late-next")
+        bring("next-caution")
+        pause()
+        shot("下一站卡-要注意")
+        let rowText: String = see("stop-row-p11").label
+        XCTAssertFalse(rowText.contains("要注意"), "下一站卡講過，下面那一列又講一次：\(rowText)")
+    }
+
+    func test38附近不開的不能按與看那站() {
+        openScene("nearby-shut")
+        tapId("next-nearby")
+        see("nearby-origin")
+        pause()
+        let add: XCUIElement = bring("nearby-add-0", inSheet: true)
+        pause()
+        shot("附近-能排的時段都不開")
+        XCTAssertFalse(add.isEnabled, "晚上不開的地方，還是可以排進晚上")
+        XCTAssertTrue(add.label.contains("都不開"), "不能按的那顆沒有寫為什麼：\(add.label)")
+        tapId("nearby-open-0", inSheet: true)
+        see("stop-show")
+        pause()
+        shot("不在這趟裡的地方")
+        // 跟這趟裡的站一樣：要按的在前，核對資料在後
+        let show: CGFloat = byId("stop-show").frame.minY
+        for id in ["stop-open", "stop-book", "stop-source"] {
+            XCTAssertGreaterThan(see(id).frame.minY, show, "\(id) 排在要按的前面")
+        }
+        bring("stop-source")
+        shot("不在這趟裡的地方-往下捲")
+    }
+
+    func test39要先訂但沒有核對資料() {
+        openScene("nobook")
+        tapId("day-tab-2")
+        pause()
+        tapId("stop-row-uitest-nobook")
+        see("stop-move")
+        pause()
+        shot("沒有核對資料的要先訂")
+        let lines: XCUIElementQuery = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "怎麼訂"))
+        XCTAssertEqual(lines.count, 1, "怎麼訂應該只留一句")
+        for id in ["stop-open", "stop-book", "stop-source"] {
+            XCTAssertFalse(byId(id).exists, "沒有核對資料，不該出現 \(id)")
+        }
+        bring("stop-show")
+        shot("沒有核對資料的要先訂-往下捲")
+    }
+
+    func test40輔助大字的移站() {
+        openScene(
+            "part", ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM"])
+        tapId("day-tab-2")
+        pause()
+        tapId("stop-row-p30c")
+        see("stop-part-closed")
+        openMove()
+        shot("輔助大字-移站")
+        for index in 1...3 {
+            drag(0.6, 0.35)
+            shot("輔助大字-移站-往下捲\(index)")
         }
     }
 

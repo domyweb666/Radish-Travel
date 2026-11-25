@@ -95,6 +95,13 @@ func dayShuts(_ trip: Trip, _ day: Int, _ phase: Phase?) -> [DayShut] {
     return out
 }
 
+/// 旅途中看今天，上面有下一站卡：那一站不開、要注意的都寫在卡上，下面的清單不再講一次。沒有是 nil
+func toldOnNext(_ trip: Trip, _ day: Int, _ phase: Phase?) -> String? {
+    guard case .trip(let now)? = phase, now == day else { return nil }
+    let next: Found? = dayStops(trip, day).first { (x: Found) -> Bool in x.it.status == .kept }
+    return next?.it.id
+}
+
 /// 一句話講完：「景福宮這天休館：每週二休。」好幾站就併成一句。more 是別的地方已經先講了一站
 func dayShutText(_ list: [DayShut], more: Bool = false) -> String {
     if list.count == 1, let one = list.first {
@@ -142,16 +149,9 @@ struct DayShutBanner: View {
         }
     }
 
-    /// 旅途中看今天，上面有下一站卡：那一站不開已經寫在卡上
-    private var told: String? {
-        guard case .trip(let now)? = store.phase, now == day else { return nil }
-        let next: Found? = dayStops(trip, day).first { (x: Found) -> Bool in x.it.status == .kept }
-        return next?.it.id
-    }
-
     var body: some View {
         let all: [DayShut] = dayShuts(trip, day, store.phase)
-        let skip: String? = told
+        let skip: String? = toldOnNext(trip, day, store.phase)
         let list: [DayShut] = all.filter { (x: DayShut) -> Bool in x.it.id != skip }
         if let x = target(list) {
             Banner(dayShutText(list, more: list.count < all.count), actionTitle: actionTitle(x, list.count)) {
@@ -210,7 +210,6 @@ func tipsFooter(_ stops: [Stop]) -> String? {
 struct FactLine: Identifiable, Hashable {
     let label: String
     let text: String
-    var warn: Bool = false
     var muted: Bool = false
 
     var id: String { return label }
@@ -222,27 +221,34 @@ private func addLine(_ out: inout [FactLine], _ label: String, _ text: String?) 
     out.append(FactLine(label: label, text: text))
 }
 
-/// 「開放」那組有哪幾列，只放有的。那天不開寫在標題下面，票價在花費，地址在給司機看，這裡都不再寫一次
-func openLines(_ f: PlaceFact?, _ c: Cat, _ shut: StopShut?, _ caution: String?) -> [FactLine] {
+/// 「開放」那組有哪幾列，只放有的。那天不開、那天要注意的寫在標題下面，票價在花費，地址在給司機看，這裡都不再寫一次
+func openLines(_ f: PlaceFact?, _ c: Cat, _ shut: StopShut?) -> [FactLine] {
     var out: [FactLine] = []
     // 歇業了，開放時間沒有意義
     if let shut, shut.gone { return out }
-    if let caution {
-        out.append(FactLine(label: "這天要注意", text: caution, warn: true))
-    }
     guard let f else { return out }
     let words: KindWords = kindWords(c)
     addLine(&out, words.off, closedText(f))
     addLine(&out, "開放時間", f.hours)
     let last: String = f.last ?? ""
-    addLine(&out, last.contains("末班") ? "末班" : words.last, last)
+    addLine(&out, lastLabel(last, words), last)
     return out
 }
 
+/// 最後時間那一列的小標，照寫的內容：講的不是幾點前要進去、幾點前要點餐，就不掛「最後入場」「最後點餐」
+private func lastLabel(_ text: String, _ words: KindWords) -> String {
+    if text.contains("末班") { return "末班" }
+    let marks: [String] = ["入場", "進場", "末場", "關門", "閉館", "閉園", "點餐", "點到"]
+    for mark in marks {
+        if text.contains(mark) { return words.last }
+    }
+    return text.contains("賣") || text.contains("售票") ? "售票" : "最後時間"
+}
+
 /// 上面那組底下不用再補一句「營業時間自己查」：有「開放」那組的、歇業了的
-func opensKnown(_ f: PlaceFact?, _ c: Cat, _ shut: StopShut?, _ caution: String?) -> Bool {
+func opensKnown(_ f: PlaceFact?, _ c: Cat, _ shut: StopShut?) -> Bool {
     if let shut, shut.gone { return true }
-    return !openLines(f, c, shut, caution).isEmpty
+    return !openLines(f, c, shut).isEmpty
 }
 
 /// 開賣時間那一句，換成台灣時間（Book.swift）。不在這趟裡、不知道哪天去的，講規則
@@ -298,7 +304,7 @@ private func decideText(_ b: BookInfo, _ visit: String?, _ today: String) -> Str
 
 /// 要先訂，但沒查到怎麼訂。「怎麼訂」那組不出現，在上面那組底下講一次就好
 func bookUnknown(_ it: Stop, _ shut: StopShut?) -> Bool {
-    if it.b != true || it.status == .pulled { return false }
+    if !needsBook(it) || it.status == .pulled { return false }
     if let shut, shut.gone { return false }
     return factOf(it.id)?.book == nil
 }
@@ -337,8 +343,6 @@ func webURL(_ text: String?) -> URL? {
 struct StopFactBlocks: View {
     let it: Stop
     let shut: StopShut?
-    /// 那天要注意、但不算不開的。沒有是 nil
-    let caution: String?
     let visit: String?
 
     private var fact: PlaceFact? {
@@ -346,7 +350,7 @@ struct StopFactBlocks: View {
     }
 
     private var lines: [FactLine] {
-        return openLines(fact, it.c, shut, caution)
+        return openLines(fact, it.c, shut)
     }
 
     /// 去過了、歇業了就不用再講怎麼訂
@@ -365,7 +369,7 @@ struct StopFactBlocks: View {
         if !lines.isEmpty {
             DomySection("開放", footer: openFooter) {
                 ForEach(lines) { (line: FactLine) in
-                    StopInfoRow(label: line.label, text: line.text, warn: line.warn)
+                    StopInfoRow(label: line.label, text: line.text)
                 }
             }
             .accessibilityElement(children: .contain)

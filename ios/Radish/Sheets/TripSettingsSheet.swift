@@ -106,7 +106,7 @@ struct TripSettingsSheet: View {
             trip.cover = form.cover
             d.trip = trip
             // 只改日期、不重排：星期幾變了，可能排到休館那天
-            return "行程設定改好了。" + closedTail(newClosedNotes(before, trip))
+            return "行程設定改好了。" + closedTail(before, trip)
         }
         sheets.close()
     }

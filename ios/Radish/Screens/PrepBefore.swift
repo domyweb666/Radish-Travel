@@ -166,21 +166,16 @@ struct PrepBefore: View {
         }
     }
 
-    /// 一條檢查表。過了公告期限、要再查一次的，多一個標籤，看得出比別條急
+    /// 一條檢查表。過了公告期限、要再查一次的用警告色，看得出比別條急
     private func checkItem(_ r: CheckItem) -> some View {
         let start: String? = trip?.start
         let fact: Fact = prepFact(r, start)
-        let done: Bool = isChecked(r.id)
-        let urgent: Bool = !done && datedLate(r.id, start)
-        return VStack(alignment: .leading, spacing: 0) {
-            if urgent {
-                Tag("要再查一次", tone: .warn)
-                    .padding(.top, T.Space.s3)
-            }
-            CheckRow(checked: done, title: fact.text, note: prepNote(prepFactShort(fact))) {
-                toggle(r.id)
-            }
-            .accessibilityIdentifier("check-\(r.id)")
+        let late: Bool = datedLate(r.id, start)
+        return CheckRow(
+            checked: isChecked(r.id), title: fact.text, note: prepNote(prepFactShort(fact)), warn: late
+        ) {
+            toggle(r.id)
         }
+        .accessibilityIdentifier("check-\(r.id)")
     }
 }

@@ -170,21 +170,21 @@ final class FixesTests: XCTestCase {
 
     /* ---------- 5 要先訂的打勾跟著自己那一趟 ---------- */
 
-    /// 現在這趟 A，架上一趟 B；兩趟都有同一站 p1（要先訂），A 訂了、B 還沒
+    /// 現在這趟 A，架上一趟 B；兩趟都有同一站 q1（要先訂），A 訂了、B 還沒
     private func twoTrips() -> AppState {
         var a: Trip = fixTrip()
-        fixPut(&a, 2, .am, fixStop("p1", "景福宮", booking: true))
+        fixPut(&a, 2, .am, fixStop("q1", "景福宮", booking: true))
         a.name = "A"
         var b: Trip = fixTrip()
-        fixPut(&b, 3, .am, fixStop("p1", "景福宮", booking: true))
-        fixPut(&b, 3, .pm, fixStop("p2", "昌德宮", booking: true))
+        fixPut(&b, 3, .am, fixStop("q1", "景福宮", booking: true))
+        fixPut(&b, 3, .pm, fixStop("q2", "昌德宮", booking: true))
         b.name = "B"
         var d: AppState = AppState()
         d.trip = b
-        d.checks = ["passport": true, "b_p2": true]
+        d.checks = ["passport": true, "b_q2": true]
         shelveCurrent(&d)
         d.trip = a
-        d.checks["b_p1"] = true
+        d.checks["b_q1"] = true
         return d
     }
 
@@ -196,37 +196,37 @@ final class FixesTests: XCTestCase {
     func test收起來再切到別趟_不會把打勾帶過去() throws {
         var d: AppState = twoTrips()
         archiveTrip(&d)
-        XCTAssertNil(d.checks["b_p1"])
+        XCTAssertNil(d.checks["b_q1"])
         let shut: Shelved? = d.shelf.first { (x: Shelved) -> Bool in x.trip.name == "A" }
-        XCTAssertEqual(shut?.checks["b_p1"], true, "一站都沒去過，整趟放一邊，打勾跟著它")
+        XCTAssertEqual(shut?.checks["b_q1"], true, "一站都沒去過，整趟放一邊，打勾跟著它")
         let bId: String = try shelfId(d, "B")
         openShelved(&d, bId)
-        XCTAssertEqual(d.checks, ["passport": true, "b_p2": true])
+        XCTAssertEqual(d.checks, ["passport": true, "b_q2": true])
         let trip: Trip = try XCTUnwrap(d.trip)
         let left: [String] = unbookedOf(trip, d.checks).map { (x: Stop) -> String in x.id }
-        XCTAssertEqual(left, ["p1"], "B 的 p1 還沒訂，要提醒")
+        XCTAssertEqual(left, ["q1"], "B 的 q1 還沒訂，要提醒")
     }
 
     func test不要這一版再切到別趟_不會把打勾帶過去() throws {
         var d: AppState = twoTrips()
         dropPlan(&d)
-        XCTAssertEqual(d.checks["b_p1"], true, "不要這一版可以復原，打勾先留著")
+        XCTAssertEqual(d.checks["b_q1"], true, "不要這一版可以復原，打勾先留著")
         let bId: String = try shelfId(d, "B")
         openShelved(&d, bId)
-        XCTAssertEqual(d.checks, ["passport": true, "b_p2": true])
+        XCTAssertEqual(d.checks, ["passport": true, "b_q2": true])
     }
 
     func test放一邊再切回來_兩趟的打勾都還在() throws {
         var d: AppState = twoTrips()
         let bId: String = try shelfId(d, "B")
         openShelved(&d, bId)
-        XCTAssertEqual(d.checks, ["passport": true, "b_p2": true])
+        XCTAssertEqual(d.checks, ["passport": true, "b_q2": true])
         let aId: String = try shelfId(d, "A")
         openShelved(&d, aId)
-        XCTAssertEqual(d.checks, ["passport": true, "b_p1": true])
+        XCTAssertEqual(d.checks, ["passport": true, "b_q1": true])
         let bAgain: String = try shelfId(d, "B")
         openShelved(&d, bAgain)
-        XCTAssertEqual(d.checks, ["passport": true, "b_p2": true])
+        XCTAssertEqual(d.checks, ["passport": true, "b_q2": true])
         // 找不到那一趟就什麼都不動
         let before: AppState = d
         XCTAssertNil(openShelved(&d, "沒有這趟"))

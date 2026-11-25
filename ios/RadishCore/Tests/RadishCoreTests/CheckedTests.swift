@@ -296,12 +296,12 @@ final class CheckedTests: XCTestCase {
         XCTAssertEqual(bookOpen(b, "2026-12-20")?.at, "11:00")
     }
 
-    func test有寫怎麼訂但算不出開賣日_引導看那一站() throws {
+    func test有寫怎麼訂但算不出開賣日_沒有網頁的叫他點開那一站() throws {
         var t: Trip = ckTrip("2026-12-07", 3)
         ckPut(&t, 2, .eve, ckStop("p16b"))
         let r: BookRow = try XCTUnwrap(bookPlan(t, [:], "2026-11-25").first)
         XCTAssertNil(r.url)
-        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "怎麼訂，看那一站")
+        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "怎麼訂，在行程裡點開這一站看")
     }
 
     func test開賣提醒只留一句短的() throws {
@@ -338,7 +338,7 @@ final class CheckedTests: XCTestCase {
 
     /* ---------- 手機自己答 ---------- */
 
-    func test舊存檔的樂天世界_不說要先訂核對過() throws {
+    func test舊存檔的樂天世界_不說要先訂() throws {
         var it: Stop = ckStop("p27")
         it.b = true
         var t: Trip = ckTrip("2026-12-07", 3)
@@ -346,7 +346,8 @@ final class CheckedTests: XCTestCase {
         var d: AppState = AppState()
         d.trip = t
         let one: String = try XCTUnwrap(phoneAnswer("這一站要注意什麼", d, 2, "p27", nil))
-        XCTAssertTrue(one.contains("還沒核對過的：先上網買票通常比較便宜；假日人多；要先訂"), one)
+        XCTAssertTrue(one.contains("還沒核對過的：先上網買票通常比較便宜；假日人多，去之前查一下"), one)
+        XCTAssertFalse(one.contains("要先訂"), one)
     }
 
     func test自己加的站_不算進沒核對() throws {

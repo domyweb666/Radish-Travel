@@ -59,6 +59,8 @@ struct TripStopRow: View {
     var shut: StopShut? = nil
     /// 排的那個時段不開。開、或那天整天不開是 nil
     var partShut: String? = nil
+    /// 那天要注意、但不算不開的。沒有、或上面的下一站卡講過了是 nil
+    var caution: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -92,7 +94,10 @@ struct TripStopRow: View {
         if let partShut {
             out.append(partShut)
         }
-        if it.b == true {
+        if let caution {
+            out.append("這天要注意：\(caution)")
+        }
+        if needsBook(it) {
             out.append("要先訂")
         }
         if it.ai == true {
@@ -111,7 +116,7 @@ struct TripStopRow: View {
 
     private func texts(_ part: String) -> some View {
         let pulled: Bool = it.status == .pulled
-        let booking: Bool = it.b == true
+        let booking: Bool = needsBook(it)
         let fromAI: Bool = it.ai == true
         let closed: Bool = shut?.gone == false
         return VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
@@ -119,11 +124,7 @@ struct TripStopRow: View {
             DomyText(it.n, .headline, tone: pulled ? .secondary : .primary)
                 .strikethrough(pulled)
             DomyText(it.why, .subheadline, tone: .strong)
-            if let shut, shut.gone {
-                WarnTag(shut.why)
-            } else if let partShut {
-                WarnTag(partShut)
-            }
+            warns
             if closed || booking || fromAI {
                 TagRow {
                     if closed {
@@ -139,6 +140,23 @@ struct TripStopRow: View {
             }
         }
         .fillLeading()
+    }
+
+    /// 去不了的原因，或這個時段不開、那天要注意的
+    @ViewBuilder
+    private var warns: some View {
+        if let shut, shut.gone {
+            WarnTag(shut.why)
+        } else if partShut != nil || caution != nil {
+            VStack(alignment: .leading, spacing: T.Space.s1) {
+                if let partShut {
+                    WarnTag(partShut)
+                }
+                if let caution {
+                    WarnTag("這天要注意：\(caution)")
+                }
+            }
+        }
     }
 }
 
@@ -244,16 +262,23 @@ struct TripDayCard: View {
             DomyText(text, .footnote, tone: .secondary)
                 .padding(.vertical, T.Space.s2)
         case .stop(let it, let slot):
-            TripStopRow(
-                it: it, slot: slot, shut: stopShut(trip, it, slot.day, store.phase),
-                partShut: stopPartShut(trip, it, slot, store.phase)
-            ) {
-                nav.push(.stop(id: it.id))
-            }
-            .spotTarget("stop-row-\(it.id)", in: frames)
+            stopRow(it, slot)
         case .blank(let part):
             TextRow("\(PART[need: part])・留白", note: "這段故意不排")
         }
+    }
+
+    /// 下一站卡上的那一站，時段不開和要注意的卡上寫了，這一列不再講一次
+    private func stopRow(_ it: Stop, _ slot: Slot) -> some View {
+        let told: Bool = toldOnNext(trip, slot.day, store.phase) == it.id
+        return TripStopRow(
+            it: it, slot: slot, shut: stopShut(trip, it, slot.day, store.phase),
+            partShut: told ? nil : stopPartShut(trip, it, slot, store.phase),
+            caution: told ? nil : stopCaution(trip, it, slot.day, store.phase)
+        ) {
+            nav.push(.stop(id: it.id))
+        }
+        .spotTarget("stop-row-\(it.id)", in: frames)
     }
 }
 
@@ -341,10 +366,7 @@ struct TripNextStop: View {
         }
         .padding(.vertical, -T.Space.s2)
         titleButton(it)
-        if let shut = stopShut(trip, it, next.s.day, store.phase) {
-            WarnTag(shut.gone ? shut.why : "今天\(kindWords(it.c).shut)：\(shut.why)")
-                .accessibilityIdentifier("next-closed")
-        }
+        warns(next)
         DomyText(legText(next, all), .subheadline, tone: .secondary)
         if !it.kr.isEmpty {
             // 字級放大時兩顆放不下，改成一顆一列
@@ -363,6 +385,29 @@ struct TripNextStop: View {
             pull(it)
         }
         .accessibilityIdentifier("next-pull")
+    }
+
+    /// 今天去不了的原因；去得了的話，排的時段不開、今天要注意的，各一行疊在一起
+    @ViewBuilder
+    private func warns(_ next: Found) -> some View {
+        let it: Stop = next.it
+        let partShut: String? = stopPartShut(trip, it, next.s, store.phase)
+        let caution: String? = stopCaution(trip, it, next.s.day, store.phase)
+        if let shut = stopShut(trip, it, next.s.day, store.phase) {
+            WarnTag(shut.gone ? shut.why : "今天\(kindWords(it.c).shut)：\(shut.why)")
+                .accessibilityIdentifier("next-closed")
+        } else if partShut != nil || caution != nil {
+            VStack(alignment: .leading, spacing: T.Space.s1) {
+                if let partShut {
+                    WarnTag(partShut)
+                        .accessibilityIdentifier("next-part-closed")
+                }
+                if let caution {
+                    WarnTag("今天要注意：\(caution)")
+                        .accessibilityIdentifier("next-caution")
+                }
+            }
+        }
     }
 
     /// 站名那一塊，點了進一站（S06）

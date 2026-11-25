@@ -377,7 +377,7 @@ final class BookTests: XCTestCase {
         // 第 n 站在出發前 n 天開賣
         var t: Trip = bTrip()
         for n in 1...50 {
-            bPut(&t, 1, .am, bStop("p\(n)", "站\(n)"))
+            bPut(&t, 1, .am, bStop("s\(n)", "站\(n)"))
         }
         var d: AppState = AppState()
         d.trip = t
@@ -577,10 +577,19 @@ final class BookTests: XCTestCase {
         XCTAssertEqual(newClosedNotes(moved, named, closed: tuesday), [], "只改名字")
     }
 
-    func test休館接在後面_兩條以內照寫_超過就講幾站() {
-        XCTAssertEqual(closedTail([]), "")
-        XCTAssertEqual(closedTail(["甲。", "乙。"]), "甲。乙。")
-        XCTAssertEqual(closedTail(["甲。", "乙。", "丙。"]), "有 3 件開放時間要注意的，看每天最上面那一行。")
+    func test休館接在後面_兩條以內照寫_超過就列站名() {
+        let shut: ClosedCheck = { (_: String, iso: String) -> String? in dowOf(iso) == 2 ? "每週二休" : nil }
+        func tail(_ names: [String]) -> String {
+            var t: Trip = bTrip()
+            for n in names { bPut(&t, 3, .am, bStop("k" + n, n, book: false)) }
+            var moved: Trip = t
+            moved.start = "2026-12-06"
+            return closedTail(t, moved, closed: shut)
+        }
+        XCTAssertEqual(tail([]), "")
+        XCTAssertEqual(
+            tail(["甲", "乙"]), "第 3 天 12/8（二）「甲」休館：每週二休。第 3 天 12/8（二）「乙」休館：每週二休。")
+        XCTAssertEqual(tail(["甲", "乙", "丙"]), "有 3 站的開放時間要注意，點開那一站看：甲、乙、丙。")
     }
 
     /* ---------- 跟著日期走的字 ---------- */

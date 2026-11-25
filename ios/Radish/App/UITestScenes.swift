@@ -7,7 +7,8 @@
 //   -uitest-agreed                    那個地方當成同意過了
 //   -uitest-offline                   假裝沒網路（在 IO/Network.swift）
 //   -uitest-dark                      指定深色（RadishApp.swift 的 forcedScheme）。測試切系統深淺在 CI 上沒有作用
-// 日期都從今天往前往後推，行程用 generate 排，所以資料包或規則改了這裡會跟著變。
+// 日期多半從今天往前往後推，行程用 generate 排，所以資料包或規則改了這裡會跟著變。
+// 開不開跟星期幾有關的場景用固定日期（fixedDay），旅途中的用 debugDay 指定今天是第幾天。
 #if DEBUG
     import Foundation
 
@@ -82,6 +83,11 @@
             case "checked": return palace(shut: false)
             case "book": return bookTrip()
             case "late": return lateTrip()
+            case "late-next": return onDay(lateTrip(), 2)
+            case "part": return partTrip()
+            case "part-next": return onDay(partTrip(), 2)
+            case "nearby-shut": return nearbyShut()
+            case "nobook": return noBookTrip()
             default: return nil
             }
         }
@@ -186,13 +192,12 @@
             return d
         }
 
-        /// 第 2 天第一站是景福宮、下午是昌德宮與後苑。shut 是景福宮那天休館（週二），不然是有開的日子
+        /// 第 2 天第一站是景福宮、下午是昌德宮與後苑。shut 是景福宮那天休館（固定的週二），不然是有開的日子
         private static func palace(shut: Bool) -> AppState {
             var d: AppState = start()
-            var trip: Trip = makeTrip(palaceFrom(shut), 5, d.settings)
-            for i in trip.slots.indices where trip.slots[i].day == 2 {
-                trip.slots[i].items = []
-            }
+            let from: String = shut ? fixedDay("2027-04-12") : addDays(todayISO(), palaceFrom())
+            var trip: Trip = tripOn(from, 5, d.settings)
+            clear(&trip, [2])
             put(&trip, "p0", 2, .am)
             put(&trip, "p6", 2, .pm)
             d.trip = trip
@@ -221,19 +226,69 @@
             return d
         }
 
-        /// 幾天後出發，第 2 天才會是那種日子。核對資料還沒有景福宮的時候，只照星期幾挑
-        private static func palaceFrom(_ shut: Bool) -> Int {
-            let known: Bool = factOf("p0") != nil
+        /// 第 2 天（固定的週三）上午是古都食，平日 16:00 才開，那個時段不開
+        private static func partTrip() -> AppState {
+            var d: AppState = start()
+            var trip: Trip = tripOn(fixedDay("2027-04-13"), 5, d.settings)
+            clear(&trip, [2])
+            put(&trip, "p30c", 2, .am)
+            put(&trip, "p29", 2, .pm)
+            d.trip = trip
+            return d
+        }
+
+        /// 旅途中第 1 天（固定的週四）只有晚上能排，人在土俗村：最近的兩間韓服店晚上都不開，附近那張不能按。
+        /// 只剩晚上，跟測試跑的時候是幾點無關
+        private static func nearbyShut() -> AppState {
+            var d: AppState = start()
+            var trip: Trip = tripOn(fixedDay("2027-04-15"), 3, d.settings, .eve)
+            clear(&trip, [1, 2, 3])
+            put(&trip, "p4a", 1, .eve)
+            d.trip = trip
+            return onDay(d, 1)
+        }
+
+        /// 第 2 天有一站要先訂、但沒有核對資料。資料包裡沒有這種站，拿一家餐廳改掉代號和名字
+        private static func noBookTrip() -> AppState {
+            var d: AppState = start()
+            var trip: Trip = makeTrip(10, 5, d.settings)
+            clear(&trip, [2])
+            let hit: Place? = PLACES.first { (p: Place) -> Bool in p.id == "p33c" }
+            if var place = hit, let si = slotAt(trip, 2, .pm) {
+                place.id = "uitest-nobook"
+                place.n = "測試用的餐廳"
+                place.b = true
+                place.tip = nil
+                trip.slots[si].items.append(planToStop(place, "測試用：要先訂，還沒核對"))
+                trip.slots[si].rest = false
+            }
+            d.trip = trip
+            return d
+        }
+
+        /// 景福宮和昌德宮都有開的第 2 天，要幾天後出發
+        private static func palaceFrom() -> Int {
             for n in 10..<70 {
                 let iso: String = addDays(todayISO(), n + 1)
-                let tuesday: Bool = dowOf(iso) == 2
-                if tuesday != shut { continue }
-                // 同一天也排了昌德宮，要有開
-                if closedWhy("p6", iso) != nil { continue }
-                let closed: Bool = closedWhy("p0", iso) != nil
-                if !known || closed == shut { return n }
+                if closedWhy("p0", iso) == nil && closedWhy("p6", iso) == nil { return n }
             }
             return 10
+        }
+
+        /// 固定日期。快到了（不到十天）就整個往後 52 週，星期幾不變
+        private static func fixedDay(_ iso: String) -> String {
+            var on: String = iso
+            while diffDays(todayISO(), on) < 10 {
+                on = addDays(on, 364)
+            }
+            return on
+        }
+
+        /// 當成旅途中的第 day 天，不管真的今天是哪天
+        private static func onDay(_ state: AppState, _ day: Int) -> AppState {
+            var d: AppState = state
+            d.debugDay = day
+            return d
         }
 
         /* ---------- 組場景用的 ---------- */
@@ -247,12 +302,23 @@
 
         /// from 是從今天起幾天後出發，負的是幾天前
         private static func makeTrip(_ from: Int, _ days: Int, _ st: Settings) -> Trip {
+            return tripOn(addDays(todayISO(), from), days, st)
+        }
+
+        /// 指定哪天出發
+        private static func tripOn(_ start: String, _ days: Int, _ st: Settings, _ arrive: Part = .am) -> Trip {
             let draft: TripDraft = TripDraft(
-                city: "seoul", base: .C, start: addDays(todayISO(), from), days: days, arrive: .am, leave: .pm,
-                people: 2)
+                city: "seoul", base: .C, start: start, days: days, arrive: arrive, leave: .pm, people: 2)
             var trip: Trip = generate(draft, st)
             trip.planTweaks = []
             return trip
+        }
+
+        /// 這幾天的站都拿掉
+        private static func clear(_ trip: inout Trip, _ days: [Int]) {
+            for i in trip.slots.indices where days.contains(trip.slots[i].day) {
+                trip.slots[i].items = []
+            }
         }
 
         /// 這幾天的站都當成去過了，每天第一站寫一句
@@ -278,7 +344,7 @@
             for i in trip.slots.indices {
                 trip.slots[i].items.removeAll { (it: Stop) -> Bool in it.id == id }
             }
-            return planToStop(place, "這一帶順路的小地方")
+            return planToStop(place, place.s == .L ? "這一帶的主要景點" : "這一帶順路的小地方")
         }
 
         /// 放進那一天的那個時段

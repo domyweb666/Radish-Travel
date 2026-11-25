@@ -1,5 +1,6 @@
-// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、開放／怎麼訂／來源（有查到才有）、韓文名、找路，
-// 下面是移到別的時段、換一個，右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
+// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、韓文名、找路、移到別的時段、換一個，
+// 照線框的順序；核對資料的開放／怎麼訂／來源（有查到才有）排在後面，不把要按的擠到後面幾頁。
+// 右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
 // 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
 // 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」、剛拿掉又從舊的入口進來的），只給看。
 // 每一塊的畫面在 StopScreenParts.swift；換一個、不去這一站、過敏告知卡是這一頁自己開的半頁，給司機看是全螢幕。
@@ -61,7 +62,8 @@ private struct StopGone: View {
     }
 }
 
-/// 不在這趟裡的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver。
+/// 不在這趟裡的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver，
+/// 跟這趟裡的站一樣，開放／怎麼訂／來源排在要按的後面。
 /// 不給移時段、換一個、不想去、拔起來；要排進來在附近還有什麼那張半頁按
 private struct StopPreview: View {
     @Environment(AppStore.self) private var store
@@ -96,8 +98,7 @@ private struct StopPreview: View {
             header
                 .padding(.top, -T.Space.s4)
             StopInfoSection(
-                it: it, hasOpen: opensKnown(factOf(place.id), place.c, shut, nil), noBook: bookUnknown(it, shut))
-            StopFactBlocks(it: it, shut: shut, caution: nil, visit: nil)
+                it: it, hasOpen: opensKnown(factOf(place.id), place.c, shut), noBook: bookUnknown(it, shut))
             if let trip = store.s.trip {
                 StopAllergyEntry(it: it, trip: trip) {
                     allergy = true
@@ -106,6 +107,7 @@ private struct StopPreview: View {
             StopPlaceCard(it: it) {
                 driver = true
             }
+            StopFactBlocks(it: it, shut: shut, visit: nil)
             StopOtherMaps(it: it)
         }
         .sheet(isPresented: $allergy) {
@@ -212,11 +214,10 @@ private struct StopPage: View {
 
     @ViewBuilder
     private var content: some View {
-        StopHeader(it: it, trip: trip, slot: found.s, shut: shut, partShut: partShut)
+        StopHeader(it: it, trip: trip, slot: found.s, shut: shut, partShut: partShut, caution: caution)
             .padding(.top, -T.Space.s4)
         StopInfoSection(
-            it: it, hasOpen: opensKnown(factOf(it.id), it.c, shut, caution), noBook: bookUnknown(it, shut))
-        StopFactBlocks(it: it, shut: shut, caution: caution, visit: visit)
+            it: it, hasOpen: opensKnown(factOf(it.id), it.c, shut), noBook: bookUnknown(it, shut))
         StopAllergyEntry(it: it, trip: trip) {
             pane = .allergy
         }
@@ -227,6 +228,7 @@ private struct StopPage: View {
         StopEditBlock(
             id: id, it: it, trip: trip,
             onSwap: { pane = .swap })
+        StopFactBlocks(it: it, shut: shut, visit: visit)
         StopOtherMaps(it: it)
     }
 

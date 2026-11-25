@@ -109,6 +109,17 @@ func bookDecide(_ b: BookInfo, _ visit: String) -> String? {
 
 /* ---------- 這趟要先訂的 ---------- */
 
+private let PLACE_BOOK: [String: Bool] = Dictionary(
+    PLACES.map { (p: Place) -> (String, Bool) in (p.id, p.b == true) },
+    uniquingKeysWith: { (a: Bool, _: Bool) -> Bool in a })
+
+/// 這一站要不要先訂。資料包裡有的看現在的資料，舊存檔的標記可能過時了；自己加的、AI 加的看站自己。
+/// 使用者打的勾另外存，不受這個影響
+func needsBook(_ it: Stop) -> Bool {
+    if let now = PLACE_BOOK[it.id] { return now }
+    return it.b == true
+}
+
 enum BookStage: Hashable, Sendable {
     /// 還沒開賣
     case notYet
@@ -143,14 +154,14 @@ struct BookRow: Identifiable, Hashable, Sendable {
     }
 }
 
-/// 這趟每一個要先訂的站，照行程順序。只有標了要先訂（b）的才在這裡
+/// 這趟每一個要先訂的站，照行程順序。只有要先訂的（needsBook）才在這裡
 func bookPlan(
     _ trip: Trip, _ checks: [String: Bool], _ today: String, now: Date? = nil,
     fact: (String) -> PlaceFact? = factOf
 ) -> [BookRow] {
     let clock: Double = bookNow(today, now)
     var out: [BookRow] = []
-    for x in allItems(trip) where x.it.b == true {
+    for x in allItems(trip) where needsBook(x.it) {
         let found: PlaceFact? = fact(x.it.id)
         let visit: String = addDays(trip.start, x.s.day - 1)
         var row: BookRow = BookRow(
@@ -230,7 +241,9 @@ func bookOpenText(_ r: BookRow, _ today: String) -> String {
         }
         return "已經開賣"
     }
-    if r.stage == BookStage.unknown && r.how != nil { return "怎麼訂，看那一站" }
+    if r.stage == BookStage.unknown && r.how != nil {
+        return bookHost(r.url) == nil ? "怎麼訂，在行程裡點開這一站看" : "哪天開賣沒查到，看下面的訂票網頁"
+    }
     guard r.stage == BookStage.notYet, let on = r.openOn else { return "開賣時間還不知道" }
     let date: String = on == today ? "今天" : fmtDay(on)
     guard let at = r.openAt else { return "\(date)開賣，幾點還不知道" }
@@ -244,11 +257,11 @@ func bookDecideText(_ r: BookRow, _ today: String) -> String? {
     return on >= today ? "免費取消到 \(bookMonthDay(on))" : "免費取消的期限過了"
 }
 
-/// 要先訂的那一列的說明，最多兩行。打勾了就不用再寫開賣
+/// 要先訂的那一列的說明，最多兩行。打勾了、去過了就不用再寫開賣（下面也沒有訂票網頁那一列）
 func bookNote(_ r: BookRow, _ today: String) -> String {
     var first: String = bookWhen(r)
     if let decide = bookDecideText(r, today) { first += "・" + decide }
-    if r.checked { return first }
+    if r.checked || r.stop.status == StopStatus.pulled { return first }
     return first + "\n" + bookOpenText(r, today)
 }
 
@@ -279,7 +292,7 @@ func bookHowText(_ r: BookRow) -> String {
         return "到 \(host) 訂。"
     }
     if how.count > BOOK_HOW_MAX {
-        guard let host = bookHost(r.url) else { return "怎麼訂，看那一站。" }
+        guard let host = bookHost(r.url) else { return "怎麼訂，在行程裡點開這一站看。" }
         return "到 \(host) 訂。"
     }
     let verbs: [String] = ["訂", "約", "買", "票", "排"]
@@ -303,6 +316,11 @@ private func bookHasClosed(_ f: PlaceFact?) -> Bool {
     return x.closed != nil || x.closedNth != nil || x.closedOn != nil || x.off != nil || x.gone != nil
 }
 
+/// 那天有開、排的時段不開，接在站名後面講：「排在下午，還沒開，16:00 才開」
+func partShutLine(_ part: Part, _ why: String) -> String {
+    return "排在\(PART[need: part])，\(why)"
+}
+
 /// 那天不開的站和要提醒的公告，一站一句：第 2 天景福宮那天休館（每週二休）。判斷跟 closedWhy 一樣，不另外看核對狀態
 func closedLines(
     _ trip: Trip, fact: (String) -> PlaceFact? = factOf, _ c: SeoulChecked = SeoulChecked.shared
@@ -317,7 +335,7 @@ func closedLines(
             let why: String = raw.trimmingCharacters(in: trim)
             out.append(f.gone != nil ? "\(name)去不了（\(why)）" : "\(name)那天\(closedWord(x.it.c))（\(why)）")
         } else if let raw = partClosedWhy(f, visit, x.s.part, c) {
-            out.append("\(name)\(PART[need: x.s.part])不開（\(raw.trimmingCharacters(in: trim))）")
+            out.append(name + partShutLine(x.s.part, raw.trimmingCharacters(in: trim)))
         }
         if let raw = cautionWhy(f, visit, c) {
             out.append("\(name)：\(raw.trimmingCharacters(in: trim))")
@@ -337,7 +355,7 @@ func recheckStops(_ trip: Trip, fact: (String) -> PlaceFact? = factOf) -> [Stop]
             continue
         }
         let risky: Bool = tip.contains("休館") || tip.contains("班次") || tip.contains("名額")
-        if x.it.b == true || risky { out.append(x.it) }
+        if needsBook(x.it) || risky { out.append(x.it) }
     }
     return out
 }
@@ -381,10 +399,19 @@ func newClosedNotes(_ before: Trip, _ after: Trip, closed: ClosedCheck = closedB
     return newLines(old, now)
 }
 
-/// 接在「改好了」後面的休館。超過兩條就只講幾站，沒有就是空的
-func closedTail(_ notes: [String]) -> String {
-    if notes.count > 2 { return "有 \(notes.count) 件開放時間要注意的，看每天最上面那一行。" }
-    return notes.joined()
+/// 接在「改好了」後面的休館、時段不開、要注意的。超過兩條就只列站名，原因在每一站的頁上看得到。沒有就是空的
+func closedTail(_ before: Trip, _ after: Trip, closed: ClosedCheck = closedByFacts) -> String {
+    let notes: [String] = newClosedNotes(before, after, closed: closed)
+    if notes.count <= 2 { return notes.joined() }
+    var names: [String] = []
+    for x in allItems(after) {
+        // closedNotes 每一句的開頭和站名
+        let head: String = "第 \(x.s.day) 天 "
+        let name: String = "「\(x.it.n)」"
+        let hit: Bool = notes.contains { (s: String) -> Bool in s.hasPrefix(head) && s.contains(name) }
+        if hit && !names.contains(x.it.n) { names.append(x.it.n) }
+    }
+    return "有 \(names.count) 站的開放時間要注意，點開那一站看：\(names.joined(separator: "、"))。"
 }
 
 /* ---------- 跟著日期走的字 ---------- */

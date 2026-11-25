@@ -331,13 +331,23 @@ struct CheckRow: View {
     let checked: Bool
     let title: String
     var note: String?
+    /// 比別條急：還沒打勾的時候字用警告色
+    var warn: Bool = false
     let action: () -> Void
 
-    init(checked: Bool, title: String, note: String? = nil, action: @escaping () -> Void) {
+    init(
+        checked: Bool, title: String, note: String? = nil, warn: Bool = false, action: @escaping () -> Void
+    ) {
         self.checked = checked
         self.title = title
         self.note = note
+        self.warn = warn
         self.action = action
+    }
+
+    private var titleTone: TextTone {
+        if checked { return .secondary }
+        return warn ? .destructive : .primary
     }
 
     var body: some View {
@@ -348,7 +358,7 @@ struct CheckRow: View {
                     .foregroundStyle(checked ? C.accent : C.fieldBorder)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: T.Space.s1) {
-                    DomyText(title, .body, tone: checked ? .secondary : .primary)
+                    DomyText(title, .body, tone: titleTone)
                     if let note {
                         DomyText(note, .footnote, tone: .secondary)
                     }

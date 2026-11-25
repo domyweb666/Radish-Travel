@@ -1005,7 +1005,7 @@ func planText(_ t: Trip, _ withIds: Bool = false, _ fmtDate: ((Int) -> String)? 
                     let shut: String = closedTag(t, i.id)
                     items.append("[\(i.id)] \(i.n)(\(size),\(CAT[need: i.c]),\(areaOf(i))\(shut)\(pulled))")
                 } else {
-                    items.append(i.n + (i.b == true ? "（要先訂）" : ""))
+                    items.append(i.n + (needsBook(i) ? "（要先訂）" : ""))
                 }
             }
             var line: String = items.joined(separator: "、")

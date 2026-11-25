@@ -4,19 +4,19 @@
 // 對應 mobile/src/screens/PrepScreen.tsx。
 import SwiftUI
 
-/// 列上只放短的：二手核對・11/14，或是未核對
+/// 列上只放短的：二手資料・11/14，或是未核對
 func prepFactShort(_ f: Fact) -> String {
     if f.checked.isEmpty { return "未核對" }
     let parts: [String] = f.checked.components(separatedBy: "-")
     guard parts.count >= 3, let m = Int(parts[1]), let d = Int(parts[2]) else {
-        return "\(f.status)・\(f.checked)"
+        return "\(statusWord(f.status))・\(f.checked)"
     }
-    return "\(f.status)・\(m)/\(d)"
+    return "\(statusWord(f.status))・\(m)/\(d)"
 }
 
 func prepFactFull(_ f: Fact) -> String {
     if f.checked.isEmpty { return "還沒核對過，沒有來源" }
-    return "\(f.status) \(f.checked)・來源：\(f.source)"
+    return "\(statusWord(f.status)) \(f.checked)・來源：\(f.source)"
 }
 
 /// 檢查表、地雷的每一條在 TS 都是 Fact 多幾欄；Swift 是不同的型別，要一起列來源時先轉成 Fact
@@ -44,7 +44,7 @@ private struct PrepSources: View {
     var body: some View {
         SheetScaffold(title, onClose: onClose) {
             DomyText(
-                "「看過官方頁」是直接讀過官方頁。「二手核對」是從旅遊媒體交叉對過，沒有直接讀官方頁。「來源較舊」是找到的資料比較舊，可能已經變了。「未核對」是還沒查。入境規定出發前請回官方頁再看一次。",
+                "「看過官方頁」是直接讀過官方頁。「二手資料」是從旅遊媒體交叉對過，沒有直接讀官方頁。「來源較舊」是找到的資料比較舊，可能已經變了。「未核對」是還沒查。入境規定出發前請回官方頁再看一次。",
                 .subheadline, tone: .secondary)
             DomySection {
                 ForEach(Array(facts.enumerated()), id: \.offset) { _, f in

@@ -12,7 +12,7 @@ func unbookedOf(_ trip: Trip, _ checks: [String: Bool]) -> [Stop] {
     var out: [Stop] = []
     for x in allItems(trip) {
         let it: Stop = x.it
-        if it.b == true && it.status == .kept && checks["b_" + it.id] != true {
+        if needsBook(it) && it.status == .kept && checks["b_" + it.id] != true {
             out.append(it)
         }
     }

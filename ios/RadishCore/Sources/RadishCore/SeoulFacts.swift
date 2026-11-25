@@ -338,6 +338,11 @@ func factLabel(_ f: PlaceFact?) -> String {
     return x.status == FactStatus.official ? "看過官方頁 \(md)" : "二手資料 \(md)"
 }
 
+/// 資料包寫的「二手核對」跟核對資料的「二手資料」是同一件事，顯示的時候用同一個說法
+func statusWord(_ status: String) -> String {
+    return status == "二手核對" ? "二手資料" : status
+}
+
 private func factMonthDay(_ iso: String) -> String {
     let parts: [Int] = iso.components(separatedBy: "-").compactMap { (x: String) -> Int? in Int(x) }
     guard parts.count == 3 else { return iso }

@@ -17,6 +17,8 @@ struct StopHeader: View {
     let shut: StopShut?
     /// 排的這個時段不開。開、或那天整天不開是 nil
     let partShut: String?
+    /// 那天要注意、但不算不開的。沒有是 nil
+    let caution: String?
 
     private var line: String {
         let date: String = fmtDay(addDays(trip.start, slot.day - 1))
@@ -37,6 +39,10 @@ struct StopHeader: View {
                 WarnTag(partShut)
                     .accessibilityIdentifier("stop-part-closed")
             }
+            if let caution {
+                WarnTag("這天要注意：\(caution)")
+                    .accessibilityIdentifier("stop-caution")
+            }
             tags
         }
     }
@@ -52,7 +58,7 @@ struct StopHeader: View {
         let st: Settings = tripSettings(store.s.settings, trip.tweaks)
         return TagRow {
             Tag(it.s == .L ? "主要景點" : "順路小地方")
-            if it.b == true {
+            if needsBook(it) {
                 Tag("要先訂", tone: .accent)
             }
             if it.ai == true {
@@ -148,12 +154,6 @@ struct StopInfoRow: View {
     let text: String
     var tag: String? = nil
     var muted: Bool = false
-    var warn: Bool = false
-
-    private var tone: TextTone {
-        if warn { return .destructive }
-        return muted ? .secondary : .primary
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
@@ -163,7 +163,7 @@ struct StopInfoRow: View {
                     Tag(tag)
                 }
             }
-            DomyText(text, .body, tone: tone)
+            DomyText(text, .body, tone: muted ? .secondary : .primary)
         }
         .padding(.vertical, T.Space.s3)
         .fillLeading()

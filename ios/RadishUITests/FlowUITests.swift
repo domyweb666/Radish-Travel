@@ -108,13 +108,21 @@ final class FlowUITests: RadishUITestCase {
             tries += 1
         }
         row.tap()
-        requireVisible(idQuery("stop-move"), "一站推進頁的移到別的時段", timeout: 10)
+        XCTAssertTrue(idQuery("stop-move").firstMatch.waitForExistence(timeout: 10), "沒有進到一站推進頁")
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
         shot("一站")
-        scrollShots("一站", count: 2)
-        tapClear("stop-move")
+        // 有核對資料的站第一頁放不下，但最多捲兩次就要整顆看得到、不被講的那一列蓋住
+        let move: XCUIElement = idQuery("stop-move").firstMatch
+        for _ in 0..<2 where move.frame.maxY > coverTop() - 16 {
+            scrollDown()
+        }
+        XCTAssertLessThanOrEqual(move.frame.maxY, coverTop(), "捲了兩次，移到別的時段還沒整顆露出來")
+        shot("一站-移到別的時段")
+        move.tap()
         seeText("關閉")
         shot("移到別的時段")
         tapButton("關閉")
+        scrollShots("一站", count: 2)
         goBack()
 
         // 這一天最下面講的那一列：點第一個說法，升起剛剛那一則

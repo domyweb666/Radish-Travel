@@ -781,6 +781,20 @@
    "url": "https://www.trazy.com/experience/detail/ring-making-experience-in-hongdae-myeongdong",
    "said": "Before 5:00pm",
    "official": false
+  },
+  {
+   "id": "p16b",
+   "field": "book.how",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/mugunghwa",
+   "said": "+82 2-317-7061",
+   "official": false
+  },
+  {
+   "id": "p16b",
+   "field": "book.how",
+   "url": "https://www.catchtable.net/discovery/koreas-10-best-korean-restaurants-in-myeongdong.html",
+   "said": "open three months out by phone",
+   "official": false
   }
  ],
  "notes": [

@@ -91,8 +91,9 @@ private func generateBody(
     let base: AreaKey = areaKey(d.base ?? st.base)
     let wantRest: Bool = st.purposes.contains(.rest)
     let lv: [FoodKind: Int] = foodLv(st)
-    // 同一組（「挑一間」拆成的那幾間）一趟只排一間
+    // 同一組（「挑一間」拆成的那幾間）一趟只排一間。只有晚餐、或長行程的白天沒別組可排了，才排同組的另一間
     var usedGroup: Set<String> = []
+    var sameGroupOK: Bool = false
     // 現在排到第幾天的哪個時段，休館判斷用
     var today: Int = 1
     var nowPart: Part = .am
@@ -117,9 +118,10 @@ private func generateBody(
         if closedOnTripDay(d.start, today, p.id, closed) != nil { return true }
         return closedAtTripPart(d.start, today, nowPart, p.id, partCheck) != nil
     }
-    /// 這趟排過了，或排過同一組的另一間
+    /// 這趟排過了，或排過同一組的另一間。同一間不管怎樣都不排第二次
     func taken(_ p: Place) -> Bool {
-        return used.contains(p.id) || usedGroup.contains(placeGroup(p.id))
+        if used.contains(p.id) { return true }
+        return !sameGroupOK && usedGroup.contains(placeGroup(p.id))
     }
     /// 這一帶這天還有沒有這種大小的地方可以排
     func anyOpen(_ a: AreaKey, _ size: StopSize) -> Bool {
@@ -234,9 +236,19 @@ private func generateBody(
     }
     func dinnerWhyOf(_ p: Place) -> String {
         guard let f = p.f else { return pref(p) }
-        let level: Int = lv[f] ?? 0
-        let word: String = level >= 0 && level < FLV.count ? FLV[level] : ""
-        return "晚餐排\(FOOD[need: f].name)，你設的是「\(word)」"
+        let text: String = "晚餐吃\(FOOD[need: f].name)"
+        // 每一種都說不要的時候會拿小館來排，那不是使用者說的，不講
+        switch base0.food[f] ?? 0 {
+        case 3: return text + "，你說主要吃這種"
+        case 2: return text + "，你說常常吃這種"
+        case 1: return text + "，你說偶爾吃這種"
+        default: return text
+        }
+    }
+    /// 排到同一組的另一間
+    func sameGroupWhy(_ p: Place) -> String {
+        guard let f = p.f else { return pref(p) }
+        return "晚餐吃\(FOOD[need: f].name)，這一晚沒有別類的店可以排"
     }
     func eatsNow(_ p: Place) -> Bool {
         guard let f = p.f else { return false }
@@ -312,6 +324,13 @@ private func generateBody(
                 if dinner == nil { dinner = take(ALL, StopSize.S, isKind, dinnerWhy) }
                 if dinner == nil { dinner = take(city, StopSize.S, eatsNow, dinnerWhy) }
                 if dinner == nil { dinner = take(ALL, StopSize.S, eatsNow, dinnerWhy) }
+                if dinner == nil {
+                    // 還開著的每一組都排過了：排同一組沒去過的另一間，不要讓晚餐空著
+                    sameGroupOK = true
+                    dinner = take(city, StopSize.S, eatsNow, sameGroupWhy)
+                    if dinner == nil { dinner = take(ALL, StopSize.S, eatsNow, sameGroupWhy) }
+                    sameGroupOK = false
+                }
                 if let x = dinner { items.append(x) }
                 if pace == .fast && !edge {
                     let notEatNotEasy: (Place) -> Bool = { (p: Place) -> Bool in
@@ -370,6 +389,29 @@ private func generateBody(
                     if let x = more { items.append(x) }
                 }
                 if pace == .slow && part == .pm { restFlag = true }
+            }
+            // 超過七天的行程，白天照上面的規矩一站都挑不到：排同一組沒去過的另一間。吃的留給晚餐
+            if d.days > 7 && part != .eve && a != AreaKey.J && items.isEmpty {
+                let notEat: (Place) -> Bool = { (p: Place) -> Bool in
+                    return p.c != .eat && dayOK(p)
+                }
+                var fill: Stop? = nil
+                sameGroupOK = true
+                if edge {
+                    let easy: (Place) -> Bool = { (p: Place) -> Bool in
+                        return notEat(p) && (p.l == true || p.c == .shop || p.c == .cafe)
+                    }
+                    let noBook: (Place) -> Bool = { (p: Place) -> Bool in
+                        return notEat(p) && p.b != true
+                    }
+                    fill = take(near(a), StopSize.S, easy, edgeWhy)
+                    if fill == nil { fill = take(near(a), StopSize.S, noBook, edgeWhy) }
+                } else {
+                    fill = take([a], StopSize.S, notEat, pref)
+                    if fill == nil { fill = take(near(a), StopSize.S, notEat, pref) }
+                }
+                sameGroupOK = false
+                if let x = fill { items.append(x) }
             }
             if items.isEmpty { restFlag = true }
             slots.append(Slot(day: day, part: part, off: nil, rest: restFlag, items: items))

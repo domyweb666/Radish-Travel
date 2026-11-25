@@ -1405,10 +1405,8 @@ private func talkChecked(_ id: String) -> Bool {
     return f.status != FactStatus.none
 }
 
-/// 要先訂這件事核對過了嗎：核對結果裡有寫怎麼訂，現在的資料也還標著要先訂（舊存檔的站可能還帶著以前的標記）
+/// 要先訂這件事核對過了嗎：核對結果裡有寫怎麼訂（要不要先訂看 needsBook）
 private func talkBookChecked(_ id: String) -> Bool {
-    let place: Place? = PLACES.first { (p: Place) -> Bool in p.id == id }
-    if let p = place, p.b != true { return false }
     guard let f = factOf(id), f.book != nil else { return false }
     return f.status != FactStatus.none
 }
@@ -1430,6 +1428,19 @@ private func talkBits(_ t: Trip, _ x: Found) -> TalkBits {
             out.plain.append(line)
         }
     }
+    if it.status != .pulled {
+        // 那天有開、排的時段不開；不擋但要提醒的公告
+        var more: [String] = []
+        if let why = closedAtTripPart(t.start, x.s.day, x.s.part, it.id, partClosedByFacts) {
+            more.append(partShutLine(x.s.part, why))
+        }
+        if let why = closedOnTripDay(t.start, x.s.day, it.id, cautionByFacts) { more.append(why) }
+        if talkChecked(it.id) {
+            out.known.append(contentsOf: more)
+        } else {
+            out.plain.append(contentsOf: more)
+        }
+    }
     if let tip = tipOf(it) {
         if tip.status == FactStatus.none {
             out.plain.append(tip.text)
@@ -1438,7 +1449,7 @@ private func talkBits(_ t: Trip, _ x: Found) -> TalkBits {
         }
         if let extra = tip.extra { out.plain.append(extra) }
     }
-    if it.b == true {
+    if needsBook(it) {
         if talkBookChecked(it.id) {
             out.known.append("要先訂")
         } else {
@@ -1464,7 +1475,7 @@ private func phoneStopTip(_ t: Trip, _ x: Found) -> String {
 
 private func phoneBooking(_ t: Trip, _ checks: [String: Bool]) -> String {
     let all: [Stop] = allItems(t).map { (x: Found) -> Stop in x.it }.filter { (it: Stop) -> Bool in
-        return it.b == true && it.status == .kept
+        return needsBook(it) && it.status == .kept
     }
     if all.isEmpty { return phoneNoBooking(t) }
     let left: [Stop] = unbookedOf(t, checks)

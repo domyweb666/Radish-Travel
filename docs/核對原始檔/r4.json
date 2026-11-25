@@ -625,6 +625,34 @@
    "url": "https://www.namisum.com/275",
    "said": "마지막 배 21:00 / 21:05",
    "official": true
+  },
+  {
+   "id": "p51",
+   "field": "tip",
+   "url": "https://www.namisum.com/277",
+   "said": "용산역 ↔ 가평역(약 60분 소요)",
+   "official": true
+  },
+  {
+   "id": "p51",
+   "field": "tip",
+   "url": "https://www.namisum.com/277",
+   "said": "10-4 시내버스 또는 택시 탑승 시 약 5분 소요",
+   "official": true
+  },
+  {
+   "id": "p51",
+   "field": "tip",
+   "url": "https://www.namisum.com/277",
+   "said": "배로 약 5분 정도 소요",
+   "official": true
+  },
+  {
+   "id": "p47b",
+   "field": "book.how",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/escondido",
+   "said": "+82 2-2038-8994",
+   "official": false
   }
  ],
  "notes": [

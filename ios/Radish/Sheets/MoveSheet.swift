@@ -21,6 +21,7 @@ struct MoveSheet: View {
     @Environment(Sheets.self) private var sheets
     /// 還沒選是 nil：「移過去」不能按
     @State private var to: MoveTarget?
+    @Environment(\.dynamicTypeSize) private var typeSize
     private let id: String
 
     init(id: String) {
@@ -39,7 +40,13 @@ struct MoveSheet: View {
             // 半頁開著的時候換了一趟：選的那一格是上一趟的，重選
             to = nil
         }
-        .presentationDetents([.fraction(0.82), .large])  // domy-ignore: A6 是 0.7，五天的格子放不下，加高
+        .presentationDetents(detents)
+    }
+
+    /// 輔助使用的大字：一開就是整張高，格子才看得到幾列
+    private var detents: Set<PresentationDetent> {
+        if typeSize.isAccessibilitySize { return [.large] }
+        return [.fraction(0.82), .large]  // domy-ignore: A6 是 0.7，五天的格子放不下，加高
     }
 
     /// 這一站剛被拿掉或換掉了（例：用講的改掉了）
@@ -51,13 +58,19 @@ struct MoveSheet: View {
 
     private func page(_ trip: Trip, _ found: Found) -> some View {
         SheetScaffold("把「\(found.it.n)」移到", scroll: false, onClose: { sheets.close() }) {
-            DomyText(
-                "現在在第 \(found.s.day) 天\(PART[need: found.s.part])。在路上的時段不能選。",
-                .footnote, tone: .secondary)
+            if !typeSize.isAccessibilitySize {
+                note(found)
+            }
             ScrollView {
-                MoveGrid(trip: trip, from: found, to: to) { (next: MoveTarget) -> Void in
-                    Haptic.select()
-                    to = next
+                VStack(alignment: .leading, spacing: T.Space.s4) {
+                    // 輔助使用的大字跟著格子一起捲，把位置讓給格子
+                    if typeSize.isAccessibilitySize {
+                        note(found)
+                    }
+                    MoveGrid(trip: trip, from: found, to: to) { (next: MoveTarget) -> Void in
+                        Haptic.select()
+                        to = next
+                    }
                 }
                 .padding(.vertical, T.Space.s1)
             }
@@ -69,8 +82,15 @@ struct MoveSheet: View {
         }
     }
 
+    private func note(_ found: Found) -> some View {
+        DomyText(
+            "現在在第 \(found.s.day) 天\(PART[need: found.s.part])。在路上的時段不能選。",
+            .footnote, tone: .secondary)
+    }
+
     private func actions(_ found: Found) -> some View {
-        HStack(spacing: T.Space.s2) {
+        // 字級放大時兩顆放不下，改成一顆一列
+        PairLayout(spacing: T.Space.s2) {
             DomyButton(to == nil ? "先選一個時段" : "移過去", disabled: to == nil, fullWidth: true) {
                 move(found.it)
             }
@@ -121,30 +141,80 @@ private struct MoveGrid: View {
         Array(stride(from: 1, through: trip.days, by: 1))
     }
 
+    /// 輔助使用的大字：天數自己一行在上面，三格分整張的寬，時段寫進格子裡
+    private var big: Bool {
+        return typeSize.isAccessibilitySize
+    }
+
     var body: some View {
-        Grid(horizontalSpacing: T.Space.s2, verticalSpacing: T.Space.s2) {
-            GridRow {
-                Color.clear
-                    .gridCellUnsizedAxes([.horizontal, .vertical])
-                ForEach(PARTS, id: \.self) { (p: Part) in
-                    DomyText(PART[need: p], .footnote, tone: .secondary, align: .center)
-                        .frame(maxWidth: .infinity)
-                }
+        VStack(alignment: .leading, spacing: big ? T.Space.s5 : T.Space.s2) {
+            if !big {
+                header
             }
             ForEach(days, id: \.self) { (d: Int) in
-                GridRow {
-                    dayLabel(d)
-                    ForEach(PARTS, id: \.self) { (p: Part) in
-                        MoveCell(
-                            state: state(d, p), day: d, part: p, shut: shutText(d),
-                            partShut: tripPartShut(trip, from.it.id, d, p)
-                        ) {
-                            onPick(MoveTarget(day: d, part: p))
-                        }
-                    }
-                }
+                dayRow(d)
             }
         }
+    }
+
+    private var header: some View {
+        HStack(spacing: T.Space.s2) {
+            labelColumn {
+                Color.clear
+                    .frame(width: 0, height: 0)
+            }
+            ForEach(PARTS, id: \.self) { (p: Part) in
+                DomyText(PART[need: p], .footnote, tone: .secondary, align: .center)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func dayRow(_ d: Int) -> some View {
+        if big {
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                dayLabel(d)
+                // 字會換行，三格照最高的那格一樣高
+                HStack(spacing: T.Space.s2) {
+                    cells(d)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            HStack(spacing: T.Space.s2) {
+                labelColumn {
+                    dayLabel(d)
+                }
+                cells(d)
+            }
+        }
+    }
+
+    private func cells(_ d: Int) -> some View {
+        return ForEach(PARTS, id: \.self) { (p: Part) in
+            MoveCell(
+                state: state(d, p), day: d, part: p, shut: shutText(d),
+                partShut: tripPartShut(trip, from.it.id, d, p)
+            ) {
+                onPick(MoveTarget(day: d, part: p))
+            }
+        }
+    }
+
+    /// 最前面那一欄。每一列都疊著全部的天數（看不見的），寬度照最長的那個，日期不會被切、三格一樣寬
+    private func labelColumn<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        return ZStack(alignment: .leading) {
+            ZStack(alignment: .leading) {
+                ForEach(days, id: \.self) { (d: Int) in
+                    dayLabel(d)
+                }
+            }
+            .frame(height: 0)
+            .hidden()
+            content()
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     /// 那天整天不開，給旁白念的。有開是 nil
@@ -155,20 +225,30 @@ private struct MoveGrid: View {
 
     private func dayLabel(_ d: Int) -> some View {
         return VStack(alignment: .leading, spacing: 0) {
-            DomyText("第 \(d) 天", .subheadline, weight: .semibold, lines: 1)
-            // 日期和不開同一行，列才不會變高。字放大時排不下，改成兩行
-            if typeSize.isAccessibilitySize {
+            // 不開寫在「第幾天」旁邊，列才不會變高。字放大時排不下，改成三行；輔助使用的大字整張寬，排成一行
+            if big {
+                TagRow {
+                    dayText(d)
+                    dateText(d)
+                    offText(d)
+                }
+            } else if typeSize > DynamicTypeSize.xLarge {
+                dayText(d)
                 dateText(d)
                 offText(d)
             } else {
                 HStack(spacing: T.Space.s1) {
-                    dateText(d)
+                    dayText(d)
                     offText(d)
                 }
+                dateText(d)
             }
         }
-        .gridColumnAlignment(.leading)
         .accessibilityElement(children: .combine)
+    }
+
+    private func dayText(_ d: Int) -> some View {
+        return DomyText("第 \(d) 天", .subheadline, weight: .semibold, lines: 1)
     }
 
     private func dateText(_ d: Int) -> some View {
@@ -209,6 +289,17 @@ private struct MoveCell: View {
     /// 只有這個時段不開。格子裡多一行「不開」，選了下面寫為什麼
     let partShut: String?
     let action: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// 輔助使用的大字沒有上面那排時段，時段寫進格子裡
+    private var showsPart: Bool {
+        return typeSize.isAccessibilitySize
+    }
+
+    /// 字放大時一行放不下「現在在這」，准換行
+    private var titleLines: Int? {
+        return typeSize > DynamicTypeSize.xLarge ? nil : 1
+    }
 
     private var title: String {
         switch state {
@@ -246,6 +337,9 @@ private struct MoveCell: View {
         let shape = RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous)
         Button(action: action) {
             VStack(spacing: 0) {
+                if showsPart {
+                    DomyText(PART[need: part], .caption, tone: state == .off ? .disabled : .secondary, lines: 1)
+                }
                 HStack(spacing: T.Space.s1) {
                     if picked {
                         Image(systemName: "checkmark")
@@ -253,13 +347,16 @@ private struct MoveCell: View {
                             .foregroundStyle(C.strong)
                             .accessibilityHidden(true)
                     }
-                    DomyText(title, enabled ? .subheadline : .footnote, tone: tone, weight: picked ? .bold : nil, lines: 1)
+                    DomyText(
+                        title, enabled ? .subheadline : .footnote, tone: tone, weight: picked ? .bold : nil,
+                        lines: titleLines, align: .center)
                 }
                 if showsPartShut {
                     DomyText("不開", .caption, tone: .destructive, lines: 1)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: T.Size.button)
+            .padding(.vertical, showsPart ? T.Space.s2 : 0)
+            .frame(maxWidth: .infinity, minHeight: T.Size.button, maxHeight: showsPart ? .infinity : nil)
             .background(fill, in: shape)
             .overlay(shape.strokeBorder(border, lineWidth: picked ? T.Size.hairline * 2 : T.Size.hairline))
             .contentShape(shape)
@@ -307,10 +404,8 @@ private struct MoveSummary: View {
                 DomyText("第 \(to.day) 天現在有 \(bigCount(trip, to.day)) 個主要景點、共 \(dayStops(trip, to.day).count) 站", .subheadline)
                 if let why = moveClosed(trip, it.id, to.day) {
                     DomyText("這天\(kindWords(it.c).shut)：\(why)", .subheadline, tone: .destructive)
-                        .accessibilityIdentifier("move-closed")
                 } else if let why = tripPartShut(trip, it.id, to.day, to.part) {
                     DomyText(why, .subheadline, tone: .destructive)
-                        .accessibilityIdentifier("move-part-closed")
                 }
                 if let warn = tooMany(to) {
                     DomyText(warn, .subheadline, tone: .destructive)
@@ -324,6 +419,15 @@ private struct MoveSummary: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(C.surfaceMuted, in: RoundedRectangle(cornerRadius: T.Radius.md, style: .continuous))
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(mark)
+    }
+
+    /// 整塊併成一個念，識別碼要掛在整塊上：選了那天不開、那個時段不開的，各自一個
+    private var mark: String {
+        guard let to else { return "move-summary" }
+        if moveClosed(trip, it.id, to.day) != nil { return "move-closed" }
+        if tripPartShut(trip, it.id, to.day, to.part) != nil { return "move-part-closed" }
+        return "move-summary"
     }
 
     /// 這一站是主要景點、移到別天，那天會超過 2 個
