@@ -230,12 +230,16 @@ final class AppStore {
         show("這一步沒有存成功，手機的空間可能滿了。", false)
     }
 
-    /// 行程、打勾、提醒開關有變，就把排好的通知整批換新。關掉提醒時是清空。內容跟上次一樣就不動
+    /// 行程、打勾、提醒開關有變，或過了哪一站的開賣時間，就把排好的通知整批換新。
+    /// 關掉提醒時是清空。內容跟上次一樣就不動
     private func syncReminderList() {
         guard ready else { return }
-        let list: [Reminder] = s.remind ? remindersOf(remindState(s), today) : []
-        let key: String = list.map { (item: Reminder) -> String in "\(item.on)|\(item.title)|\(item.body)" }
-            .joined(separator: "/")
+        let list: [Reminder] = s.remind ? remindersOf(remindState(s), today, now: Date()) : []
+        let parts: [String] = list.map { (item: Reminder) -> String in
+            let at: Double = item.at ?? 0
+            return "\(item.id)|\(item.on)|\(at)|\(item.title)|\(item.body)"
+        }
+        let key: String = parts.joined(separator: "/")
         if key == reminderKey { return }
         reminderKey = key
         Task { await syncReminders(list) }
@@ -429,8 +433,9 @@ final class AppStore {
         let now = todayISO()
         if now != today {
             today = now
-            syncReminderList()
         }
+        // 同一天裡也可能過了哪一站的開賣時間
+        syncReminderList()
     }
 }
 
@@ -983,7 +988,8 @@ extension AppStore {
             if blockRegen && !local {
                 d.chat.append(ChatMsg(r: .sys, t: blockText))
             }
-            let notes: [String] = r.notes + warnings(trip)
+            // 太滿、休館只講這一輪才出現的，不要每句都重複
+            let notes: [String] = r.notes + newWarnings(before, trip)
             for n in notes {
                 d.chat.append(ChatMsg(r: .sys, t: n))
             }
@@ -1035,6 +1041,7 @@ extension AppStore {
         let together: Bool = canUndoRound(s.chat[index])
         act(undoable: true, mark: mark) { (d: inout AppState) -> String? in
             guard var trip = d.trip, index < d.chat.count, let raw = d.chat[index].askOps else { return nil }
+            let before: Trip = trip
             var seeds: [Seed] = d.seeds
             let r: (changes: [String], notes: [String]) = applyOps(&trip, &seeds, unpackOps(raw), now, true)
             let tweaked: Bool = trip.tweaks != d.trip?.tweaks
@@ -1051,7 +1058,8 @@ extension AppStore {
             if r.changes.isEmpty {
                 d.chat.append(ChatMsg(r: .sys, t: "沒有改到東西。"))
             }
-            for n in r.notes {
+            let notes: [String] = r.notes + newClosedNotes(before, trip)
+            for n in notes {
                 d.chat.append(ChatMsg(r: .sys, t: n))
             }
             // 旅途中不整趟重排，就不提重排

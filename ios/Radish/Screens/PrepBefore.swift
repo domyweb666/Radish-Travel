@@ -10,20 +10,18 @@ struct PrepBefore: View {
         return store.s.trip
     }
 
-    // 提醒：還有沒訂的、而且還來得及提醒，才給這顆按鈕
-    private var left: Int {
-        guard let trip else { return 0 }
-        return unbookedOf(trip, store.s.checks).count
-    }
-
-    private var remindDay: String? {
+    /// 這趟的第一則提醒。這趟沒有要提醒的就是 nil，不給按鈕
+    private var firstReminder: Reminder? {
         guard let trip else { return nil }
-        return remindOn(trip.start, store.today)
+        var only: AppState = AppState()
+        only.trip = trip
+        only.checks = store.s.checks
+        return remindersOf(only, store.today, now: Date()).first
     }
 
-    private var books: [Found] {
+    private var books: [BookRow] {
         guard let trip else { return [] }
-        return allItems(trip).filter { (x: Found) -> Bool in x.it.b == true }
+        return bookPlan(trip, store.s.checks, store.today, now: Date())
     }
 
     /// 七天內要出發才有值：還有幾天
@@ -35,17 +33,14 @@ struct PrepBefore: View {
         return nil
     }
 
-    private var recheck: [Found] {
-        guard let trip else { return [] }
-        return allItems(trip).filter { (x: Found) -> Bool in
-            if x.it.b == true { return true }
-            let tip: String = x.it.tip ?? ""
-            return tip.contains("休館") || tip.contains("班次") || tip.contains("名額")
-        }
+    private var recheckLine: String? {
+        guard let trip, let days = soonDays else { return nil }
+        return recheckText(trip, days)
     }
 
     private var allFacts: [Fact] {
-        let list: [Fact] = CHECKLIST.map { (r: CheckItem) -> Fact in prepFact(r) }
+        let start: String? = trip?.start
+        let list: [Fact] = CHECKLIST.map { (r: CheckItem) -> Fact in prepFact(r, start) }
         return list + NO_BRING
     }
 
@@ -73,59 +68,75 @@ struct PrepBefore: View {
     }
 
     @ViewBuilder private var recheckBanner: some View {
-        let list: [Found] = recheck
-        if let days = soonDays, !list.isEmpty {
-            let names: [String] = list.map { (x: Found) -> String in x.it.n }
-            Banner("還有 \(days) 天出發。這 \(list.count) 站有訂位、休館日或班次，再查一次：\(names.joined(separator: "、"))。")
+        if let line = recheckLine {
+            Banner(line)
         }
     }
 
     @ViewBuilder private var booksSection: some View {
-        let list: [Found] = books
-        if let trip, !list.isEmpty {
-            DomySection("這趟要先訂的", footer: "訂好了就打勾。怎麼訂、外國人訂不訂得到，這一版還不知道，要自己查。") {
-                ForEach(list, id: \.it.id) { (x: Found) in
-                    CheckRow(checked: isChecked("b_" + x.it.id), title: x.it.n, note: bookNote(trip, x.s)) {
-                        toggle("b_" + x.it.id)
+        let list: [BookRow] = books
+        if !list.isEmpty {
+            DomySection("這趟要先訂的", footer: bookFooter(list)) {
+                ForEach(list, id: \.id) { (r: BookRow) in
+                    CheckRow(checked: r.checked, title: r.stop.n, note: bookNote(r, store.today)) {
+                        toggle("b_" + r.stop.id)
                     }
-                    .accessibilityIdentifier("check-b_\(x.it.id)")
+                    .accessibilityIdentifier("check-b_\(r.stop.id)")
+                    bookLink(r)
                 }
             }
         }
     }
 
-    private func bookNote(_ trip: Trip, _ sl: Slot) -> String {
-        let date: String = fmtDay(addDays(trip.start, sl.day - 1))
-        return "第 \(sl.day) 天 \(date) \(PART[need: sl.part])"
+    /// 那一站下面的一列：外國人訂不訂得到、開訂票網頁。打勾了、去過了就不用再列
+    @ViewBuilder private func bookLink(_ r: BookRow) -> some View {
+        if !r.checked && r.stop.status == StopStatus.kept {
+            if let link = r.url, let host = bookHost(link) {
+                DomyListRow(meta: prepNote(r.foreigner), title: "開訂票網頁　\(host)") {
+                    openWeb(link)
+                }
+                .accessibilityIdentifier("book-open-\(r.stop.id)")
+            } else if let text = prepNote(r.foreigner) {
+                TextRow("外國人訂不訂得到", note: text)
+            }
+        }
     }
 
     @ViewBuilder private var remindSection: some View {
-        if let on = remindDay, left > 0 {
-            if store.s.remind {
-                DomyText("\(fmtDay(on))早上 9 點會通知你還有哪幾站沒訂。在那之前全部勾完就不通知。", .footnote, tone: .secondary)
-                DomyButton("不用提醒了", variant: .plain, fullWidth: true) {
-                    store.mutate { (d: inout AppState) -> Void in
-                        d.remind = false
+        if let first = firstReminder {
+            let when: String = remindWhen(first)
+            VStack(alignment: .leading, spacing: T.Space.s2) {
+                if store.s.remind {
+                    remindOnRows(when)
+                } else {
+                    DomyButton("提醒我去訂", variant: .secondary, fullWidth: true) {
+                        askRemind(when)
                     }
+                    .accessibilityIdentifier("prep-remind")
+                    DomyText("第一則是 \(when)。", .footnote, tone: .secondary)
                 }
-                .accessibilityIdentifier("prep-remind-off")
-            } else {
-                DomyButton("\(fmtDay(on))提醒我還沒訂的", variant: .secondary, fullWidth: true) {
-                    askRemind(on)
-                }
-                .accessibilityIdentifier("prep-remind")
             }
         }
     }
 
+    @ViewBuilder private func remindOnRows(_ when: String) -> some View {
+        DomyText("會提醒你去訂，這趟的第一則是 \(when)。打勾的不提醒。", .footnote, tone: .secondary)
+        DomyButton("不用提醒了", variant: .plain, fullWidth: true) {
+            store.mutate { (d: inout AppState) -> Void in
+                d.remind = false
+            }
+        }
+        .accessibilityIdentifier("prep-remind-off")
+    }
+
     /// 按了才問通知權限
-    private func askRemind(_ on: String) {
+    private func askRemind(_ when: String) {
         Task { @MainActor in
             let r: AskResult = await askReminders()
             if r == .granted {
                 store.act { (d: inout AppState) -> String? in
                     d.remind = true
-                    return "好，\(fmtDay(on))早上 9 點提醒你。"
+                    return "好，第一則是 \(when)。"
                 }
             } else {
                 store.say("通知沒有開。到 iPhone 的「設定」打開蘿蔔旅行的通知，再回來按一次。")
@@ -138,11 +149,26 @@ struct PrepBefore: View {
         let done: Int = rows.filter { (r: CheckItem) -> Bool in isChecked(r.id) }.count
         DomySection("\(title)　\(done)／\(rows.count)") {
             ForEach(rows, id: \.id) { (r: CheckItem) in
-                CheckRow(checked: isChecked(r.id), title: r.text, note: prepNote(prepFactShort(prepFact(r)))) {
-                    toggle(r.id)
-                }
-                .accessibilityIdentifier("check-\(r.id)")
+                checkItem(r)
             }
+        }
+    }
+
+    /// 一條檢查表。過了公告期限、要再查一次的，多一個標籤，看得出比別條急
+    private func checkItem(_ r: CheckItem) -> some View {
+        let start: String? = trip?.start
+        let fact: Fact = prepFact(r, start)
+        let done: Bool = isChecked(r.id)
+        let urgent: Bool = !done && datedLate(r.id, start)
+        return VStack(alignment: .leading, spacing: 0) {
+            if urgent {
+                Tag("要再查一次", tone: .warn)
+                    .padding(.top, T.Space.s3)
+            }
+            CheckRow(checked: done, title: fact.text, note: prepNote(prepFactShort(fact))) {
+                toggle(r.id)
+            }
+            .accessibilityIdentifier("check-\(r.id)")
         }
     }
 }

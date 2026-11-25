@@ -445,6 +445,98 @@ final class SceneUITests: RadishUITestCase {
         shot("順路清單-復原之後")
     }
 
+    /* ---------- 核對過的資料（資料還沒併進來時，那幾塊不會出現，有才檢查） ---------- */
+
+    /// 等一下，看那個識別碼在不在。不在不算錯
+    private func has(_ id: String, _ seconds: TimeInterval = 4) -> Bool {
+        return byId(id).waitForExistence(timeout: seconds)
+    }
+
+    /// 開第 2 天的景福宮那一頁
+    private func openPalace() {
+        tapId("day-tab-2")
+        pause()
+        tapId("stop-row-p0")
+        see("stop-show")
+        pause()
+    }
+
+    func test25這天休館() {
+        openScene("closed")
+        tapId("day-tab-2")
+        let closed: Bool = has("day-closed")
+        bring(closed ? "day-closed" : "stop-row-p0")
+        pause()
+        shot("這天休館-這趟")
+        tapId("stop-row-p0")
+        see("stop-show")
+        pause()
+        shot("這天休館-一站")
+        if closed {
+            see("stop-closed")
+            bring("stop-open")
+            shot("這天休館-一站-開放")
+        }
+    }
+
+    func test26核對過的一站與來源() {
+        openScene("checked")
+        openPalace()
+        shot("核對過的一站")
+        XCTAssertFalse(byId("stop-closed").exists, "有開的日子，不該寫休館")
+        if has("stop-source") {
+            bring("stop-source")
+            shot("核對過的一站-開放")
+            byId("stop-source").tap()
+            pause()
+            shot("核對過的一站-來源")
+            tapButton("關閉")
+            pause()
+        }
+        tapId("stop-show")
+        see("driver-close")
+        pause()
+        shot("給司機看-有沒有地址")
+    }
+
+    func test27要先訂的一站() {
+        openScene("checked")
+        tapId("day-tab-2")
+        pause()
+        if !has("stop-row-p6") { return }
+        tapId("stop-row-p6")
+        if has("stop-book") {
+            bring("stop-book")
+        }
+        pause()
+        shot("要先訂的一站-怎麼訂")
+    }
+
+    func test28深色大字的這天休館() {
+        let size: [String] = [
+            "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityM", "-uitest-dark",
+        ]
+        openScene("closed", size)
+        tapId("day-tab-2")
+        pause()
+        if has("day-closed") {
+            bring("day-closed")
+        }
+        shot("深色大字-這天休館")
+        tapId("stop-row-p0")
+        see("stop-show")
+        pause()
+        shot("深色大字-一站")
+        for index in 1...3 {
+            drag(0.55, 0.15)
+            shot("深色大字-一站-往下捲\(index)")
+        }
+        tapId("stop-show")
+        see("driver-close")
+        pause()
+        shot("深色大字-給司機看")
+    }
+
     /* ---------- 深色、大字 ---------- */
 
     func test19深色的三個分頁() {

@@ -93,6 +93,7 @@ struct TripSettingsSheet: View {
                 d.settingsDirty = false
                 return "行程設定改了，整趟重排了。手動改過的地方也一起重排了。"
             }
+            let before: Trip = trip
             trip.tweaks = form.cleanTweaks
             trip.start = start
             trip.days = days
@@ -104,7 +105,8 @@ struct TripSettingsSheet: View {
             trip.name = form.cleanName
             trip.cover = form.cover
             d.trip = trip
-            return "行程設定改好了。"
+            // 只改日期、不重排：星期幾變了，可能排到休館那天
+            return "行程設定改好了。" + closedTail(newClosedNotes(before, trip))
         }
         sheets.close()
     }

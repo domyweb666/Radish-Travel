@@ -54,6 +54,8 @@ struct TripDayTabs: View {
 struct TripStopRow: View {
     let it: Stop
     let slot: Slot
+    /// 那天去不了（休館、歇業）。去得了是 nil。核對過的不用加標籤
+    var shut: StopShut? = nil
     let action: () -> Void
 
     var body: some View {
@@ -81,6 +83,9 @@ struct TripStopRow: View {
         if it.status == .pulled {
             out.append("去過了")
         }
+        if let shut {
+            out.append(shut.gone ? shut.why : "這天休館")
+        }
         if it.b == true {
             out.append("要先訂")
         }
@@ -97,13 +102,20 @@ struct TripStopRow: View {
         let pulled: Bool = it.status == .pulled
         let booking: Bool = it.b == true
         let fromAI: Bool = it.ai == true
+        let closed: Bool = shut?.gone == false
         return VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
             DomyText("\(part)・\(areaOf(it))", .footnote, tone: .secondary)
             DomyText(it.n, .headline, tone: pulled ? .secondary : .primary)
                 .strikethrough(pulled)
             DomyText(it.why, .subheadline, tone: .strong)
-            if booking || fromAI {
+            if let shut, shut.gone {
+                WarnTag(shut.why)
+            }
+            if closed || booking || fromAI {
                 TagRow {
+                    if closed {
+                        Tag("這天休館", tone: .warn)
+                    }
                     if booking {
                         Tag("要先訂", tone: .accent)
                     }
@@ -219,7 +231,7 @@ struct TripDayCard: View {
             DomyText(text, .footnote, tone: .secondary)
                 .padding(.vertical, T.Space.s2)
         case .stop(let it, let slot):
-            TripStopRow(it: it, slot: slot) {
+            TripStopRow(it: it, slot: slot, shut: stopShut(trip, it, slot.day, store.phase)) {
                 nav.push(.stop(id: it.id))
             }
             .spotTarget("stop-row-\(it.id)", in: frames)
@@ -268,7 +280,7 @@ struct TripNextStop: View {
                 }
             }
             .fullScreenCover(item: $driver) { (it: Stop) in
-                DriverView(name: it.n, kr: it.kr)
+                DriverView(name: it.n, kr: it.kr, addr: factOf(it.id)?.addr)
             }
             if left.count > 1 {
                 afterRow(left[1])
@@ -313,6 +325,10 @@ struct TripNextStop: View {
         }
         .padding(.vertical, -T.Space.s2)
         titleButton(it)
+        if let shut = stopShut(trip, it, next.s.day, store.phase) {
+            WarnTag(shut.gone ? shut.why : "今天休館：\(shut.why)")
+                .accessibilityIdentifier("next-closed")
+        }
         DomyText(legText(next, all), .subheadline, tone: .secondary)
         if !it.kr.isEmpty {
             // 字級放大時兩顆放不下，改成一顆一列

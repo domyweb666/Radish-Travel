@@ -59,13 +59,22 @@ struct TripScreen: View {
             }
             banners(trip, phase)
             dayBlock(trip, phase, shown)
-            DomyText("這一版的地點是範例資料，還沒核對過。營業時間、休館日、票價要自己查。", .footnote, tone: .secondary, align: .center)
-                .frame(maxWidth: .infinity)
+            uncheckedNote(trip, phase)
         }
         .talkBar(talkLabel(shown), target: .day(shown))
     }
 
-    /// 天數那一排、剛排好那張卡（A4，自己決定要不要顯示）、這一天的清單。回來後多一行小字（A9）
+    /// 這趟還有幾站沒核對。都核對過、已經回來就不講
+    @ViewBuilder
+    private func uncheckedNote(_ trip: Trip, _ phase: Phase) -> some View {
+        if phase != Phase.done, let line = uncheckedLine(trip) {
+            DomyText(line, .footnote, tone: .secondary, align: .center)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("trip-unchecked")
+        }
+    }
+
+    /// 天數那一排、剛排好那張卡（A4，自己決定要不要顯示）、這天休館的那一條、這一天的清單。回來後多一行小字（A9）
     private func dayBlock(_ trip: Trip, _ phase: Phase, _ shown: Int) -> some View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             TripDayTabs(trip: trip, value: shown, today: today) { (d: Int) in
@@ -76,6 +85,7 @@ struct TripScreen: View {
             } else {
                 PlannedCard(trip: trip)
             }
+            DayShutBanner(trip: trip, day: shown)
             TripDayCard(trip: trip, day: shown, frames: frames)
         }
     }

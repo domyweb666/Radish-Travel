@@ -6,7 +6,7 @@ import UserNotifications
 
 // MARK: - 本機通知
 // 只用來提醒「要先訂的還沒訂」。不連網路、不送任何資料出去。
-// 權限只在使用者按了「出發前提醒我」之後才問。
+// 權限只在使用者按了「提醒我去訂」之後才問。
 
 enum AskResult {
     case granted, denied
@@ -71,7 +71,7 @@ func syncReminders(_ list: [Reminder]) async {
     await job.value
 }
 
-/// 真的去換。這個 app 沒有別種通知，所以先全部取消再重排。早上九點提醒
+/// 真的去換。這個 app 沒有別種通知，所以先全部取消再重排
 private func replaceReminders(_ list: [Reminder], _ turn: Int) async {
     let center = UNUserNotificationCenter.current()
     center.delegate = NoticeDelegate.shared
@@ -80,7 +80,7 @@ private func replaceReminders(_ list: [Reminder], _ turn: Int) async {
     let settings = await center.notificationSettings()
     guard settings.authorizationStatus == .authorized else { return }
     for item in list {
-        guard let when: DateComponents = reminderTime(item.on) else { continue }
+        guard let when: DateComponents = reminderTime(item) else { continue }
         let still: Bool = await isLatestReminders(turn)
         guard still else { return }
         let content = UNMutableNotificationContent()
@@ -88,7 +88,7 @@ private func replaceReminders(_ list: [Reminder], _ turn: Int) async {
         content.body = item.body
         let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
         let request = UNNotificationRequest(
-            identifier: "remind-\(item.on)-\(item.title)", content: content, trigger: trigger)
+            identifier: "remind-\(item.id)", content: content, trigger: trigger)
         // 排不成不影響其他功能；「這趟」頁上的提醒條還在
         try? await center.add(request)
     }
@@ -127,6 +127,13 @@ func openGoogle(_ query: String) {
 @MainActor
 func openApple(_ query: String) {
     guard let url = URL(string: "https://maps.apple.com/?q=\(encodeQuery(query))") else { return }
+    UIApplication.shared.open(url)
+}
+
+/// 用 Safari 開一個網頁（訂票頁）。只開 http、https
+@MainActor
+func openWeb(_ link: String) {
+    guard bookHost(link) != nil, let url = URL(string: link) else { return }
     UIApplication.shared.open(url)
 }
 

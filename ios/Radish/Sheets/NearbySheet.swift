@@ -71,9 +71,12 @@ struct NearbySheet: View {
     }
 
     private func footnote(_ shown: [NearbyPick]) -> String {
-        let hasTip: Bool = shown.contains { (x: NearbyPick) -> Bool in !(x.place.tip ?? "").isEmpty }
+        let hasTip: Bool = shown.contains { (x: NearbyPick) -> Bool in
+            guard let tip = tipOf(planToStop(x.place, "")) else { return false }
+            return tip.status == FactStatus.none
+        }
         let base: String = "手機算的，沒有問 AI：距離照直線加三成估，沒有查路線。"
-        return hasTip ? base + "須知是資料包寫的，未核對。" : base
+        return hasTip ? base + "寫未核對的須知是資料包寫的。" : base
     }
 
     private func picks(_ shown: [NearbyPick], _ origin: NearbyOrigin, _ part: Part?) -> some View {
@@ -132,7 +135,7 @@ struct NearbySheet: View {
     private var emptyState: some View {
         DomyEmptyState(
             icon: IconPaths.sprout, title: "附近沒有還沒排的地方",
-            message: "離這裡 \(Int(NEARBY_MAX_KM)) 公里內（估），資料包裡的地方都排進這趟了，或是你說過不排的。",
+            message: "離這裡 \(Int(NEARBY_MAX_KM)) 公里內（估），資料包裡的地方都排進這趟了、這天休館，或是你說過不排的。",
             actionTitle: "想要別的條件，跟 AI 講"
         ) {
             goAsk()
@@ -174,6 +177,11 @@ private struct NearbyCard: View {
     let onAdd: () -> Void
     let onOpen: () -> Void
 
+    /// 須知照站查，先換成一站
+    private var asStop: Stop {
+        return planToStop(pick.place, "")
+    }
+
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: T.Space.s1) {
@@ -184,8 +192,8 @@ private struct NearbyCard: View {
                     }
                 }
                 DomyText(legText(pick.leg), .footnote)
-                if let tip = pick.place.tip, !tip.isEmpty {
-                    DomyText("須知：\(tip)", .footnote, tone: .secondary)
+                if let tip = tipOf(asStop) {
+                    DomyText("須知：\(tip.text)（\(tipSourceLabel(asStop))）", .footnote, tone: .secondary)
                 }
             }
             buttons

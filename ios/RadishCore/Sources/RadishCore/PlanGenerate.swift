@@ -59,15 +59,23 @@ private struct AreaScore {
     let v: Double
 }
 
-func generate(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool = false, _ rnd: () -> Double = { Double.random(in: 0..<1) }) -> Trip {
+/// closed 是休館判斷，平常照核對資料；測試會換成假的
+func generate(
+    _ d: TripDraft, _ base0: Settings, _ shuffle: Bool = false,
+    _ rnd: () -> Double = { Double.random(in: 0..<1) },
+    closed: @escaping ClosedCheck = closedByFacts
+) -> Trip {
     // 裡面有好幾個小函式都要用到 rnd，所以先讓它在這個呼叫期間可以被帶著走
     let out: Trip = withoutActuallyEscaping(rnd) { r in
-        generateBody(d, base0, shuffle, r)
+        generateBody(d, base0, shuffle, r, closed)
     }
     return out
 }
 
-private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ rnd: @escaping () -> Double) -> Trip {
+private func generateBody(
+    _ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ rnd: @escaping () -> Double,
+    _ closed: @escaping ClosedCheck
+) -> Trip {
     let st: Settings = tripSettings(base0, d.tweaks)
     let w: [Cat: Int] = planWeights(st)
     let season: Season? = seasonOf(d.start)
@@ -83,6 +91,8 @@ private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ 
     let base: AreaKey = areaKey(d.base ?? st.base)
     let wantRest: Bool = st.purposes.contains(.rest)
     let lv: [FoodKind: Int] = foodLv(st)
+    // 現在排到第幾天，休館判斷用
+    var today: Int = 1
 
     func jit() -> Double {
         return shuffle ? rnd() * 2.5 : 0
@@ -97,7 +107,19 @@ private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ 
     func fits(_ p: Place) -> Bool {
         return !banned(p, st) && !(noUp && p.up == true)
     }
-    /// 從這幾帶裡挑分數最高、還沒用過的一站。分數一樣就取資料裡排前面的（TS 是穩定排序後拿第一個）
+    /// 現在排的這一天，這個地方休不休
+    func shut(_ p: Place) -> Bool {
+        return closedOnTripDay(d.start, today, p.id, closed) != nil
+    }
+    /// 這一帶這天還有沒有這種大小的地方可以排
+    func anyOpen(_ a: AreaKey, _ size: StopSize) -> Bool {
+        for p in PLACES where p.a == a && p.s == size {
+            if used.contains(p.id) || !fits(p) || shut(p) { continue }
+            return true
+        }
+        return false
+    }
+    /// 從這幾帶裡挑分數最高、還沒用過、那天沒休館的一站。分數一樣就取資料裡排前面的（TS 是穩定排序後拿第一個）
     func take(_ areas: [AreaKey], _ size: StopSize?, _ want: ((Place) -> Bool)?, _ why: (Place) -> String) -> Stop? {
         var best: Place? = nil
         var bestScore: Double = 0
@@ -107,6 +129,7 @@ private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ 
             if !areas.contains(p.a) { continue }
             if let sz = size, p.s != sz { continue }
             if let wantFn = want, !wantFn(p) { continue }
+            if shut(p) { continue }
             let v: Double = Double(score(p)) + jit()
             if best == nil || v > bestScore {
                 best = p
@@ -208,6 +231,7 @@ private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ 
     }
 
     for day in stride(from: 1, through: d.days, by: 1) {
+        today = day
         var parts: [Part] = [.am, .pm, .eve]
         if day == 1 { parts = arriveParts(d.arrive) }
         if day == d.days { parts = leaveParts(d.leave) }
@@ -223,7 +247,8 @@ private func generateBody(_ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ 
         if edge {
             amA = base
             pmA = base
-        } else if tripDays.contains(day) {
+        } else if tripDays.contains(day) && anyOpen(AreaKey.J, StopSize.L) {
+            // 近郊那天沒有能去的，就照平常的一天排，不要整個白天空著
             amA = AreaKey.J
             pmA = AreaKey.J
         } else {

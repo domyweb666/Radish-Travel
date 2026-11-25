@@ -954,9 +954,12 @@ func aiPrompt(
     var candLines: [String] = []
     for p in PLACES {
         if used.contains(p.id) || banned(p, st) { continue }
+        // 歇業、搬走的不給 AI 挑
+        if let f = factOf(p.id), f.gone != nil { continue }
         let size: String = p.s == .L ? "大" : "小"
         let book: String = p.b == true ? ",要先訂" : ""
-        candLines.append("[\(p.id)] \(p.n)(\(size),\(CAT[need: p.c]),\(AREA[need: p.a])\(book))")
+        let shut: String = closedTag(t, p.id)
+        candLines.append("[\(p.id)] \(p.n)(\(size),\(CAT[need: p.c]),\(AREA[need: p.a])\(book)\(shut))")
     }
     let cand: String = candLines.joined(separator: "\n")
     let talk: [ChatMsg] = chat.filter { (m: ChatMsg) -> Bool in m.r != .sys }
@@ -996,7 +999,7 @@ func aiPrompt(
 
     var rules: String = ""
     if dated {
-        rules += "\n- 每一天後面是日期和星期幾。有休館日或只開某幾天的地方，要對得上星期幾；你不確定哪天休息，就說去之前查。"
+        rules += "\n- 每一天後面是日期和星期幾。括號裡有寫休館日的（例如「週二休」「第 2 天不開」），照寫的對星期幾，不要排在不開的那天；使用者堅持就照做，在 reply 講那天休館。沒寫的，說去之前查。"
     }
     if now != nil {
         rules += "\n- 標「已經過了」的時段、標「拔起來了」的站不能動，也不能把東西排進已經過了的時段。"
@@ -1369,7 +1372,7 @@ func phoneAnswer(_ raw: String, _ d: AppState, _ day: Int, _ stopId: String?, _ 
     if msg.isEmpty { return nil }
     if TALK_EDIT_WORDS.contains(where: { (w: String) -> Bool in msg.contains(w) }) { return nil }
     if let id = stopId, let x = findItem(t, id), msg.contains("注意") {
-        return phoneStopTip(x.it)
+        return phoneStopTip(t, x)
     }
     if msg.contains("要先訂") || msg.contains("要預約") {
         return phoneBooking(t, d.checks)
@@ -1396,23 +1399,93 @@ func phoneAnswer(_ raw: String, _ d: AppState, _ day: Int, _ stopId: String?, _ 
     return nil
 }
 
-private func phoneStopTip(_ it: Stop) -> String {
-    var bits: [String] = []
-    if let tip = it.tip, !tip.isEmpty { bits.append(tip) }
-    if it.b == true { bits.append("要先訂") }
-    if bits.isEmpty { return "「\(it.n)」沒有寫要注意的。營業時間、票價去之前查一下。" }
-    return "「\(it.n)」：\(bits.joined(separator: "；"))。這是資料裡寫的，還沒核對過，去之前查一下。"
+/// 這個地方核對過了嗎（看過官方頁或二手資料）
+private func talkChecked(_ id: String) -> Bool {
+    guard let f = factOf(id) else { return false }
+    return f.status != FactStatus.none
+}
+
+/// 要先訂這件事核對過了嗎：核對結果裡有寫怎麼訂
+private func talkBookChecked(_ id: String) -> Bool {
+    guard let f = factOf(id), f.book != nil else { return false }
+    return f.status != FactStatus.none
+}
+
+/// 一站要注意的。核對過的和還沒核對的分開放，分開講
+private struct TalkBits {
+    var known: [String]
+    var plain: [String]
+}
+
+private func talkBits(_ t: Trip, _ x: Found) -> TalkBits {
+    let it: Stop = x.it
+    var out: TalkBits = TalkBits(known: [], plain: [])
+    if it.status != .pulled, let why = closedOnTripDay(t.start, x.s.day, it.id, closedByFacts) {
+        let line: String = "這天休館：\(why)"
+        if talkChecked(it.id) {
+            out.known.append(line)
+        } else {
+            out.plain.append(line)
+        }
+    }
+    if let tip = tipOf(it) {
+        if tip.status == FactStatus.none {
+            out.plain.append(tip.text)
+        } else {
+            out.known.append(tip.text)
+        }
+    }
+    if it.b == true {
+        if talkBookChecked(it.id) {
+            out.known.append("要先訂")
+        } else {
+            out.plain.append("要先訂")
+        }
+    }
+    return out
+}
+
+private func phoneStopTip(_ t: Trip, _ x: Found) -> String {
+    let it: Stop = x.it
+    let bits: TalkBits = talkBits(t, x)
+    let plain: String = bits.plain.joined(separator: "；")
+    if bits.known.isEmpty {
+        if bits.plain.isEmpty { return "「\(it.n)」沒有寫要注意的。營業時間、票價去之前查一下。" }
+        return "「\(it.n)」：\(plain)。這是資料裡寫的，還沒核對過，去之前查一下。"
+    }
+    let known: String = bits.known.joined(separator: "；")
+    let head: String = "「\(it.n)」：\(known)（\(factLabel(factOf(it.id)))）。"
+    if bits.plain.isEmpty { return head }
+    return head + "還沒核對過的：\(plain)，去之前查一下。"
 }
 
 private func phoneBooking(_ t: Trip, _ checks: [String: Bool]) -> String {
     let all: [Stop] = allItems(t).map { (x: Found) -> Stop in x.it }.filter { (it: Stop) -> Bool in
         return it.b == true && it.status == .kept
     }
-    if all.isEmpty { return "這趟沒有寫要先訂的站。資料還沒核對過，去之前還是查一下。" }
+    if all.isEmpty { return phoneNoBooking(t) }
     let left: [Stop] = unbookedOf(t, checks)
     if left.isEmpty { return "要先訂的 \(all.count) 站，你都在「檢查這趟」打勾了。" }
-    let names: [String] = left.map { (it: Stop) -> String in "「\(it.n)」" }
-    return "還沒打勾的有 \(left.count) 站：\(names.joined(separator: "、"))。訂好了到「檢查這趟」打勾。要不要先訂是資料裡寫的，還沒核對過。"
+    let names: [String] = left.map { (it: Stop) -> String in
+        let label: String = talkBookChecked(it.id) ? "（\(factLabel(factOf(it.id)))）" : ""
+        return "「\(it.n)」\(label)"
+    }
+    let head: String = "還沒打勾的有 \(left.count) 站：\(names.joined(separator: "、"))。訂好了到「檢查這趟」打勾。"
+    let unsure: [Stop] = left.filter { (it: Stop) -> Bool in !talkBookChecked(it.id) }
+    if unsure.isEmpty { return head }
+    if unsure.count == left.count { return head + "要不要先訂是資料裡寫的，還沒核對過。" }
+    let rest: [String] = unsure.map { (it: Stop) -> String in "「\(it.n)」" }
+    return head + "\(rest.joined(separator: "、"))要不要先訂是資料裡寫的，還沒核對過。"
+}
+
+/// 這趟沒有寫要先訂的站：幾站核對過、幾站沒有，照實講
+private func phoneNoBooking(_ t: Trip) -> String {
+    let kept: [Found] = allItems(t).filter { (x: Found) -> Bool in x.it.status == .kept }
+    let unsure: Int = kept.filter { (x: Found) -> Bool in !talkChecked(x.it.id) }.count
+    let head: String = "這趟沒有寫要先訂的站。"
+    if unsure == kept.count { return head + "資料還沒核對過，去之前還是查一下。" }
+    if unsure == 0 { return head + "每一站都核對過（官方頁或二手資料）。" }
+    return head + "有 \(unsure) 站還沒核對過，去之前還是查一下。"
 }
 
 private func phoneCount(_ t: Trip, _ base: Settings, _ day: Int, _ left: Bool, _ now: TripNow?) -> String {
@@ -1462,9 +1535,18 @@ private func phoneNext(_ t: Trip, _ base: Settings, _ now: TripNow?) -> String {
 private func phoneNearby(_ t: Trip, _ base: Settings, _ day: Int) -> String {
     if day < 1 || day > t.days { return "這趟只有 \(t.days) 天。" }
     let names: [String] = nearbyPool(t, day, tripSettings(base, t.tweaks))
-    if names.isEmpty { return "第 \(day) 天那一帶，資料裡沒有還沒排的小地方了。" }
+    if names.isEmpty { return "第 \(day) 天那一帶，資料裡沒有還能排的小地方了。" }
     let quoted: [String] = names.map { (n: String) -> String in "「\(n)」" }
-    return "第 \(day) 天那一帶還沒排的：\(quoted.joined(separator: "、"))。這是照區域挑的，沒有照距離排，資料也還沒核對過。"
+    let unsure: [String] = names.filter { (n: String) -> Bool in
+        let p: Place? = PLACES.first { (q: Place) -> Bool in q.n == n }
+        guard let hit = p else { return true }
+        return !talkChecked(hit.id)
+    }
+    let head: String = "第 \(day) 天那一帶還沒排的：\(quoted.joined(separator: "、"))。這是照區域挑的，沒有照距離排"
+    if unsure.isEmpty { return head + "。" }
+    if unsure.count == names.count { return head + "，資料也還沒核對過。" }
+    let rest: [String] = unsure.map { (n: String) -> String in "「\(n)」" }
+    return head + "。\(rest.joined(separator: "、"))的資料還沒核對過。"
 }
 
 private func phoneNotes(_ t: Trip, _ day: Int) -> String {
@@ -1472,15 +1554,24 @@ private func phoneNotes(_ t: Trip, _ day: Int) -> String {
     let label: String = t.start.isEmpty ? "" : "（\(tripDayLabel(t, day))）"
     let stops: [Found] = dayStops(t, day)
     if stops.isEmpty { return "第 \(day) 天\(label)沒有排站。" }
-    var lines: [String] = []
+    var known: [String] = []
+    var plain: [String] = []
     for x in stops {
-        var bits: [String] = []
-        if let tip = x.it.tip, !tip.isEmpty { bits.append(tip) }
-        if x.it.b == true { bits.append("要先訂") }
-        if !bits.isEmpty { lines.append("「\(talkBare(x.it.n))」\(bits.joined(separator: "，"))") }
+        let bits: TalkBits = talkBits(t, x)
+        let name: String = "「\(talkBare(x.it.n))」"
+        if !bits.known.isEmpty {
+            known.append("\(name)\(bits.known.joined(separator: "，"))（\(factLabel(factOf(x.it.id)))）")
+        }
+        if !bits.plain.isEmpty { plain.append("\(name)\(bits.plain.joined(separator: "，"))") }
     }
-    if lines.isEmpty { return "第 \(day) 天\(label)的站沒有特別寫要注意的。營業時間、票價去之前查一下。" }
-    return "第 \(day) 天\(label)：\(lines.joined(separator: "；"))。這些是資料裡寫的，還沒核對過，營業時間、票價去之前查一下。"
+    let plainText: String = plain.joined(separator: "；")
+    if known.isEmpty {
+        if plain.isEmpty { return "第 \(day) 天\(label)的站沒有特別寫要注意的。營業時間、票價去之前查一下。" }
+        return "第 \(day) 天\(label)：\(plainText)。這些是資料裡寫的，還沒核對過，營業時間、票價去之前查一下。"
+    }
+    let head: String = "第 \(day) 天\(label)：\(known.joined(separator: "；"))。"
+    if plain.isEmpty { return head }
+    return head + "還沒核對過的：\(plainText)，營業時間、票價去之前查一下。"
 }
 
 private func phoneVisited(_ t: Trip) -> String {

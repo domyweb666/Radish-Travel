@@ -20,8 +20,10 @@ func prepFactFull(_ f: Fact) -> String {
 }
 
 /// 檢查表、地雷的每一條在 TS 都是 Fact 多幾欄；Swift 是不同的型別，要一起列來源時先轉成 Fact
-func prepFact(_ r: CheckItem) -> Fact {
-    return Fact(text: r.text, status: r.status, checked: r.checked, source: r.source)
+/// 檢查表的字跟著出發日期走。start 是這趟到的那天，沒有這趟就用原本的字
+func prepFact(_ r: CheckItem, _ start: String? = nil) -> Fact {
+    let text: String = datedText(r.id, r.text, start)
+    return Fact(text: text, status: r.status, checked: r.checked, source: r.source)
 }
 
 func prepFact(_ r: TabooFact) -> Fact {

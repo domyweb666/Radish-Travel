@@ -1,4 +1,5 @@
 // 一站（StopScreen.swift）的每一塊：最上面那一行、為什麼排／須知／花費、過敏、去過之後的那一句和照片、
+// （開放、怎麼訂、來源在 Components/StopFacts.swift）
 // 韓文名、想改這一站、別的找路方式，還有這一頁自己開的兩張半頁：換一個、不去這一站。
 // 原本在 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheetParts.swift），字照搬，版面照線框 A5。
 import SwiftUI
@@ -12,6 +13,8 @@ struct StopHeader: View {
     let it: Stop
     let trip: Trip
     let slot: Slot
+    /// 這一站那天去不了（休館、歇業）。去得了是 nil
+    let shut: StopShut?
 
     private var line: String {
         let date: String = fmtDay(addDays(trip.start, slot.day - 1))
@@ -25,13 +28,26 @@ struct StopHeader: View {
                 DomyText(line, .subheadline, tone: .secondary)
                     .fillLeading()
             }
+            if let shut, shut.gone {
+                WarnTag(shut.why)
+                    .accessibilityIdentifier("stop-closed")
+            }
             tags
         }
+    }
+
+    private var closedToday: Bool {
+        if let shut { return !shut.gone }
+        return false
     }
 
     private var tags: some View {
         let st: Settings = tripSettings(store.s.settings, trip.tweaks)
         return TagRow {
+            if closedToday {
+                Tag("這天休館", tone: .warn)
+                    .accessibilityIdentifier("stop-closed")
+            }
             Tag(it.s == .L ? "主要景點" : "順路小地方")
             if it.b == true {
                 Tag("要先訂", tone: .accent)
@@ -56,60 +72,80 @@ struct StopHeader: View {
 
 struct StopInfoSection: View {
     let it: Stop
+    /// 下面有「開放」那組。沒有的話，這一組底下要講營業時間得自己查
+    let hasOpen: Bool
 
     private var whyText: String {
         it.why.isEmpty ? "這一站沒有寫為什麼排。" : it.why
     }
 
-    private var hasTip: Bool {
-        if let tip = it.tip, !tip.isEmpty { return true }
-        return false
+    /// 核對過的須知優先，沒有才用資料包那句
+    private var tipText: String? {
+        guard let tip = tipOf(it) else { return nil }
+        return fullStop(tip.text)
     }
 
-    private var tipText: String {
-        if let tip = it.tip, !tip.isEmpty {
-            return "\(tip)。"
+    /// 票價（有查到才有）和原本的粗估，各一行
+    private var feeText: String? {
+        var parts: [String] = []
+        if let f = factOf(it.id), let price = f.price, !price.isEmpty {
+            parts.append("\(priceLead(f.status))：\(price)")
         }
-        return "這一站還沒有須知。"
-    }
-
-    private var hasFee: Bool {
-        if let fee = it.fee, fee != 0 { return true }
-        return false
-    }
-
-    private var feeText: String {
         if let fee = it.fee, fee != 0 {
-            return "每人約 \(money(fee))（粗估，沒核對過）"
+            let tail: String = parts.isEmpty ? "（粗估，沒核對過）" : "（粗估）"
+            parts.append("每人約 \(money(fee))\(tail)")
         }
-        return "還沒有資料"
+        return parts.isEmpty ? nil : parts.joined(separator: "\n")
+    }
+
+    private func priceLead(_ status: FactStatus) -> String {
+        switch status {
+        case FactStatus.official: return "官方票價"
+        case FactStatus.second: return "票價（二手資料）"
+        case FactStatus.none: return "票價（未核對）"
+        }
+    }
+
+    private var footer: String? {
+        if hasOpen { return nil }
+        return "照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。"
     }
 
     var body: some View {
-        DomySection(footer: "照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。") {
+        let tip: String? = tipText
+        let fee: String? = feeText
+        DomySection(footer: footer) {
             StopInfoRow(label: "為什麼排", text: whyText)
-            StopInfoRow(label: "須知", text: tipText, unverified: hasTip, muted: !hasTip)
-            StopInfoRow(label: "花費", text: feeText, muted: !hasFee)
+            StopInfoRow(
+                label: "須知", text: tip ?? "這一站還沒有須知。", tag: tip == nil ? nil : tipSourceLabel(it),
+                muted: tip == nil)
+            StopInfoRow(label: "花費", text: fee ?? "還沒有資料", muted: fee == nil)
         }
     }
 }
 
-/// 卡片裡的一列：上面小標，下面內容。須知是資料包的事實，一律標未核對
-private struct StopInfoRow: View {
+/// 卡片裡的一列：上面小標（後面可以跟一個核對到哪裡的小標籤），下面內容
+struct StopInfoRow: View {
     let label: String
     let text: String
-    var unverified: Bool = false
+    var tag: String? = nil
     var muted: Bool = false
+    var warn: Bool = false
+
+    private var tone: TextTone {
+        if warn { return .destructive }
+        return muted ? .secondary : .primary
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s1 / 2) {
             HStack(spacing: T.Space.s2) {
                 FieldLabel(label)
-                if unverified {
-                    Tag("未核對")
+                if let tag {
+                    Tag(tag)
                 }
             }
-            DomyText(text, .body, tone: muted ? .secondary : .primary)
+            DomyText(text, .body, tone: tone)
         }
         .padding(.vertical, T.Space.s3)
         .fillLeading()
@@ -278,9 +314,15 @@ struct StopOtherMaps: View {
     let it: Stop
     @State private var copied: Bool = false
 
+    /// 查到韓文地址的站，地址在「開放」那組
+    private var footer: String? {
+        if factOf(it.id)?.addr != nil { return nil }
+        return "這一版只有韓文名稱，沒有門牌地址。接上地點查證後會帶出完整韓文地址。"
+    }
+
     var body: some View {
         if !it.kr.isEmpty {
-            DomySection("別的找路方式", footer: "這一版只有韓文名稱，沒有門牌地址。接上地點查證後會帶出完整韓文地址。") {
+            DomySection("別的找路方式", footer: footer) {
                 SettingsRow("複製韓文名", value: copied ? "複製了" : nil) {
                     UIPasteboard.general.string = it.kr
                     copied = true

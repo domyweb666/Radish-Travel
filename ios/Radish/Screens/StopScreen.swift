@@ -1,4 +1,4 @@
-// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、韓文名、找路，
+// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、開放／怎麼訂／來源（有查到才有）、韓文名、找路，
 // 下面是移到別的時段、換一個，右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
 // 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
 // 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」、剛拿掉又從舊的入口進來的），只給看。
@@ -76,6 +76,11 @@ private struct StopPreview: View {
         planToStop(place, why)
     }
 
+    /// 歇業了。不在這趟裡沒有日期，看不出哪天休館
+    private var shut: StopShut? {
+        placeShut(place.id)
+    }
+
     /// 這一頁不知道是從哪裡點進來的，只講確定的事
     private var why: String {
         let placeId: String = place.id
@@ -90,7 +95,8 @@ private struct StopPreview: View {
         Screen(place.n) {
             header
                 .padding(.top, -T.Space.s4)
-            StopInfoSection(it: it)
+            StopInfoSection(it: it, hasOpen: !openLines(factOf(place.id), shut).isEmpty)
+            StopFactBlocks(it: it, shut: shut, visit: nil)
             if let trip = store.s.trip {
                 StopAllergyEntry(it: it, trip: trip) {
                     allergy = true
@@ -112,7 +118,7 @@ private struct StopPreview: View {
             .tint(C.accent)
         }
         .fullScreenCover(isPresented: $driver) {
-            DriverView(name: place.n, kr: place.kr)
+            DriverView(name: place.n, kr: place.kr, addr: factOf(place.id)?.addr)
         }
     }
 
@@ -122,6 +128,10 @@ private struct StopPreview: View {
                 CatIcon(place)
                 DomyText("\(AREA[need: place.a])・\(kindName(place))", .subheadline, tone: .secondary)
                     .fillLeading()
+            }
+            if let shut {
+                WarnTag(shut.why)
+                    .accessibilityIdentifier("stop-closed")
             }
             TagRow {
                 Tag("不在這趟裡", tone: .accent)
@@ -175,15 +185,26 @@ private struct StopPage: View {
                 .tint(C.accent)
         }
         .fullScreenCover(isPresented: $driver) {
-            DriverView(name: it.n, kr: it.kr)
+            DriverView(name: it.n, kr: it.kr, addr: factOf(it.id)?.addr)
         }
+    }
+
+    /// 這一站那天去不了（休館、歇業）。去得了、去過了是 nil
+    private var shut: StopShut? {
+        stopShut(trip, it, found.s.day, store.phase)
+    }
+
+    /// 去這一站的那天，YYYY-MM-DD
+    private var visit: String {
+        addDays(trip.start, found.s.day - 1)
     }
 
     @ViewBuilder
     private var content: some View {
-        StopHeader(it: it, trip: trip, slot: found.s)
+        StopHeader(it: it, trip: trip, slot: found.s, shut: shut)
             .padding(.top, -T.Space.s4)
-        StopInfoSection(it: it)
+        StopInfoSection(it: it, hasOpen: !openLines(factOf(it.id), shut).isEmpty)
+        StopFactBlocks(it: it, shut: shut, visit: visit)
         StopAllergyEntry(it: it, trip: trip) {
             pane = .allergy
         }

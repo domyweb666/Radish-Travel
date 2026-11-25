@@ -795,9 +795,23 @@ private func unswap(_ d: inout AppState, _ snap: UndoSnap) {
     syncAIUsed(&d)
 }
 
+/// 這趟有幾站看過官方頁，照實寫。二手資料、沒查到的都算沒有
+private func shareChecked(_ trip: Trip) -> String {
+    let all: [Found] = allItems(trip)
+    if all.isEmpty { return "蘿蔔旅行排的。" }
+    var seen: Int = 0
+    for x in all {
+        guard let f = factOf(x.it.id) else { continue }
+        if f.status == FactStatus.official { seen += 1 }
+    }
+    if seen == 0 { return "蘿蔔旅行排的。這 \(all.count) 站都還沒看過官方頁，" }
+    if seen == all.count { return "蘿蔔旅行排的。這 \(all.count) 站都看過官方頁，" }
+    return "蘿蔔旅行排的。這 \(all.count) 站裡有 \(seen) 站看過官方頁，\(all.count - seen) 站沒有，"
+}
+
 func shareText(_ trip: Trip) -> String {
     let start: String = trip.start
     let end: String = addDays(start, trip.days - 1)
     let body: String = planText(trip, false, { (d: Int) -> String in fmtDay(addDays(start, d - 1)) })
-    return "首爾 \(trip.days) 天　\(fmtDay(start))–\(fmtDay(end))\n\n\(body)\n（蘿蔔旅行排的。地點還沒核對過，看完跟我說哪天想改。）"
+    return "首爾 \(trip.days) 天　\(fmtDay(start))–\(fmtDay(end))\n\n\(body)\n（\(shareChecked(trip))看完跟我說哪天想改。）"
 }

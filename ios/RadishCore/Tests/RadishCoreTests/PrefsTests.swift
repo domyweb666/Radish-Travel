@@ -10,8 +10,13 @@ private func prefsDraft(days: Int = 6, start: String = "2026-12-04", tweaks: [Tw
     )
 }
 
+/// 這個檔測的是喜好，不看休館資料
+private func prefsNeverClosed(_ id: String, _ iso: String) -> String? {
+    return nil
+}
+
 private func stopsOf(_ d: TripDraft, _ st: Settings) -> [Stop] {
-    let all: [Found] = allItems(generate(d, st))
+    let all: [Found] = allItems(generate(d, st, closed: prefsNeverClosed))
     return all.map { (x: Found) -> Stop in x.it }
 }
 
@@ -59,14 +64,14 @@ final class PrefsTests: XCTestCase {
         st.food = [.street: 1, .local: 1, .famous: 1, .fine: 3]
         st.stay = .nice
         st.budget = 4000
-        let plain: Trip = generate(prefsDraft(), st)
-        let saved: Trip = generate(prefsDraft(tweaks: [.save]), st)
+        let plain: Trip = generate(prefsDraft(), st, closed: prefsNeverClosed)
+        let saved: Trip = generate(prefsDraft(tweaks: [.save]), st, closed: prefsNeverClosed)
         let plainHasFine: Bool = allItems(plain).contains { (x: Found) -> Bool in x.it.f == FoodKind.fine }
         XCTAssertTrue(plainHasFine)
         let savedNoFine: Bool = allItems(saved).allSatisfy { (x: Found) -> Bool in x.it.f != FoodKind.fine }
         XCTAssertTrue(savedNoFine, "省的那趟不排精緻餐廳")
         XCTAssertTrue(cost(saved, st).total < cost(plain, st).total)
-        let treat: Trip = generate(prefsDraft(tweaks: [.treat]), defaultSettings())
+        let treat: Trip = generate(prefsDraft(tweaks: [.treat]), defaultSettings(), closed: prefsNeverClosed)
         let fine: [Found] = allItems(treat).filter { (x: Found) -> Bool in x.it.f == FoodKind.fine }
         XCTAssertEqual(fine.count, 1, "平常不吃精緻餐廳的人，這趟剛好排一餐")
         let one: Found = try XCTUnwrap(fine.first)
@@ -78,7 +83,7 @@ final class PrefsTests: XCTestCase {
         var st: Settings = defaultSettings()
         st.play = [.art: 2]
         st.food = [.street: 2, .local: 2, .famous: 2, .fine: 0]
-        let t: Trip = generate(prefsDraft(days: 8), st)
+        let t: Trip = generate(prefsDraft(days: 8), st, closed: prefsNeverClosed)
         let artFound: Found? = allItems(t).first { (x: Found) -> Bool in x.it.c == .art }
         let art: Stop = try XCTUnwrap(artFound, "最愛博物館的人會排到博物館").it
         let choices: [LearnChoice] = learnChoices(art, st)

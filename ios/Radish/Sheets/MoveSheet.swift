@@ -1,6 +1,7 @@
 // 移到別的時段（S07，線框 .uiux/03-線框/線框/A6-Move）：半頁。每一天一列、上午下午晚上三格，
 // 在路上的時段不能選，這一站現在在的那一格寫「現在在這」。選好一格，下面寫那天現在有幾個主要景點、共幾站，
-// 移過去之後主要景點會超過 2 個就先講。移過去之後關掉，提示條帶復原。
+// 移過去之後主要景點會超過 2 個就先講；這一站那天休館也講（那一列寫休館，選了寫為什麼），不擋。
+// 移過去之後關掉，提示條帶復原。
 // 開法：sheets.open(.move(id:))。原本是 mobile/src/sheets/StopSheet.tsx 的 move 那一面（Sheets/StopSheetParts.swift 的 StopSheetMove）。
 import SwiftUI
 
@@ -8,6 +9,11 @@ import SwiftUI
 struct MoveTarget: Equatable {
     var day: Int
     var part: Part
+}
+
+/// 這一站那天不開的原因
+private func moveClosed(_ trip: Trip, _ id: String, _ day: Int) -> String? {
+    return closedOnTripDay(trip.start, day, id, closedByFacts)
 }
 
 struct MoveSheet: View {
@@ -84,7 +90,8 @@ struct MoveSheet: View {
             d.trip = trip
             if let err { return err }
             // 只講移去的那一天：別天本來就太滿的，跟這一步沒關係
-            let done: String = "「\(name)」移到第 \(day) 天\(PART[need: part])了。"
+            var done: String = "「\(name)」移到第 \(day) 天\(PART[need: part])了。"
+            if let why = moveClosed(trip, stopId, day) { done += "那天它休館：\(why)。" }
             let big: Int = bigCount(trip, day)
             if big > 2 { return done + "那天現在有 \(big) 個主要景點，會很累。" }
             return done
@@ -118,7 +125,7 @@ private struct MoveGrid: View {
                 GridRow {
                     dayLabel(d)
                     ForEach(PARTS, id: \.self) { (p: Part) in
-                        MoveCell(state: state(d, p), day: d, part: p) {
+                        MoveCell(state: state(d, p), day: d, part: p, closed: moveClosed(trip, from.it.id, d)) {
                             onPick(MoveTarget(day: d, part: p))
                         }
                     }
@@ -132,6 +139,9 @@ private struct MoveGrid: View {
         return VStack(alignment: .leading, spacing: 0) {
             DomyText("第 \(d) 天", .subheadline, weight: .semibold, lines: 1)
             DomyText(date, .caption, tone: .secondary, lines: 1)
+            if moveClosed(trip, from.it.id, d) != nil {
+                DomyText("休館", .caption, tone: .destructive, lines: 1)
+            }
         }
         .gridColumnAlignment(.leading)
         .accessibilityElement(children: .combine)
@@ -159,6 +169,8 @@ private struct MoveCell: View {
     let state: MoveCellState
     let day: Int
     let part: Part
+    /// 這一站那天不開的原因。格子照樣能選，只讓旁白念出來
+    let closed: String?
     let action: () -> Void
 
     private var title: String {
@@ -181,10 +193,11 @@ private struct MoveCell: View {
 
     private var a11y: String {
         let at: String = "第 \(day) 天\(PART[need: part])"
+        let shut: String = closed.map { (why: String) -> String in "，這天休館：\(why)" } ?? ""
         switch state {
         case .off: return "\(at)，在路上，不能選"
-        case .here: return "\(at)，這一站現在在這"
-        case .open: return "\(at)，\(title)" + (picked ? "，選了" : "")
+        case .here: return "\(at)，這一站現在在這" + shut
+        case .open: return "\(at)，\(title)" + shut + (picked ? "，選了" : "")
         }
     }
 
@@ -247,6 +260,10 @@ private struct MoveSummary: View {
         VStack(alignment: .leading, spacing: T.Space.s1) {
             if let to {
                 DomyText("第 \(to.day) 天現在有 \(bigCount(trip, to.day)) 個主要景點、共 \(dayStops(trip, to.day).count) 站", .subheadline)
+                if let why = moveClosed(trip, it.id, to.day) {
+                    DomyText("這天休館：\(why)", .subheadline, tone: .destructive)
+                        .accessibilityIdentifier("move-closed")
+                }
                 if let warn = tooMany(to) {
                     DomyText(warn, .subheadline, tone: .destructive)
                 }

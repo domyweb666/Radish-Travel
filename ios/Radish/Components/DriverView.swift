@@ -1,4 +1,4 @@
-// 給司機看（S09，線框 .uiux/03-線框/線框/A11-Driver）：全螢幕，把韓文名稱放到最大，下面一句「請到這裡」。
+// 給司機看（S09，線框 .uiux/03-線框/線框/A11-Driver）：全螢幕，把韓文名稱放到最大，下面是韓文地址（有查到才有）和一句「請到這裡」。
 // 從一站（StopScreen）和下一站卡（TripScreenParts.swift）用 .fullScreenCover 開。沒有韓文名稱的站不會出現入口。
 // 原本是 mobile/src/sheets/StopSheet.tsx 的 show 那一面。
 import SwiftUI
@@ -9,10 +9,13 @@ struct DriverView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var krSize: CGFloat = 96  // domy-ignore: 線框 A11 的大字，只有這一頁用
     private let name: String
     private let kr: String
+    /// 韓文地址，有查到才有
+    private let addr: String?
 
-    init(name: String, kr: String) {
+    init(name: String, kr: String, addr: String? = nil) {
         self.name = name
         self.kr = kr
+        self.addr = addr
     }
 
     var body: some View {
@@ -26,13 +29,29 @@ struct DriverView: View {
             }
             .padding(.horizontal, T.Space.s3)
             Spacer(minLength: T.Space.s4)
-            words
+            fitted
             Spacer(minLength: T.Space.s4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(C.canvas.ignoresSafeArea())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("driver-view")
+    }
+
+    /// 有地址的字比較多，大字級放不下就改成可以捲。先分到空間，不跟上下的留白平分
+    @ViewBuilder
+    private var fitted: some View {
+        if addr == nil {
+            words
+        } else {
+            ViewThatFits(in: .vertical) {
+                words
+                ScrollView {
+                    words
+                }
+            }
+            .layoutPriority(1)
+        }
     }
 
     private var words: some View {
@@ -45,6 +64,11 @@ struct DriverView: View {
                 .lineLimit(3)
                 .minimumScaleFactor(0.3)  // domy-ignore: 名字長的站（例：동대문디자인플라자）縮到放得下
                 .accessibilityLabel("韓文名稱：\(kr)")
+            if let addr {
+                DomyText(addr, .title1, align: .center)
+                    .accessibilityLabel("韓文地址：\(addr)")
+                    .accessibilityIdentifier("driver-addr")
+            }
             VStack(spacing: T.Space.s2) {
                 DomyText("여기로 가 주세요", .largeTitle, align: .center)
                 DomyText("（請到這裡）", .body, tone: .secondary, align: .center)

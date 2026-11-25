@@ -78,6 +78,8 @@
             case "quota": return quota()
             case "route": return route()
             case "pool": return poolTrip()
+            case "closed": return palace(shut: true)
+            case "checked": return palace(shut: false)
             default: return nil
             }
         }
@@ -180,6 +182,32 @@
             put(&trip, "p29", 2, .eve)
             d.trip = trip
             return d
+        }
+
+        /// 第 2 天第一站是景福宮、下午是昌德宮與後苑。shut 是景福宮那天休館（週二），不然是有開的日子
+        private static func palace(shut: Bool) -> AppState {
+            var d: AppState = start()
+            var trip: Trip = makeTrip(palaceFrom(shut), 5, d.settings)
+            for i in trip.slots.indices where trip.slots[i].day == 2 {
+                trip.slots[i].items = []
+            }
+            put(&trip, "p0", 2, .am)
+            put(&trip, "p6", 2, .pm)
+            d.trip = trip
+            return d
+        }
+
+        /// 幾天後出發，第 2 天才會是那種日子。核對資料還沒有景福宮的時候，只照星期幾挑
+        private static func palaceFrom(_ shut: Bool) -> Int {
+            let known: Bool = factOf("p0") != nil
+            for n in 10..<70 {
+                let iso: String = addDays(todayISO(), n + 1)
+                let tuesday: Bool = dowOf(iso) == 2
+                if tuesday != shut { continue }
+                let closed: Bool = closedWhy("p0", iso) != nil
+                if !known || closed == shut { return n }
+            }
+            return 10
         }
 
         /* ---------- 組場景用的 ---------- */

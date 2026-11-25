@@ -3,6 +3,11 @@ import XCTest
 
 @testable import RadishCore
 
+/// 都沒有核對資料。核對資料會一直加，這裡只測沒有開賣時間的那一種
+private func noFact(_ id: String) -> PlaceFact? {
+    return nil
+}
+
 final class TripsTests: XCTestCase {
     private func state() -> AppState {
         var d: AppState = AppState()
@@ -125,24 +130,26 @@ final class TripsTests: XCTestCase {
         let need: [Stop] = unbookedOf(trip, d.checks)
         XCTAssertTrue(need.count > 0)
         guard let firstNeed = need.first else { return }
-        guard let r = remindersOf(d, "2026-11-16").first else {
+        XCTAssertEqual(remindersOf(d, "2026-11-16", fact: noFact).count, 1, "不知道什麼時候開賣的，一趟合成一則")
+        guard let r = remindersOf(d, "2026-11-16", fact: noFact).first else {
             XCTFail("應該有一則提醒")
             return
         }
         XCTAssertEqual(r.on, "2026-11-24")
+        XCTAssertNil(r.at, "手機當地的早上九點，不是絕對時刻")
         XCTAssertTrue(r.body.contains("\(need.count) 站"))
         XCTAssertTrue(r.body.contains(firstNeed.n))
         d.checks["b_" + firstNeed.id] = true
-        let after: Reminder? = remindersOf(d, "2026-11-16").first
+        let after: Reminder? = remindersOf(d, "2026-11-16", fact: noFact).first
         let stillThere: Bool = after?.body.contains(firstNeed.n) ?? false
         XCTAssertTrue(!stillThere || need.count == 1)
         for x in need {
             d.checks["b_" + x.id] = true
         }
-        XCTAssertEqual(remindersOf(d, "2026-11-16").count, 0)
+        XCTAssertEqual(remindersOf(d, "2026-11-16", fact: noFact).count, 0)
         var e: AppState = state()
         shelveCurrent(&e)
-        XCTAssertEqual(remindersOf(e, "2026-11-16").count, 1)
+        XCTAssertEqual(remindersOf(e, "2026-11-16", fact: noFact).count, 1)
     }
 
     func test取了名字的一趟_標題用名字_收起來之後名字和封面跟著走() {

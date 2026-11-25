@@ -274,6 +274,22 @@ struct Tag: View {
     }
 }
 
+/// 要注意的小標籤，字可能很長（例：歇業的原因）。會換行，所以用圓角方塊，不放進 TagRow
+struct WarnTag: View {
+    let label: String
+
+    init(_ label: String) {
+        self.label = label
+    }
+
+    var body: some View {
+        DomyText(label, .caption, tone: .destructive)
+            .padding(.horizontal, T.Space.s2)
+            .padding(.vertical, T.Space.s1)
+            .background(C.destructiveSoft, in: RoundedRectangle(cornerRadius: T.Radius.sm, style: .continuous))
+    }
+}
+
 /// 一排小標籤，放不下會換行
 struct TagRow<Content: View>: View {
     @ViewBuilder var content: Content

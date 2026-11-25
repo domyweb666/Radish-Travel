@@ -129,15 +129,16 @@ struct NotesScreen: View {
     private func byDay(_ trip: Trip) -> some View {
         let shown: Int = shownDay(trip)
         let stops: [Found] = dayStops(trip, shown)
+        let footer: String? = tipsFooter(stops.map { (x: Found) -> Stop in x.it })
         TripDayTabs(trip: trip, value: shown, today: today) { (d: Int) in
             noteDay = d
         }
         if stops.isEmpty {
             DomyEmptyState(title: "這天沒有排站", message: "在路上或留白的日子，沒有要注意的站。")
         } else {
-            DomySection(footer: "這幾站的須知都還沒核對過，去之前再查一下。") {
+            DomySection(footer: footer) {
                 ForEach(stops, id: \.it.id) { (x: Found) in
-                    NoteRow(meta: PART[need: x.s.part], name: x.it.n, tip: x.it.tip) {
+                    NoteRow(meta: PART[need: x.s.part], name: x.it.n, tip: tipOf(x.it)?.text) {
                         nav.push(.stop(id: x.it.id))
                     }
                     .accessibilityIdentifier("note-row-\(x.it.id)")
