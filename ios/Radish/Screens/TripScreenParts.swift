@@ -35,6 +35,7 @@ struct TripDayTabs: View {
                 DomyText(date, .caption, tone: on ? .onAccent : .secondary)
             }
             .padding(.horizontal, T.Space.s4)
+            .padding(.vertical, T.Space.s2)
             .frame(minHeight: T.Size.row)
             .background(
                 on ? C.accent : C.surface,
@@ -56,6 +57,8 @@ struct TripStopRow: View {
     let slot: Slot
     /// 那天去不了（休館、歇業）。去得了是 nil。核對過的不用加標籤
     var shut: StopShut? = nil
+    /// 排的那個時段不開。開、或那天整天不開是 nil
+    var partShut: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -84,7 +87,10 @@ struct TripStopRow: View {
             out.append("去過了")
         }
         if let shut {
-            out.append(shut.gone ? shut.why : "這天休館")
+            out.append(shut.gone ? shut.why : closedLabel)
+        }
+        if let partShut {
+            out.append(partShut)
         }
         if it.b == true {
             out.append("要先訂")
@@ -96,6 +102,11 @@ struct TripStopRow: View {
             out.append(it.why)
         }
         return out.joined(separator: "，")
+    }
+
+    /// 那天不開的小標籤
+    private var closedLabel: String {
+        return "這天\(kindWords(it.c).shut)"
     }
 
     private func texts(_ part: String) -> some View {
@@ -110,11 +121,13 @@ struct TripStopRow: View {
             DomyText(it.why, .subheadline, tone: .strong)
             if let shut, shut.gone {
                 WarnTag(shut.why)
+            } else if let partShut {
+                WarnTag(partShut)
             }
             if closed || booking || fromAI {
                 TagRow {
                     if closed {
-                        Tag("這天休館", tone: .warn)
+                        Tag(closedLabel, tone: .warn)
                     }
                     if booking {
                         Tag("要先訂", tone: .accent)
@@ -231,7 +244,10 @@ struct TripDayCard: View {
             DomyText(text, .footnote, tone: .secondary)
                 .padding(.vertical, T.Space.s2)
         case .stop(let it, let slot):
-            TripStopRow(it: it, slot: slot, shut: stopShut(trip, it, slot.day, store.phase)) {
+            TripStopRow(
+                it: it, slot: slot, shut: stopShut(trip, it, slot.day, store.phase),
+                partShut: stopPartShut(trip, it, slot, store.phase)
+            ) {
                 nav.push(.stop(id: it.id))
             }
             .spotTarget("stop-row-\(it.id)", in: frames)
@@ -326,7 +342,7 @@ struct TripNextStop: View {
         .padding(.vertical, -T.Space.s2)
         titleButton(it)
         if let shut = stopShut(trip, it, next.s.day, store.phase) {
-            WarnTag(shut.gone ? shut.why : "今天休館：\(shut.why)")
+            WarnTag(shut.gone ? shut.why : "今天\(kindWords(it.c).shut)：\(shut.why)")
                 .accessibilityIdentifier("next-closed")
         }
         DomyText(legText(next, all), .subheadline, tone: .secondary)

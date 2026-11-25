@@ -92,14 +92,26 @@ struct PrepBefore: View {
     @ViewBuilder private func bookLink(_ r: BookRow) -> some View {
         if !r.checked && r.stop.status == StopStatus.kept {
             if let link = r.url, let host = bookHost(link) {
-                DomyListRow(meta: prepNote(r.foreigner), title: "開訂票網頁　\(host)") {
+                DomyListRow(
+                    meta: prepNote(r.foreigner), title: "開訂票網頁　\(host)", label: bookSpoken(r, host)
+                ) {
                     openWeb(link)
                 }
+                .accessibilityHint("會打開瀏覽器")
                 .accessibilityIdentifier("book-open-\(r.stop.id)")
             } else if let text = prepNote(r.foreigner) {
                 TextRow("外國人訂不訂得到", note: text)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(r.stop.n)，外國人訂不訂得到：\(text)")
             }
         }
+    }
+
+    /// 開訂票網頁那一列念的：先念站名，免得好幾列聽起來一樣
+    private func bookSpoken(_ r: BookRow, _ host: String) -> String {
+        let head: String = "\(r.stop.n)，開訂票網頁，\(host)"
+        guard let text = prepNote(r.foreigner) else { return head }
+        return head + "，外國人訂不訂得到：" + text
     }
 
     @ViewBuilder private var remindSection: some View {

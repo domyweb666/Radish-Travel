@@ -15,6 +15,8 @@ struct StopHeader: View {
     let slot: Slot
     /// 這一站那天去不了（休館、歇業）。去得了是 nil
     let shut: StopShut?
+    /// 排的這個時段不開。開、或那天整天不開是 nil
+    let partShut: String?
 
     private var line: String {
         let date: String = fmtDay(addDays(trip.start, slot.day - 1))
@@ -28,26 +30,27 @@ struct StopHeader: View {
                 DomyText(line, .subheadline, tone: .secondary)
                     .fillLeading()
             }
-            if let shut, shut.gone {
-                WarnTag(shut.why)
+            if let warn {
+                WarnTag(warn)
                     .accessibilityIdentifier("stop-closed")
+            } else if let partShut {
+                WarnTag(partShut)
+                    .accessibilityIdentifier("stop-part-closed")
             }
             tags
         }
     }
 
-    private var closedToday: Bool {
-        if let shut { return !shut.gone }
-        return false
+    /// 那天去不了，原因寫在這裡，下面「開放」那組不再講一次
+    private var warn: String? {
+        guard let shut else { return nil }
+        if shut.gone { return shut.why }
+        return "這天\(kindWords(it.c).shut)：\(shut.why)"
     }
 
     private var tags: some View {
         let st: Settings = tripSettings(store.s.settings, trip.tweaks)
         return TagRow {
-            if closedToday {
-                Tag("這天休館", tone: .warn)
-                    .accessibilityIdentifier("stop-closed")
-            }
             Tag(it.s == .L ? "主要景點" : "順路小地方")
             if it.b == true {
                 Tag("要先訂", tone: .accent)
@@ -74,6 +77,8 @@ struct StopInfoSection: View {
     let it: Stop
     /// 下面有「開放」那組。沒有的話，這一組底下要講營業時間得自己查
     let hasOpen: Bool
+    /// 要先訂但沒查到怎麼訂
+    let noBook: Bool
 
     private var whyText: String {
         it.why.isEmpty ? "這一站沒有寫為什麼排。" : it.why
@@ -83,6 +88,12 @@ struct StopInfoSection: View {
     private var tipText: String? {
         guard let tip = tipOf(it) else { return nil }
         return fullStop(tip.text)
+    }
+
+    /// 資料包那句還沒核對的，跟核對過的分開放
+    private var extraText: String? {
+        guard let tip = tipOf(it), let extra = tip.extra, !extra.isEmpty else { return nil }
+        return fullStop(extra)
     }
 
     /// 票價（有查到才有）和原本的粗估，各一行
@@ -99,14 +110,18 @@ struct StopInfoSection: View {
     }
 
     private func priceLead(_ status: FactStatus) -> String {
+        let word: String = kindWords(it.c).price
         switch status {
-        case FactStatus.official: return "官方票價"
-        case FactStatus.second: return "票價（二手資料）"
-        case FactStatus.none: return "票價（未核對）"
+        case FactStatus.official: return "官方" + word
+        case FactStatus.second: return word + "（二手資料）"
+        case FactStatus.none: return word + "（未核對）"
         }
     }
 
     private var footer: String? {
+        if noBook {
+            return hasOpen ? "怎麼訂還沒查到，去之前自己查一下。" : "怎麼訂、營業時間都還沒查到，去之前自己查一下。"
+        }
         if hasOpen { return nil }
         return "照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。"
     }
@@ -119,6 +134,9 @@ struct StopInfoSection: View {
             StopInfoRow(
                 label: "須知", text: tip ?? "這一站還沒有須知。", tag: tip == nil ? nil : tipSourceLabel(it),
                 muted: tip == nil)
+            if let extra = extraText {
+                StopInfoRow(label: "另一句須知", text: extra, tag: "未核對")
+            }
             StopInfoRow(label: "花費", text: fee ?? "還沒有資料", muted: fee == nil)
         }
     }
@@ -289,7 +307,8 @@ struct StopPlaceCard: View {
             Card {
                 FieldLabel("韓文名（給司機或路人看）")
                 DomyText(it.kr, .title2)
-                HStack(spacing: T.Space.s2) {
+                // 字級放大時兩顆放不下，改成一顆一列
+                PairLayout(spacing: T.Space.s2) {
                     DomyButton("放大給司機看", variant: .secondary, size: .compact, fullWidth: true, action: onDriver)
                         .accessibilityIdentifier("stop-show")
                     DomyButton("用 Naver 找路", variant: .secondary, size: .compact, fullWidth: true) {
@@ -314,7 +333,7 @@ struct StopOtherMaps: View {
     let it: Stop
     @State private var copied: Bool = false
 
-    /// 查到韓文地址的站，地址在「開放」那組
+    /// 查到韓文地址的站，地址在「放大給司機看」
     private var footer: String? {
         if factOf(it.id)?.addr != nil { return nil }
         return "這一版只有韓文名稱，沒有門牌地址。接上地點查證後會帶出完整韓文地址。"
@@ -370,7 +389,7 @@ struct StopEditBlock: View {
                 }
                 FieldLabel("想改這一站")
                     .padding(.horizontal, T.Space.s1)
-                HStack(spacing: T.Space.s2) {
+                PairLayout(spacing: T.Space.s2) {
                     DomyButton("移到別的時段", variant: .secondary, size: .compact, fullWidth: true) {
                         sheets.open(.move(id: id))
                     }
@@ -426,11 +445,24 @@ struct StopSwapPane: View {
                 }
             } else {
                 Card {
-                    DomyText(it.a == nil ? "沒有別的候選了。" : "這一帶沒有別的候選了。")
+                    DomyText(emptyText)
                 }
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// 一個都挑不出來：是真的沒有，還是有、但這一站排的那個時段都不開
+    private var emptyText: String {
+        let head: String = it.a == nil ? "" : "這一帶"
+        let all: [Place] = alternatives(
+            trip, store.s.settings, it,
+            closed: { (_: String, _: String) -> String? in nil },
+            parts: { (_: String, _: String, _: Part) -> String? in nil })
+        if let at = findItem(trip, it.id)?.s, !all.isEmpty {
+            return "\(head)有別的候選，但第 \(at.day) 天\(PART[need: at.part])都不開。"
+        }
+        return "\(head)沒有別的候選了。"
     }
 
     /// 自己加的、AI 加的站沒有記在哪一帶，候選是從全首爾挑的

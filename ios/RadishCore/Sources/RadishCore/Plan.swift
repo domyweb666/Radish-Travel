@@ -149,13 +149,50 @@ func closedOnTripDay(_ start: String, _ day: Int, _ id: String, _ closed: Closed
     return closed(id, addDays(start, day - 1))
 }
 
-/// 這趟排到休館那天的站，一站一句，照天數排：「第 2 天 12/1（二）「景福宮」休館：每週二休。」已經拔起來的不講
-func closedNotes(_ t: Trip, closed: ClosedCheck = closedByFacts) -> [String] {
+/// 時段判斷：地點代號、YYYY-MM-DD、時段 → 那個時段不開的原因，有開或沒資料是 nil
+typealias PartCheck = (String, String, Part) -> String?
+
+func partClosedByFacts(_ id: String, _ iso: String, _ part: Part) -> String? {
+    return partClosedWhy(id, iso, part)
+}
+
+func cautionByFacts(_ id: String, _ iso: String) -> String? {
+    return cautionWhy(id, iso)
+}
+
+/// start 出發的第 day 天的 part，這個地方不開的原因
+func closedAtTripPart(_ start: String, _ day: Int, _ part: Part, _ id: String, _ parts: PartCheck) -> String? {
+    if start.isEmpty { return nil }
+    return parts(id, addDays(start, day - 1), part)
+}
+
+/// 不開要怎麼講：看的地方說休館，吃的喝的說公休，其他說不開
+func closedWord(_ c: Cat) -> String {
+    switch c {
+    case .sight, .art: return "休館"
+    case .eat, .cafe: return "公休"
+    default: return "不開"
+    }
+}
+
+/// 這趟排到不開的那天、那個時段的站，和要提醒的事，一站一句，照天數排：
+/// 「第 2 天 12/1（二）「景福宮」休館：每週二休。」「第 2 天 12/2（三）上午「古都食」還沒開，16:00 才開。」已經拔起來的不講
+func closedNotes(
+    _ t: Trip, closed: ClosedCheck = closedByFacts, parts: PartCheck = partClosedByFacts,
+    caution: ClosedCheck = cautionByFacts
+) -> [String] {
     var out: [String] = []
     for d in stride(from: 1, through: t.days, by: 1) {
         for x in dayStops(t, d) where x.it.status != .pulled {
-            guard let why = closedOnTripDay(t.start, d, x.it.id, closed) else { continue }
-            out.append("第 \(d) 天 \(tripDayLabel(t, d))「\(x.it.n)」休館：\(why)。")
+            let head: String = "第 \(d) 天 \(tripDayLabel(t, d))"
+            if let why = closedOnTripDay(t.start, d, x.it.id, closed) {
+                out.append("\(head)「\(x.it.n)」\(closedWord(x.it.c))：\(why)。")
+            } else if let why = closedAtTripPart(t.start, d, x.s.part, x.it.id, parts) {
+                out.append("\(head)\(PART[need: x.s.part])「\(x.it.n)」\(why)。")
+            }
+            if let why = closedOnTripDay(t.start, d, x.it.id, caution) {
+                out.append("\(head)「\(x.it.n)」：\(why)。")
+            }
         }
     }
     return out
@@ -178,8 +215,7 @@ func closedShort(_ f: PlaceFact) -> String? {
     }
     let nth: [NthDay] = f.closedNth ?? []
     if !nth.isEmpty {
-        let names: [String] = nth.map { (n: NthDay) -> String in "第 \(n.week) 個週\(closedDow(n.dow))" }
-        bits.append("每月" + names.joined(separator: "、") + "休")
+        bits.append(nthText(nth) + "休")
     }
     if !bits.isEmpty { return bits.joined(separator: "、") }
     return f.closed == nil ? nil : "沒有固定休"
@@ -371,7 +407,7 @@ func seedOut(_ t: inout Trip, _ seeds: inout [Seed], _ id: String, _ why: String
 /// 有別天可以放，就不放它休館的那天；能放的日子全都休才照放，並且講出來
 func restoreSeed(
     _ t: inout Trip, _ seeds: inout [Seed], _ seedId: String, _ now: TripNow? = nil,
-    closed: ClosedCheck = closedByFacts
+    closed: ClosedCheck = closedByFacts, parts: PartCheck = partClosedByFacts
 ) -> String {
     let found: Int? = seeds.firstIndex { (s: Seed) -> Bool in s.id == seedId }
     guard let i = found else { return "找不到那一站" }
@@ -394,21 +430,32 @@ func restoreSeed(
     for d in stride(from: 1, through: t.days, by: 1) {
         if let why = closedOnTripDay(t.start, d, stop.id, closed) { shut[d] = why }
     }
+    let word: String = closedWord(stop.c)
+    // 那天有開，但這些時段不開
+    var partShut: [Int: String] = [:]
+    for si in t.slots.indices {
+        let s: Slot = t.slots[si]
+        if shut[s.day] != nil { continue }
+        if let why = closedAtTripPart(t.start, s.day, s.part, stop.id, parts) { partShut[si] = why }
+    }
     var toIndex: Int? = nil
     var passed: String = ""
-    // 原本的時段還能放，只是那天休館
+    // 原本的時段還能放，只是那天或那個時段不開
     var shutHome: Int? = nil
     if let from = seed.from, let home = slotAt(t, from.day, from.part) {
         if slotPast(now, from.day, from.part) {
             passed = "第 \(from.day) 天\(PART[need: from.part])已經過了，"
-        } else if shut[from.day] != nil {
+        } else if shut[from.day] != nil || partShut[home] != nil {
             shutHome = home
         } else {
             toIndex = home
         }
     }
-    if toIndex == nil { toIndex = emptiestSlot(t, now, Set<Int>(shut.keys)) }
-    // 能放的日子全都休館：照放，後面會講
+    let shutDays: Set<Int> = Set<Int>(shut.keys)
+    if toIndex == nil { toIndex = emptiestSlot(t, now, shutDays, Set<Int>(partShut.keys)) }
+    // 沒有一個時段是開的：照放，後面會講
+    if toIndex == nil, let home = shutHome, partShut[home] != nil { toIndex = home }
+    if toIndex == nil { toIndex = emptiestSlot(t, now, shutDays) }
     if toIndex == nil { toIndex = shutHome ?? emptiestSlot(t, now) }
     guard let to = toIndex else {
         if hasAnySlot(t) { return "這趟能排的時段都過了，「\(stop.n)」先留在下次再來" }
@@ -423,11 +470,21 @@ func restoreSeed(
     let at: String = "第 \(toDay) 天\(PART[need: toPart])"
     if let why = shut[toDay] {
         let placed: String = passed.isEmpty ? "「\(stop.n)」排回\(at)了" : "\(passed)「\(stop.n)」改排在\(at)"
-        return "\(placed)，但那天它休館（\(why)），能排的別天也都休"
+        let others: Bool = openSlots(t, now).contains { (si: Int) -> Bool in t.slots[si].day != toDay }
+        return "\(placed)，但那天它\(word)（\(why)）" + (others ? "，能排的別天也都休" : "")
+    }
+    if let why = partShut[to] {
+        let placed: String = passed.isEmpty ? "「\(stop.n)」排回\(at)了" : "\(passed)「\(stop.n)」改排在\(at)"
+        return "\(placed)，但那時候它不開（\(why)）"
     }
     if !passed.isEmpty { return "\(passed)「\(stop.n)」改排在\(at)" }
-    if shutHome != nil, let from = seed.from, let why = shut[from.day] {
-        return "第 \(from.day) 天「\(stop.n)」休館（\(why)），改排在\(at)"
+    if let home = shutHome, let from = seed.from {
+        if let why = shut[from.day] {
+            return "第 \(from.day) 天「\(stop.n)」\(word)（\(why)），改排在\(at)"
+        }
+        if let why = partShut[home] {
+            return "第 \(from.day) 天\(PART[need: from.part])「\(stop.n)」不開（\(why)），改排在\(at)"
+        }
     }
     return "「\(stop.n)」排回\(at)了"
 }
@@ -470,9 +527,11 @@ private func emptiestOnDay(_ t: Trip, _ day: Int, _ now: TripNow?) -> Int? {
 }
 
 /// 最空的白天時段，回 t.slots 的位置。now 有給（旅途中）時，過了的時段不算。
-/// shut 是要跳過的那幾天（要放的那一站那天休館）
-private func emptiestSlot(_ t: Trip, _ now: TripNow?, _ shut: Set<Int> = []) -> Int? {
-    let open: [Int] = openSlots(t, now).filter { (i: Int) -> Bool in !shut.contains(t.slots[i].day) }
+/// shut 是要跳過的那幾天（要放的那一站那天不開），skip 是要跳過的時段（t.slots 的位置）
+private func emptiestSlot(_ t: Trip, _ now: TripNow?, _ shut: Set<Int> = [], _ skip: Set<Int> = []) -> Int? {
+    let open: [Int] = openSlots(t, now).filter { (i: Int) -> Bool in
+        return !shut.contains(t.slots[i].day) && !skip.contains(i)
+    }
     let day: [Int] = open.filter { (i: Int) -> Bool in t.slots[i].part != .eve }
     let mid: [Int] = day.filter { (i: Int) -> Bool in
         let s: Slot = t.slots[i]
@@ -512,11 +571,12 @@ func addOwn(
     return "「\(name)」排在第 \(toDay) 天\(PART[need: toPart])"
 }
 
-/// 同一帶、同大小的三個替代選項。這一站排在哪天，就跳過那天休館的
+/// 同一帶、同大小的三個替代選項。這一站排在哪天哪個時段，就跳過那時候不開的
 func alternatives(
-    _ t: Trip, _ base: Settings, _ it: Stop, closed: ClosedCheck = closedByFacts
+    _ t: Trip, _ base: Settings, _ it: Stop, closed: ClosedCheck = closedByFacts,
+    parts: PartCheck = partClosedByFacts
 ) -> [Place] {
-    let day: Int? = findItem(t, it.id)?.s.day
+    let at: Slot? = findItem(t, it.id)?.s
     let st: Settings = tripSettings(base, t.tweaks)
     let noUp: Bool = st.body.contains(.stairs)
     let used: Set<String> = usedIds(t)
@@ -531,7 +591,10 @@ func alternatives(
         if !ar.contains(p.a) { continue }
         if p.s != it.s { continue }
         if it.c == .eat && p.c != .eat { continue }
-        if let d = day, closedOnTripDay(t.start, d, p.id, closed) != nil { continue }
+        if let s = at {
+            if closedOnTripDay(t.start, s.day, p.id, closed) != nil { continue }
+            if closedAtTripPart(t.start, s.day, s.part, p.id, parts) != nil { continue }
+        }
         pool.append(p)
     }
     let sorted: [Place] = planStableSorted(pool) { (x: Place, y: Place) -> Bool in
@@ -662,10 +725,15 @@ func nearbyPage(_ ranked: [NearbyPick], _ page: Int) -> [NearbyPick] {
 }
 
 /// 排進這一天的哪個時段：起點那一站的時段；不行就現在這個時段；再不行就這天第一個還能排的。
-/// 在路上的、已經過了的時段不排。都不行回 nil
-func nearbyPart(_ t: Trip, _ day: Int, _ origin: NearbyOrigin, _ now: TripNow? = nil) -> Part? {
+/// 在路上的、已經過了的時段不排；有給 place 的話，它不開的時段也不排。都不行回 nil
+func nearbyPart(
+    _ t: Trip, _ day: Int, _ origin: NearbyOrigin, _ now: TripNow? = nil, place: Place? = nil,
+    parts: PartCheck = partClosedByFacts
+) -> Part? {
     let open: [Part] = PARTS.filter { (p: Part) -> Bool in
-        return slotAt(t, day, p) != nil && !slotPast(now, day, p)
+        if slotAt(t, day, p) == nil || slotPast(now, day, p) { return false }
+        guard let x = place else { return true }
+        return closedAtTripPart(t.start, day, p, x.id, parts) == nil
     }
     if let p = origin.part, open.contains(p) { return p }
     if let n = now, n.day == day, open.contains(n.part) { return n.part }

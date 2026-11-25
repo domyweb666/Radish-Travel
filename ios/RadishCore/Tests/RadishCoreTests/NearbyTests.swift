@@ -71,7 +71,7 @@ final class NearbyTests: XCTestCase {
             if i > 0 { XCTAssertTrue(ranked[i - 1].leg.km <= x.leg.km, "沒有照距離排") }
         }
         let first: [String] = nearbyPage(ranked, 0).map { (x: NearbyPick) -> String in x.place.n }
-        XCTAssertEqual(first, ["昌德宮與後苑", "清溪川散步", "韓服體驗"])
+        XCTAssertEqual(first, ["昌德宮與後苑", "清溪川散步", "鍾路蔘雞湯"])
     }
 
     func test超過走路上限就寫地鐵或公車() throws {
@@ -79,15 +79,15 @@ final class NearbyTests: XCTestCase {
         var st: Settings = defaultSettings()
         st.walk = .normal
         let normal: [NearbyPick] = nearbyRanked(t, st, 1)
-        let hanbok: NearbyPick = try XCTUnwrap(normal.first { (x: NearbyPick) -> Bool in x.place.n == "韓服體驗" })
-        XCTAssertEqual(hanbok.leg.mode, "地鐵或公車")
-        XCTAssertEqual(legText(hanbok.leg), "地鐵或公車・約 1.2 公里・13 分鐘（估）")
+        let museum: NearbyPick = try XCTUnwrap(normal.first { (x: NearbyPick) -> Bool in x.place.n == "國立現代美術館 首爾館" })
+        XCTAssertEqual(museum.leg.mode, "地鐵或公車")
+        XCTAssertEqual(legText(museum.leg), "地鐵或公車・約 1.2 公里・13 分鐘（估）")
         let stream: NearbyPick = try XCTUnwrap(normal.first { (x: NearbyPick) -> Bool in x.place.n == "清溪川散步" })
         XCTAssertEqual(legText(stream.leg), "走路・約 0.8 公里・10 分鐘（估）")
 
         st.walk = .lots
         let lots: [NearbyPick] = nearbyRanked(t, st, 1)
-        let far: NearbyPick = try XCTUnwrap(lots.first { (x: NearbyPick) -> Bool in x.place.n == "韓服體驗" })
+        let far: NearbyPick = try XCTUnwrap(lots.first { (x: NearbyPick) -> Bool in x.place.n == "國立現代美術館 首爾館" })
         XCTAssertEqual(far.leg.mode, "走路", "能走的人上限 2 公里")
 
         st.walk = .less

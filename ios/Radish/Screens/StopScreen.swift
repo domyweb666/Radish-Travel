@@ -95,8 +95,9 @@ private struct StopPreview: View {
         Screen(place.n) {
             header
                 .padding(.top, -T.Space.s4)
-            StopInfoSection(it: it, hasOpen: !openLines(factOf(place.id), shut).isEmpty)
-            StopFactBlocks(it: it, shut: shut, visit: nil)
+            StopInfoSection(
+                it: it, hasOpen: opensKnown(factOf(place.id), place.c, shut, nil), noBook: bookUnknown(it, shut))
+            StopFactBlocks(it: it, shut: shut, caution: nil, visit: nil)
             if let trip = store.s.trip {
                 StopAllergyEntry(it: it, trip: trip) {
                     allergy = true
@@ -194,6 +195,16 @@ private struct StopPage: View {
         stopShut(trip, it, found.s.day, store.phase)
     }
 
+    /// 排的這個時段不開。那天整天不開的只講那天不開
+    private var partShut: String? {
+        stopPartShut(trip, it, found.s, store.phase)
+    }
+
+    /// 那天要注意、但不算不開的
+    private var caution: String? {
+        stopCaution(trip, it, found.s.day, store.phase)
+    }
+
     /// 去這一站的那天，YYYY-MM-DD
     private var visit: String {
         addDays(trip.start, found.s.day - 1)
@@ -201,10 +212,11 @@ private struct StopPage: View {
 
     @ViewBuilder
     private var content: some View {
-        StopHeader(it: it, trip: trip, slot: found.s, shut: shut)
+        StopHeader(it: it, trip: trip, slot: found.s, shut: shut, partShut: partShut)
             .padding(.top, -T.Space.s4)
-        StopInfoSection(it: it, hasOpen: !openLines(factOf(it.id), shut).isEmpty)
-        StopFactBlocks(it: it, shut: shut, visit: visit)
+        StopInfoSection(
+            it: it, hasOpen: opensKnown(factOf(it.id), it.c, shut, caution), noBook: bookUnknown(it, shut))
+        StopFactBlocks(it: it, shut: shut, caution: caution, visit: visit)
         StopAllergyEntry(it: it, trip: trip) {
             pane = .allergy
         }

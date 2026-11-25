@@ -16,10 +16,11 @@ enum HolidayShift: String, Codable, Sendable {
     case open
 }
 
-/// 每月第幾個星期幾休（week 1 起算，dow 0 是星期日）
+/// 每月第幾個星期幾休（week 1 起算，dow 0 是星期日）。months 有寫就只有那幾個月
 struct NthDay: Codable, Hashable, Sendable {
     var week: Int
     var dow: Int
+    var months: [Int]?
 }
 
 /// 有一段時間不開（整修、季節停駛）。to 沒寫就是不知道到什麼時候
@@ -37,9 +38,12 @@ struct BookInfo: Codable, Hashable, Sendable {
     var opensMonths: Int?  // 或者：去的那個月往前幾個月的 opensDay 號開賣
     var opensDay: Int?
     var opensAt: String?  // "10:00"，韓國時間。有開賣日沒寫幾點就是 nil
+    var opensEvenMonth: Bool?  // 雙數月的 opensDay 號一次開後面兩個月（4 月開 5、6 月）
     var decideDays: Int?  // 去的那天往前幾天還能免費取消。那天就是最晚要決定的日子
     var cancel: String?  // 取消規則，一句話
     var foreigner: String?  // 外國人訂不訂得到，一句話。不知道是 nil
+    var onlineUntilDays: Int?  // 網路賣到去的那天往前幾天（1 是前一天）
+    var onsiteAt: String?  // 去的當天現場幾點起賣，韓國時間
 }
 
 struct FactSource: Codable, Hashable, Sendable {
@@ -63,6 +67,13 @@ struct PlaceFact: Codable, Hashable, Sendable {
     var tip: String?  // 核對過的須知，有寫就取代資料包那句
     var book: BookInfo?
     var gone: String?  // 歇業、搬走、長期不開，寫原因
+    var parts: [Part]?  // 哪幾個時段有開：上午 9 到 12、下午 12 到 17、晚上 18 到 21，至少能待一小時半才算。沒查到是 nil
+    var partsOn: [String: [Part]]?  // 星期 "0" 到 "6"、國定假日 "h"，有寫就蓋掉 parts
+    var times: [String]?  // "15:00-23:00"，過半夜寫 25:00。只拿來講幾點開、幾點關，排不排看 parts
+    var timesOn: [String: [String]]?  // 跟 partsOn 一樣的鍵，蓋掉 times
+    var partWhy: String?  // 不開的時段要講的那句。沒寫就從 times 組
+    var caution: [OffSpan]?  // 只提醒不擋
+    var plainTip: String?  // 資料包原本的須知裡還要講的那句，沒核對過，跟 tip 分開顯示
 }
 
 /// 一行字跟著日期走：這趟到的那天在 until 當天或之前用 before，之後用 after
@@ -71,6 +82,9 @@ struct DatedText: Codable, Hashable, Sendable {
     var until: String
     var before: String
     var after: String
+    var status: String?  // 這幾個沒寫就用資料包那一條的
+    var checked: String?
+    var source: String?
 }
 
 struct AddedPlace: Codable, Hashable, Sendable {
@@ -121,6 +135,15 @@ func factOf(_ id: String) -> PlaceFact? {
     return SeoulChecked.shared.facts[id]
 }
 
+/// 同一組的地點：「挑一間」拆成的那幾間共用原本的代號（p4a、p4b、p4c 都是 p4）。其他的就是自己
+func placeGroup(_ id: String) -> String {
+    let c: SeoulChecked = SeoulChecked.shared
+    for x in c.add where x.place.id == id {
+        return c.drop.contains(x.after) ? x.after : id
+    }
+    return id
+}
+
 /* ---------- 這一天開不開 ---------- */
 
 private let CLOSED_WEEK: [String] = ["日", "一", "二", "三", "四", "五", "六"]
@@ -143,12 +166,9 @@ func closedWhy(_ f: PlaceFact, _ iso: String, _ c: SeoulChecked = SeoulChecked.s
         }
     }
     let dow: Int = dowOf(iso)
-    for n in f.closedNth ?? [] {
-        let dom: Int = Int(iso.suffix(2)) ?? 0
-        let week: Int = (dom - 1) / 7 + 1
-        if dom > 0 && n.dow == dow && n.week == week {
-            return "每月第 \(n.week) 個週\(CLOSED_WEEK[dow])休"
-        }
+    // 碰到國定假日休不休沒有寫，不當成休館，由 cautionWhy 講
+    if !c.holidays.contains(iso), let n = nthHit(f, iso) {
+        return nthText([n]) + "休"
     }
     let weekly: [Int] = f.closed ?? []
     if weekly.isEmpty { return nil }
@@ -164,6 +184,104 @@ func closedWhy(_ f: PlaceFact, _ iso: String, _ c: SeoulChecked = SeoulChecked.s
         }
     }
     return nil
+}
+
+/// 這一天是不是每月第幾個星期幾的固定休
+private func nthHit(_ f: PlaceFact, _ iso: String) -> NthDay? {
+    let dow: Int = dowOf(iso)
+    let dom: Int = Int(iso.suffix(2)) ?? 0
+    let month: Int = Int(iso.dropFirst(5).prefix(2)) ?? 0
+    if dom < 1 { return nil }
+    let week: Int = (dom - 1) / 7 + 1
+    for n in f.closedNth ?? [] {
+        if n.dow != dow || n.week != week { continue }
+        if let months = n.months, !months.contains(month) { continue }
+        return n
+    }
+    return nil
+}
+
+/// 這一天要提醒、但不擋的事：公告寫限制使用、固定休碰到國定假日官方沒講。沒有就是 nil
+func cautionWhy(_ f: PlaceFact, _ iso: String, _ c: SeoulChecked = SeoulChecked.shared) -> String? {
+    for o in f.caution ?? [] {
+        if iso < o.from { continue }
+        if let to = o.to, iso > to { continue }
+        return o.why
+    }
+    if c.holidays.contains(iso), nthHit(f, iso) != nil {
+        return "固定休的那天碰到國定假日，休不休官方沒寫，去之前查"
+    }
+    return nil
+}
+
+func cautionWhy(_ id: String, _ iso: String) -> String? {
+    guard let f = factOf(id) else { return nil }
+    return cautionWhy(f, iso)
+}
+
+/* ---------- 這個時段開不開 ---------- */
+
+/// 那一天哪幾個時段有開。沒查到是 nil
+func openParts(_ f: PlaceFact, _ iso: String, _ c: SeoulChecked = SeoulChecked.shared) -> [Part]? {
+    if c.holidays.contains(iso), let hit = f.partsOn?["h"] { return hit }
+    if let hit = f.partsOn?[String(dowOf(iso))] { return hit }
+    return f.parts
+}
+
+private func openTimes(_ f: PlaceFact, _ iso: String, _ c: SeoulChecked) -> [String] {
+    if c.holidays.contains(iso), let hit = f.timesOn?["h"] { return hit }
+    if let hit = f.timesOn?[String(dowOf(iso))] { return hit }
+    return f.times ?? []
+}
+
+private func partStart(_ p: Part) -> Int {
+    switch p {
+    case .am: return 9 * 60
+    case .pm: return 12 * 60
+    case .eve: return 18 * 60
+    }
+}
+
+/// "15:00" → 分鐘。過半夜的 25:00 也收
+private func clockMinutes(_ text: String) -> Int? {
+    let bits: [String] = text.components(separatedBy: ":")
+    guard bits.count == 2, let h = Int(bits[0]), let m = Int(bits[1]) else { return nil }
+    return h * 60 + m
+}
+
+private func clockText(_ minutes: Int) -> String {
+    let m: Int = minutes % 60
+    return "\(minutes / 60):" + (m < 10 ? "0\(m)" : "\(m)")
+}
+
+/// 那天有開、可是這個時段不開的原因，短的：「還沒開，16:00 才開」「17:00 就關了」。
+/// 有開、沒有資料、整天都不開（看 closedWhy）的是 nil
+func partClosedWhy(
+    _ f: PlaceFact, _ iso: String, _ part: Part, _ c: SeoulChecked = SeoulChecked.shared
+) -> String? {
+    guard let parts = openParts(f, iso, c), !parts.contains(part) else { return nil }
+    if closedWhy(f, iso, c) != nil { return nil }
+    if let why = f.partWhy { return why }
+    let from: Int = partStart(part)
+    var closedAt: Int? = nil
+    var opensAt: Int? = nil
+    for span in openTimes(f, iso, c) {
+        let ends: [String] = span.components(separatedBy: "-")
+        guard ends.count == 2, let a = clockMinutes(ends[0]), let b = clockMinutes(ends[1]) else { continue }
+        if a > from {
+            if opensAt == nil { opensAt = a }
+        } else {
+            closedAt = b
+        }
+    }
+    if let a = opensAt { return closedAt == nil ? "還沒開，\(clockText(a)) 才開" : "休息，\(clockText(a)) 再開" }
+    if let b = closedAt { return "\(clockText(b)) 就關了" }
+    return "這個時段不開"
+}
+
+func partClosedWhy(_ id: String, _ iso: String, _ part: Part) -> String? {
+    guard let f = factOf(id) else { return nil }
+    return partClosedWhy(f, iso, part)
 }
 
 /// 照地點代號查。自己加的、AI 加的沒有資料，是 nil
@@ -201,12 +319,16 @@ func closedText(_ f: PlaceFact) -> String? {
     return text
 }
 
-private func nthText(_ nth: [NthDay]) -> String {
+/// 「每月第 2、第 4 個週日」「3、6、9、12 月第 1 個週一」。一個地方的月份都一樣
+func nthText(_ nth: [NthDay]) -> String {
     let names: [String] = nth.map { (n: NthDay) -> String in
         let d: String = n.dow >= 0 && n.dow < CLOSED_WEEK.count ? CLOSED_WEEK[n.dow] : ""
         return "第 \(n.week) 個週\(d)"
     }
-    return "每月" + names.joined(separator: "、")
+    let months: [Int] = nth.first?.months ?? []
+    if months.isEmpty { return "每月" + names.joined(separator: "、") }
+    let list: [String] = months.map { (m: Int) -> String in String(m) }
+    return list.joined(separator: "、") + " 月" + names.joined(separator: "、")
 }
 
 /// 核對到哪裡，短的：「看過官方頁 11/25」「二手資料 11/25」「未核對」
@@ -222,10 +344,11 @@ private func factMonthDay(_ iso: String) -> String {
     return "\(parts[1])/\(parts[2])"
 }
 
-/// 這一站的須知：核對過的那句優先，沒有才用資料包的
-func tipOf(_ it: Stop) -> (text: String, status: FactStatus)? {
-    if let f = factOf(it.id), let t = f.tip, !t.isEmpty { return (text: t, status: f.status) }
-    if let t = it.tip, !t.isEmpty { return (text: t, status: FactStatus.none) }
+/// 這一站的須知：核對過的那句優先，沒有才用資料包的。
+/// extra 是資料包原本還要講的那句，沒核對過，要跟 text 分開顯示
+func tipOf(_ it: Stop) -> (text: String, status: FactStatus, extra: String?)? {
+    if let f = factOf(it.id), let t = f.tip, !t.isEmpty { return (text: t, status: f.status, extra: f.plainTip) }
+    if let t = it.tip, !t.isEmpty { return (text: t, status: FactStatus.none, extra: nil) }
     return nil
 }
 
@@ -239,4 +362,16 @@ func datedText(_ id: String, _ plain: String, _ start: String?, _ c: SeoulChecke
     let text: String = on <= rule.until ? rule.before : rule.after
     let first: String = text.replacingOccurrences(of: "{start}", with: fmtDay(on))
     return first.replacingOccurrences(of: "{minus3}", with: fmtDay(addDays(on, -3)))
+}
+
+/// 一條檢查表：字跟著日期走，有自己的核對日期和來源就用自己的
+func datedFact(
+    _ id: String, _ plain: Fact, _ start: String?, _ c: SeoulChecked = SeoulChecked.shared
+) -> Fact {
+    guard start != nil else { return plain }
+    let hit: DatedText? = c.dated.first { (d: DatedText) -> Bool in d.id == id }
+    guard let rule = hit else { return plain }
+    return Fact(
+        text: datedText(id, plain.text, start, c), status: rule.status ?? plain.status,
+        checked: rule.checked ?? plain.checked, source: rule.source ?? plain.source)
 }

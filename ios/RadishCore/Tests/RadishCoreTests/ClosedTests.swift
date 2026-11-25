@@ -480,7 +480,7 @@ final class ClosedTests: XCTestCase {
             var checked: Bool = false
             if let f = fact { checked = f.status != FactStatus.none }
             var unsure: Bool = false
-            if let tip = tipOf(it), tip.status == FactStatus.none { unsure = true }
+            if let tip = tipOf(it), tip.status == FactStatus.none || tip.extra != nil { unsure = true }
             if it.b == true && !(checked && fact?.book != nil) { unsure = true }
             if !checked && closedWhy(p.id, "2026-12-02") != nil { unsure = true }
             let one: String = try XCTUnwrap(phoneAnswer("這一站要注意什麼", d, 2, p.id, nil))

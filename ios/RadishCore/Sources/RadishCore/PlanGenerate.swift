@@ -59,22 +59,22 @@ private struct AreaScore {
     let v: Double
 }
 
-/// closed 是休館判斷，平常照核對資料；測試會換成假的
+/// closed 是休館判斷、parts 是時段判斷，平常照核對資料；測試會換成假的
 func generate(
     _ d: TripDraft, _ base0: Settings, _ shuffle: Bool = false,
     _ rnd: () -> Double = { Double.random(in: 0..<1) },
-    closed: @escaping ClosedCheck = closedByFacts
+    closed: @escaping ClosedCheck = closedByFacts, parts partCheck: @escaping PartCheck = partClosedByFacts
 ) -> Trip {
     // 裡面有好幾個小函式都要用到 rnd，所以先讓它在這個呼叫期間可以被帶著走
     let out: Trip = withoutActuallyEscaping(rnd) { r in
-        generateBody(d, base0, shuffle, r, closed)
+        generateBody(d, base0, shuffle, r, closed, partCheck)
     }
     return out
 }
 
 private func generateBody(
     _ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ rnd: @escaping () -> Double,
-    _ closed: @escaping ClosedCheck
+    _ closed: @escaping ClosedCheck, _ partCheck: @escaping PartCheck
 ) -> Trip {
     let st: Settings = tripSettings(base0, d.tweaks)
     let w: [Cat: Int] = planWeights(st)
@@ -91,8 +91,13 @@ private func generateBody(
     let base: AreaKey = areaKey(d.base ?? st.base)
     let wantRest: Bool = st.purposes.contains(.rest)
     let lv: [FoodKind: Int] = foodLv(st)
-    // 現在排到第幾天，休館判斷用
+    // 同一組（「挑一間」拆成的那幾間）一趟只排一間
+    var usedGroup: Set<String> = []
+    // 現在排到第幾天的哪個時段，休館判斷用
     var today: Int = 1
+    var nowPart: Part = .am
+    // 這一天白天排了幾站吃的。白天最多一站，加上晚餐一天最多兩站
+    var eatToday: Int = 0
 
     func jit() -> Double {
         return shuffle ? rnd() * 2.5 : 0
@@ -107,14 +112,19 @@ private func generateBody(
     func fits(_ p: Place) -> Bool {
         return !banned(p, st) && !(noUp && p.up == true)
     }
-    /// 現在排的這一天，這個地方休不休
+    /// 現在排的這一天、這個時段，這個地方不開
     func shut(_ p: Place) -> Bool {
-        return closedOnTripDay(d.start, today, p.id, closed) != nil
+        if closedOnTripDay(d.start, today, p.id, closed) != nil { return true }
+        return closedAtTripPart(d.start, today, nowPart, p.id, partCheck) != nil
+    }
+    /// 這趟排過了，或排過同一組的另一間
+    func taken(_ p: Place) -> Bool {
+        return used.contains(p.id) || usedGroup.contains(placeGroup(p.id))
     }
     /// 這一帶這天還有沒有這種大小的地方可以排
     func anyOpen(_ a: AreaKey, _ size: StopSize) -> Bool {
         for p in PLACES where p.a == a && p.s == size {
-            if used.contains(p.id) || !fits(p) || shut(p) { continue }
+            if taken(p) || !fits(p) || shut(p) { continue }
             return true
         }
         return false
@@ -124,9 +134,9 @@ private func generateBody(
         var best: Place? = nil
         var bestScore: Double = 0
         for p in PLACES {
-            if used.contains(p.id) { continue }
-            if !fits(p) { continue }
             if !areas.contains(p.a) { continue }
+            if taken(p) { continue }
+            if !fits(p) { continue }
             if let sz = size, p.s != sz { continue }
             if let wantFn = want, !wantFn(p) { continue }
             if shut(p) { continue }
@@ -138,6 +148,8 @@ private func generateBody(
         }
         guard let hit = best else { return nil }
         used.insert(hit.id)
+        usedGroup.insert(placeGroup(hit.id))
+        if hit.c == .eat && nowPart != .eve { eatToday += 1 }
         return planToStop(hit, why(hit))
     }
     func near(_ a: AreaKey) -> [AreaKey] {
@@ -191,6 +203,7 @@ private func generateBody(
     func dayOK(_ p: Place) -> Bool {
         if p.c == .night { return false }
         if p.c != .eat { return true }
+        if eatToday > 0 { return false }
         guard let f = p.f else { return false }
         return (f == .street || f == .local) && (lv[f] ?? 0) > 0
     }
@@ -232,6 +245,8 @@ private func generateBody(
 
     for day in stride(from: 1, through: d.days, by: 1) {
         today = day
+        nowPart = .am
+        eatToday = 0
         var parts: [Part] = [.am, .pm, .eve]
         if day == 1 { parts = arriveParts(d.arrive) }
         if day == d.days { parts = leaveParts(d.leave) }
@@ -274,6 +289,7 @@ private func generateBody(
                 slots.append(Slot(day: day, part: part, off: true, rest: false, items: []))
                 continue
             }
+            nowPart = part
             let a: AreaKey = part == .am ? amA : pmA
             var items: [Stop] = []
             var restFlag: Bool = false

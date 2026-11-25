@@ -1405,8 +1405,10 @@ private func talkChecked(_ id: String) -> Bool {
     return f.status != FactStatus.none
 }
 
-/// 要先訂這件事核對過了嗎：核對結果裡有寫怎麼訂
+/// 要先訂這件事核對過了嗎：核對結果裡有寫怎麼訂，現在的資料也還標著要先訂（舊存檔的站可能還帶著以前的標記）
 private func talkBookChecked(_ id: String) -> Bool {
+    let place: Place? = PLACES.first { (p: Place) -> Bool in p.id == id }
+    if let p = place, p.b != true { return false }
     guard let f = factOf(id), f.book != nil else { return false }
     return f.status != FactStatus.none
 }
@@ -1421,7 +1423,7 @@ private func talkBits(_ t: Trip, _ x: Found) -> TalkBits {
     let it: Stop = x.it
     var out: TalkBits = TalkBits(known: [], plain: [])
     if it.status != .pulled, let why = closedOnTripDay(t.start, x.s.day, it.id, closedByFacts) {
-        let line: String = "這天休館：\(why)"
+        let line: String = "這天\(closedWord(it.c))：\(why)"
         if talkChecked(it.id) {
             out.known.append(line)
         } else {
@@ -1434,6 +1436,7 @@ private func talkBits(_ t: Trip, _ x: Found) -> TalkBits {
         } else {
             out.known.append(tip.text)
         }
+        if let extra = tip.extra { out.plain.append(extra) }
     }
     if it.b == true {
         if talkBookChecked(it.id) {
@@ -1480,7 +1483,12 @@ private func phoneBooking(_ t: Trip, _ checks: [String: Bool]) -> String {
 
 /// 這趟沒有寫要先訂的站：幾站核對過、幾站沒有，照實講
 private func phoneNoBooking(_ t: Trip) -> String {
-    let kept: [Found] = allItems(t).filter { (x: Found) -> Bool in x.it.status == .kept }
+    // 自己加的沒有資料可以核對，不算
+    let kept: [Found] = allItems(t).filter { (x: Found) -> Bool in x.it.status == .kept && x.it.mine != true }
+    if kept.isEmpty {
+        let own: Bool = allItems(t).contains { (x: Found) -> Bool in x.it.status == .kept }
+        return own ? "這趟沒有寫要先訂的站。你自己加的要不要訂，手機不知道。" : "這趟沒有寫要先訂的站。"
+    }
     let unsure: Int = kept.filter { (x: Found) -> Bool in !talkChecked(x.it.id) }.count
     let head: String = "這趟沒有寫要先訂的站。"
     if unsure == kept.count { return head + "資料還沒核對過，去之前還是查一下。" }

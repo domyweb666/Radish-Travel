@@ -169,14 +169,30 @@ struct DomyListRow: View {
     let title: String
     var lines: Int = 2
     var selected: Bool = false
+    /// 念給 VoiceOver 的。沒給就念標題和上面那行
+    var label: String?
     var action: (() -> Void)?
 
-    init(meta: String? = nil, title: String, lines: Int = 2, selected: Bool = false, action: (() -> Void)? = nil) {
+    init(
+        meta: String? = nil,
+        title: String,
+        lines: Int = 2,
+        selected: Bool = false,
+        label: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
         self.meta = meta
         self.title = title
         self.lines = lines
         self.selected = selected
+        self.label = label
         self.action = action
+    }
+
+    private var spoken: String {
+        if let label { return label }
+        guard let meta else { return title }
+        return "\(title)，\(meta)"
     }
 
     private var row: some View {
@@ -209,7 +225,7 @@ struct DomyListRow: View {
         }
         .padding(.horizontal, -T.Space.s4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(meta.map { "\(title)，\($0)" } ?? title)
+        .accessibilityLabel(spoken)
         .accessibilityAddTraits(action == nil ? [] : .isButton)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }

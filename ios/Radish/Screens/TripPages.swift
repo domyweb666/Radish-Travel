@@ -138,7 +138,10 @@ struct NotesScreen: View {
         } else {
             DomySection(footer: footer) {
                 ForEach(stops, id: \.it.id) { (x: Found) in
-                    NoteRow(meta: PART[need: x.s.part], name: x.it.n, tip: tipOf(x.it)?.text) {
+                    NoteRow(
+                        meta: PART[need: x.s.part], name: x.it.n, tip: tipOf(x.it)?.text,
+                        extra: tipOf(x.it)?.extra
+                    ) {
                         nav.push(.stop(id: x.it.id))
                     }
                     .accessibilityIdentifier("note-row-\(x.it.id)")
@@ -153,11 +156,24 @@ private struct NoteRow: View {
     let meta: String
     let name: String
     let tip: String?
+    /// 還沒核對的另一句。沒有是 nil
+    let extra: String?
     let action: () -> Void
 
     private var tipText: String {
         if let tip, !tip.isEmpty { return tip }
         return "這一站還沒有須知"
+    }
+
+    private var extraText: String? {
+        guard let extra, !extra.isEmpty else { return nil }
+        return "\(extra)（未核對）"
+    }
+
+    private var spoken: String {
+        var out: [String] = [meta, name, tipText]
+        if let extraText { out.append(extraText) }
+        return out.joined(separator: "，")
     }
 
     var body: some View {
@@ -167,6 +183,9 @@ private struct NoteRow: View {
                     DomyText(meta, .footnote, tone: .secondary)
                     DomyText(name, .headline)
                     DomyText(tipText, .subheadline, tone: .secondary)
+                    if let extraText {
+                        DomyText(extraText, .subheadline, tone: .secondary)
+                    }
                 }
                 .fillLeading()
                 Chevron()
@@ -179,7 +198,7 @@ private struct NoteRow: View {
         .buttonStyle(RowPressStyle())
         .padding(.horizontal, -T.Space.s4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(meta)，\(name)，\(tipText)")
+        .accessibilityLabel(spoken)
         .accessibilityAddTraits(.isButton)
     }
 }

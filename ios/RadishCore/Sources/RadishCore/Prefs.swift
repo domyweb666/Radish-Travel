@@ -29,12 +29,13 @@ func tripSettings(_ st: Settings, _ tweaks: [Tweak]?) -> Settings {
 
 /* ---------- 從行程學到的 ---------- */
 
-/// TS 的 Bannable 只拿 id、c、f 三欄，Place 和 Stop 都走這裡
+/// TS 的 Bannable 只拿 id、c、f 三欄，Place 和 Stop 都走這裡。
+/// 記的是拆開前的舊代號（p4），拆出來的每一間都不排；記的是其中一間，就只擋那一間
 private func bannedBy(_ id: String, _ c: Cat, _ f: FoodKind?, _ st: Settings) -> Bool {
     for l in st.learned {
         switch l.kind {
         case .place:
-            if l.key == id { return true }
+            if l.key == id || l.key == placeGroup(id) { return true }
         case .cat:
             if l.key == c.rawValue { return true }
         case .food:

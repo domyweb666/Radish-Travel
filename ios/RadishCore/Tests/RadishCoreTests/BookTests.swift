@@ -65,6 +65,9 @@ private func tw(_ on: String, _ at: String) -> Date {
     return Date(timeIntervalSince1970: taiwanSeconds(on, bookMinutes(at) ?? 0))
 }
 
+/// 手機在台灣。CI 的機器是別的時區
+private let TAIPEI: TimeZone = TimeZone(secondsFromGMT: 8 * 3600) ?? TimeZone.current
+
 final class BookTests: XCTestCase {
     /* ---------- 開賣日 ---------- */
 
@@ -288,7 +291,7 @@ final class BookTests: XCTestCase {
         XCTAssertEqual(list.first?.on, "2026-12-02")
         XCTAssertNil(list.first?.at)
         // 那天早上九點過了：併進明天那一則
-        let late: [Reminder] = remindersOf(garden(2), "2026-12-02", now: tw("2026-12-02", "9:01"), fact: fact)
+        let late: [Reminder] = remindersOf(garden(2), "2026-12-02", now: tw("2026-12-02", "9:01"), fact: fact, zone: TAIPEI)
         XCTAssertEqual(late.count, 1)
         XCTAssertEqual(late.first?.on, "2026-12-03")
         XCTAssertEqual(late.first?.id, "0-all")
@@ -425,7 +428,7 @@ final class BookTests: XCTestCase {
 
     func test最晚決定日過了或勾了_不提醒() {
         func decides(_ d: AppState, _ today: String, _ at: String) -> Int {
-            let list: [Reminder] = remindersOf(d, today, now: tw(today, at), fact: decideFact(3, 6))
+            let list: [Reminder] = remindersOf(d, today, now: tw(today, at), fact: decideFact(3, 6), zone: TAIPEI)
             return list.filter { (r: Reminder) -> Bool in r.id.contains("decide") }.count
         }
         XCTAssertEqual(decides(garden(2), "2026-12-04", "20:00"), 1)
@@ -577,7 +580,7 @@ final class BookTests: XCTestCase {
     func test休館接在後面_兩條以內照寫_超過就講幾站() {
         XCTAssertEqual(closedTail([]), "")
         XCTAssertEqual(closedTail(["甲。", "乙。"]), "甲。乙。")
-        XCTAssertEqual(closedTail(["甲。", "乙。", "丙。"]), "有 3 站那天休館，看每天最上面那一行。")
+        XCTAssertEqual(closedTail(["甲。", "乙。", "丙。"]), "有 3 件開放時間要注意的，看每天最上面那一行。")
     }
 
     /* ---------- 跟著日期走的字 ---------- */

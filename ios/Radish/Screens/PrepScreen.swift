@@ -20,10 +20,10 @@ func prepFactFull(_ f: Fact) -> String {
 }
 
 /// 檢查表、地雷的每一條在 TS 都是 Fact 多幾欄；Swift 是不同的型別，要一起列來源時先轉成 Fact
-/// 檢查表的字跟著出發日期走。start 是這趟到的那天，沒有這趟就用原本的字
+/// 檢查表的字跟著出發日期走，核對狀態和來源跟著換。start 是這趟到的那天，沒有這趟就用原本的
 func prepFact(_ r: CheckItem, _ start: String? = nil) -> Fact {
-    let text: String = datedText(r.id, r.text, start)
-    return Fact(text: text, status: r.status, checked: r.checked, source: r.source)
+    let plain: Fact = Fact(text: r.text, status: r.status, checked: r.checked, source: r.source)
+    return datedFact(r.id, plain, start)
 }
 
 func prepFact(_ r: TabooFact) -> Fact {
@@ -44,7 +44,7 @@ private struct PrepSources: View {
     var body: some View {
         SheetScaffold(title, onClose: onClose) {
             DomyText(
-                "「二手核對」是從旅遊媒體交叉對過，沒有直接讀官方頁。「來源較舊」是找到的資料比較舊，可能已經變了。「未核對」是還沒查。入境規定出發前請回官方頁再看一次。",
+                "「看過官方頁」是直接讀過官方頁。「二手核對」是從旅遊媒體交叉對過，沒有直接讀官方頁。「來源較舊」是找到的資料比較舊，可能已經變了。「未核對」是還沒查。入境規定出發前請回官方頁再看一次。",
                 .subheadline, tone: .secondary)
             DomySection {
                 ForEach(Array(facts.enumerated()), id: \.offset) { _, f in

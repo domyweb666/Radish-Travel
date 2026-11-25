@@ -1,6 +1,6 @@
 // 附近還有什麼（S10，線框 A12）：從這一天的下一站（或起點）算，這趟還沒排的地方照距離排，一次三個。
 // 「排進來」排進這一天（store.act(undoable: true)，可以復原）、「看那站」推進一站、「再看三個」、
-// 「想要別的條件，跟 AI 講」到問 AI 分頁。距離和怎麼去都是手機估的，規則在 Plan.swift 的 nearbyRanked。
+// 「跟 AI 講條件」到問 AI 分頁。距離和怎麼去都是手機估的，規則在 Plan.swift 的 nearbyRanked。
 // iOS 版才有，mobile/ 沒有對應的 TS（Expo 版的順路可去只有名字，見 Plan.swift 的 nearbyPool）。
 import SwiftUI
 
@@ -52,7 +52,7 @@ struct NearbySheet: View {
         } else if ranked.isEmpty {
             emptyState
         } else {
-            picks(nearbyPage(ranked, page), origin, part)
+            picks(trip, nearbyPage(ranked, page), origin, part != nil)
             moreRow(ranked.count)
             DomyText(footnote(nearbyPage(ranked, page)), .footnote, tone: .secondary)
         }
@@ -73,17 +73,19 @@ struct NearbySheet: View {
     private func footnote(_ shown: [NearbyPick]) -> String {
         let hasTip: Bool = shown.contains { (x: NearbyPick) -> Bool in
             guard let tip = tipOf(planToStop(x.place, "")) else { return false }
-            return tip.status == FactStatus.none
+            return tip.status == FactStatus.none || tip.extra != nil
         }
         let base: String = "手機算的，沒有問 AI：距離照直線加三成估，沒有查路線。"
         return hasTip ? base + "寫未核對的須知是資料包寫的。" : base
     }
 
-    private func picks(_ shown: [NearbyPick], _ origin: NearbyOrigin, _ part: Part?) -> some View {
+    /// left 是這天還有沒有能排的時段。有的話，每個地方再各自避開它不開的時段
+    private func picks(_ trip: Trip, _ shown: [NearbyPick], _ origin: NearbyOrigin, _ left: Bool) -> some View {
         VStack(alignment: .leading, spacing: T.Space.s2) {
             ForEach(Array(shown.enumerated()), id: \.element.place.id) { i, pick in
+                let part: Part? = nearbyPart(trip, day, origin, now, place: pick.place)
                 NearbyCard(
-                    pick: pick, index: i, addTitle: addTitle(part), canAdd: part != nil,
+                    pick: pick, index: i, addTitle: addTitle(part, left), canAdd: part != nil,
                     onAdd: {
                         if let part { add(pick.place, part, origin) }
                     },
@@ -92,15 +94,16 @@ struct NearbySheet: View {
         }
     }
 
-    /// 「排進今天下午」；不是今天就寫第幾天；這天的時段都過了就不能按
-    private func addTitle(_ part: Part?) -> String {
-        guard let part else { return "這天的時段都過了" }
+    /// 「排進今天下午」；不是今天就寫第幾天；這天的時段都過了、能排的時段它都不開，就不能按
+    private func addTitle(_ part: Part?, _ left: Bool) -> String {
+        guard let part else { return left ? "能排的時段它都不開" : "這天的時段都過了" }
         let when: String = isToday ? "今天" : "第 \(day) 天"
         return "排進\(when)\(PART[need: part])"
     }
 
     private func moreRow(_ count: Int) -> some View {
-        HStack(spacing: T.Space.s2) {
+        // 字級放大時兩顆放不下，改成一顆一列
+        PairLayout(spacing: T.Space.s2) {
             if count > NEARBY_PAGE {
                 DomyButton("再看三個", variant: .plain, fullWidth: true) {
                     page += 1
@@ -112,7 +115,7 @@ struct NearbySheet: View {
     }
 
     private var askButton: some View {
-        DomyButton("想要別的條件，跟 AI 講", variant: .plain, fullWidth: true) {
+        DomyButton("跟 AI 講條件", variant: .plain, fullWidth: true) {
             goAsk()
         }
         .accessibilityIdentifier("nearby-ask")
@@ -135,7 +138,7 @@ struct NearbySheet: View {
     private var emptyState: some View {
         DomyEmptyState(
             icon: IconPaths.sprout, title: "附近沒有還沒排的地方",
-            message: "離這裡 \(Int(NEARBY_MAX_KM)) 公里內（估），資料包裡的地方都排進這趟了、這天休館，或是你說過不排的。",
+            message: "離這裡 \(Int(NEARBY_MAX_KM)) 公里內（估），資料包裡的地方都排進這趟了、這天不開，或是你說過不排的。",
             actionTitle: "想要別的條件，跟 AI 講"
         ) {
             goAsk()
@@ -194,6 +197,9 @@ private struct NearbyCard: View {
                 DomyText(legText(pick.leg), .footnote)
                 if let tip = tipOf(asStop) {
                     DomyText("須知：\(tip.text)（\(tipSourceLabel(asStop))）", .footnote, tone: .secondary)
+                    if let extra = tip.extra, !extra.isEmpty {
+                        DomyText("\(extra)（未核對）", .footnote, tone: .secondary)
+                    }
                 }
             }
             buttons

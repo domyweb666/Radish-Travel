@@ -70,7 +70,8 @@ final class FactsDataTests: XCTestCase {
             var d: TripDraft = TripDraft(start: addDays("2026-11-26", offset * 5), days: 6, arrive: .am, leave: .eve, people: 2)
             d.city = "seoul"
             let t: Trip = generate(d, defaultSettings())
-            XCTAssertEqual(closedNotes(t), [], d.start)
+            // 只提醒不擋的（N 首爾塔 2027 年 1 到 3 月）不算
+            XCTAssertEqual(closedNotes(t, caution: { (_: String, _: String) -> String? in nil }), [], d.start)
             XCTAssertFalse(allItems(t).isEmpty, d.start)
         }
     }

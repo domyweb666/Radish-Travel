@@ -198,6 +198,8 @@ private func routeStillFits(_ before: Trip, _ after: Trip, _ day: Int) -> Bool {
     for m in routeMoves(before, after, day) {
         guard let x = findItem(after, m.id) else { continue }
         if routeFits(x.it, m.from) && !routeFits(x.it, m.to) { return false }
+        // 換過去的時段它不開
+        if closedAtTripPart(after.start, day, m.to, m.id, partClosedByFacts) != nil { return false }
     }
     return true
 }

@@ -67,9 +67,9 @@ func reminderTime(_ r: Reminder) -> DateComponents? {
     return when
 }
 
-/// 排先後用的那一刻。早上九點那種先當成在台灣
-func remindSeconds(_ r: Reminder) -> Double {
-    return r.at ?? taiwanSeconds(r.on, REMIND_HOUR * 60)
+/// 排先後、算過了沒用的那一刻。早上九點那種是手機當地的九點
+func remindSeconds(_ r: Reminder, _ zone: TimeZone = TimeZone.current) -> Double {
+    return r.at ?? zoneSeconds(r.on, REMIND_HOUR * 60, zone)
 }
 
 /// 給人看的時間：「12/2（三）早上 8:45（台灣時間）」「12/2（三）早上 9 點」
@@ -89,9 +89,10 @@ private func remindPart(_ minutes: Int) -> String {
 }
 
 /// 現在這趟和其他排好的，要排的提醒，照時間先後，最多 40 則。
-/// now 是現在時刻，沒給就當成今天剛開始。fact 是查核對資料的那一個
+/// now 是現在時刻，沒給就當成今天剛開始。fact 是查核對資料的那一個，zone 是手機的時區
 func remindersOf(
-    _ s: AppState, _ today: String, now: Date? = nil, fact: (String) -> PlaceFact? = factOf
+    _ s: AppState, _ today: String, now: Date? = nil, fact: (String) -> PlaceFact? = factOf,
+    zone: TimeZone = TimeZone.current
 ) -> [Reminder] {
     var all: [(trip: Trip, checks: [String: Bool])] = []
     if let trip = s.trip {
@@ -103,17 +104,17 @@ func remindersOf(
     var list: [Reminder] = []
     var n: Int = 0
     for pair in all {
-        list += tripReminders(pair.trip, pair.checks, "\(n)", today, now, fact)
+        list += tripReminders(pair.trip, pair.checks, "\(n)", today, now, fact, zone)
         n += 1
     }
-    return firstReminders(list)
+    return firstReminders(list, zone)
 }
 
 /// 照時間先後留前面的。同一刻的照原本的順序
-private func firstReminders(_ list: [Reminder]) -> [Reminder] {
+private func firstReminders(_ list: [Reminder], _ zone: TimeZone) -> [Reminder] {
     let order: [Int] = Array(list.indices).sorted { (a: Int, b: Int) -> Bool in
-        let x: Double = remindSeconds(list[a])
-        let y: Double = remindSeconds(list[b])
+        let x: Double = remindSeconds(list[a], zone)
+        let y: Double = remindSeconds(list[b], zone)
         return x == y ? a < b : x < y
     }
     let kept: [Reminder] = order.map { (i: Int) -> Reminder in list[i] }
@@ -123,7 +124,7 @@ private func firstReminders(_ list: [Reminder]) -> [Reminder] {
 /// 一趟的提醒。知道什麼時候開賣的一站一則，其他還沒訂的併成一則；最晚要決定的那天再一則
 private func tripReminders(
     _ trip: Trip, _ checks: [String: Bool], _ key: String, _ today: String, _ now: Date?,
-    _ fact: (String) -> PlaceFact?
+    _ fact: (String) -> PlaceFact?, _ zone: TimeZone
 ) -> [Reminder] {
     // 整趟走完的不排。旅途中只剩開賣和最後決定日這兩種（合併那則 remindOn 出發後就沒有）
     if today >= addDays(trip.start, trip.days) { return [] }
@@ -134,14 +135,14 @@ private func tripReminders(
     for r in rows {
         if r.checked || r.stop.status != StopStatus.kept { continue }
         var openDay: String? = nil
-        if let open = openReminder(r, key), remindSeconds(open) > clock {
+        if let open = openReminder(r, key), remindSeconds(open, zone) > clock {
             out.append(open)
             openDay = open.on
         } else {
             left.append(r.stop.n)
         }
         // 同一天已經有開賣那則，就只留那則
-        if let decide = decideReminder(r, key), remindSeconds(decide) > clock, decide.on != openDay {
+        if let decide = decideReminder(r, key), remindSeconds(decide, zone) > clock, decide.on != openDay {
             out.append(decide)
         }
     }
