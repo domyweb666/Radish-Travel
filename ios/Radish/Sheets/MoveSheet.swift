@@ -57,7 +57,9 @@ struct MoveSheet: View {
     }
 
     private func page(_ trip: Trip, _ found: Found) -> some View {
-        SheetScaffold("把「\(found.it.n)」移到", scroll: false, onClose: { sheets.close() }) {
+        // 輔助使用的大字標題放不下站名，會被切：標題寫短的，站名寫在下面那句
+        let big: Bool = typeSize.isAccessibilitySize
+        return SheetScaffold(big ? "移到別的時段" : "把「\(found.it.n)」移到", scroll: false, onClose: { sheets.close() }) {
             if !typeSize.isAccessibilitySize {
                 note(found)
             }
@@ -83,8 +85,9 @@ struct MoveSheet: View {
     }
 
     private func note(_ found: Found) -> some View {
-        DomyText(
-            "現在在第 \(found.s.day) 天\(PART[need: found.s.part])。在路上的時段不能選。",
+        let name: String = typeSize.isAccessibilitySize ? "「\(found.it.n)」" : ""
+        return DomyText(
+            "\(name)現在在第 \(found.s.day) 天\(PART[need: found.s.part])。在路上的時段不能選。",
             .footnote, tone: .secondary)
     }
 

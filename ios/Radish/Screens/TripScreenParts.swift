@@ -290,6 +290,11 @@ private struct PulledStop: Identifiable {
     let line: String
 }
 
+/// 這一天整天都在路上，沒有能排的時段
+func dayOnRoad(_ trip: Trip, _ day: Int) -> Bool {
+    return PARTS.allSatisfy { (p: Part) -> Bool in slotAt(trip, day, p) == nil }
+}
+
 /// 旅途中的下一站卡（線框 A2）。「這站不去」在卡的右上角，跟「去過了，拔起來」拉開（02-流程 9-1）；
 /// 點站名進一站；中間是找路、給司機看，最下面是拔起來。卡外面是之後那一站和附近還有什麼
 struct TripNextStop: View {
@@ -311,6 +316,9 @@ struct TripNextStop: View {
             Card {
                 if let next = left.first {
                     nextStop(next, all)
+                } else if all.isEmpty && dayOnRoad(trip, day) {
+                    DomyText("今天都在路上", .title2)
+                    DomyText("抵達前、離開後的時段不排東西。", .body, tone: .secondary)
                 } else if all.isEmpty {
                     // 一站都沒排，沒有東西可以拔，不能說都拔完了
                     DomyText("今天沒有排站", .title2)
@@ -362,9 +370,10 @@ struct TripNextStop: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            // 只縮按鈕的高度：左邊字放大、換行的時候，上下才不會貼到卡邊和站名
+            .padding(.vertical, -T.Space.s2)
             .accessibilityIdentifier("next-skip")
         }
-        .padding(.vertical, -T.Space.s2)
         titleButton(it)
         warns(next)
         DomyText(legText(next, all), .subheadline, tone: .secondary)

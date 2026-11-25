@@ -301,7 +301,7 @@ final class CheckedTests: XCTestCase {
         ckPut(&t, 2, .eve, ckStop("p16b"))
         let r: BookRow = try XCTUnwrap(bookPlan(t, [:], "2026-11-25").first)
         XCTAssertNil(r.url)
-        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "怎麼訂，在行程裡點開這一站看")
+        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "怎麼訂，在這趟點開這一站看")
     }
 
     func test開賣提醒只留一句短的() throws {

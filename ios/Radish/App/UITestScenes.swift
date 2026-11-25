@@ -87,6 +87,7 @@
             case "part": return partTrip()
             case "part-next": return onDay(partTrip(), 2)
             case "nearby-shut": return nearbyShut()
+            case "nearby-road": return nearbyRoad()
             case "nobook": return noBookTrip()
             default: return nil
             }
@@ -237,14 +238,21 @@
             return d
         }
 
-        /// 旅途中第 1 天（固定的週四）只有晚上能排，人在土俗村：最近的兩間韓服店晚上都不開，附近那張不能按。
+        /// 旅途中第 1 天（固定的週四）下午到，只有晚上能排，人在土俗村：最近的兩間韓服店晚上都不開，附近那張不能按。
         /// 只剩晚上，跟測試跑的時候是幾點無關
         private static func nearbyShut() -> AppState {
             var d: AppState = start()
-            var trip: Trip = tripOn(fixedDay("2027-04-15"), 3, d.settings, .eve)
+            var trip: Trip = tripOn(fixedDay("2027-04-15"), 3, d.settings, .pm)
             clear(&trip, [1, 2, 3])
             put(&trip, "p4a", 1, .eve)
             d.trip = trip
+            return onDay(d, 1)
+        }
+
+        /// 旅途中第 1 天，晚上才到：整天都在路上，附近那張都不能按
+        private static func nearbyRoad() -> AppState {
+            var d: AppState = start()
+            d.trip = tripOn(fixedDay("2027-04-15"), 3, d.settings, .eve)
             return onDay(d, 1)
         }
 

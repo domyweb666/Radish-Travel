@@ -242,7 +242,7 @@ func bookOpenText(_ r: BookRow, _ today: String) -> String {
         return "已經開賣"
     }
     if r.stage == BookStage.unknown && r.how != nil {
-        return bookHost(r.url) == nil ? "怎麼訂，在行程裡點開這一站看" : "哪天開賣沒查到，看下面的訂票網頁"
+        return bookHost(r.url) == nil ? "怎麼訂，在這趟點開這一站看" : "哪天開賣沒查到，看下面的訂票頁"
     }
     guard r.stage == BookStage.notYet, let on = r.openOn else { return "開賣時間還不知道" }
     let date: String = on == today ? "今天" : fmtDay(on)
@@ -257,7 +257,7 @@ func bookDecideText(_ r: BookRow, _ today: String) -> String? {
     return on >= today ? "免費取消到 \(bookMonthDay(on))" : "免費取消的期限過了"
 }
 
-/// 要先訂的那一列的說明，最多兩行。打勾了、去過了就不用再寫開賣（下面也沒有訂票網頁那一列）
+/// 要先訂的那一列的說明，最多兩行。打勾了、去過了就不用再寫開賣（下面也沒有訂票頁那一列）
 func bookNote(_ r: BookRow, _ today: String) -> String {
     var first: String = bookWhen(r)
     if let decide = bookDecideText(r, today) { first += "・" + decide }
@@ -268,11 +268,11 @@ func bookNote(_ r: BookRow, _ today: String) -> String {
 /// 這一段下面那句：有查到的、沒查到的，照實講
 func bookFooter(_ rows: [BookRow]) -> String {
     let known: Bool = rows.contains { (r: BookRow) -> Bool in r.how != nil }
-    if known { return "訂好了就打勾。查到的規則會變，訂之前再看一次訂票網頁。沒寫的就是還沒查到，要自己查。" }
+    if known { return "訂好了就打勾。查到的規則會變，訂之前再看一次訂票頁。沒寫的就是還沒查到，要自己查。" }
     return "訂好了就打勾。怎麼訂、外國人訂不訂得到，還沒查到，要自己查。"
 }
 
-/// 訂票網頁的網站名。不是網址就是 nil
+/// 訂票頁的網站名。不是網址就是 nil
 func bookHost(_ url: String?) -> String? {
     guard let text = url, let parts = URLComponents(string: text) else { return nil }
     guard parts.scheme == "https" || parts.scheme == "http" else { return nil }
@@ -292,7 +292,7 @@ func bookHowText(_ r: BookRow) -> String {
         return "到 \(host) 訂。"
     }
     if how.count > BOOK_HOW_MAX {
-        guard let host = bookHost(r.url) else { return "怎麼訂，在行程裡點開這一站看。" }
+        guard let host = bookHost(r.url) else { return "怎麼訂，在這趟點開這一站看。" }
         return "到 \(host) 訂。"
     }
     let verbs: [String] = ["訂", "約", "買", "票", "排"]

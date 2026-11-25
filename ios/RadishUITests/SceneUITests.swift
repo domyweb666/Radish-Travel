@@ -707,6 +707,19 @@ final class SceneUITests: RadishUITestCase {
         shot("不在這趟裡的地方-往下捲")
     }
 
+    func test41整天在路上的附近() {
+        openScene("nearby-road")
+        see("next-nearby")
+        pause()
+        shot("整天在路上-這趟")
+        tapId("next-nearby")
+        let add: XCUIElement = see("nearby-add-0")
+        pause()
+        shot("整天在路上-附近")
+        XCTAssertFalse(add.isEnabled, "整天在路上，還是可以排進來")
+        XCTAssertTrue(add.label.contains("在路上"), "不能按的那顆沒有寫在路上：\(add.label)")
+    }
+
     func test39要先訂但沒有核對資料() {
         openScene("nobook")
         tapId("day-tab-2")

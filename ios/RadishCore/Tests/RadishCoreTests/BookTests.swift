@@ -213,7 +213,7 @@ final class BookTests: XCTestCase {
         XCTAssertTrue(known.contains("自己查"), known)
     }
 
-    func test訂票網頁_只收網址() {
+    func test訂票頁_只收網址() {
         XCTAssertEqual(bookHost("https://www.klook.com/a?b=1"), "klook.com")
         XCTAssertEqual(bookHost("http://royal.example.kr"), "royal.example.kr")
         XCTAssertNil(bookHost("royal.example.kr"))

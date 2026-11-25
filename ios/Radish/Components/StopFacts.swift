@@ -262,7 +262,7 @@ private func openSaleText(_ b: BookInfo, _ visit: String?, _ today: String, _ no
     guard let sale = bookOpen(b, visit) else { return nil }
     if let at = sale.at, let minutes = bookMinutes(at), let taiwan = koreaToTaiwan(sale.on, at) {
         if koreaSeconds(sale.on, minutes) <= now.timeIntervalSince1970 { return "已經開賣" }
-        return "\(fmtDay(taiwan.on)) \(taiwan.at)（台灣時間）"
+        return "\(fmtDay(taiwan.on))\(taiwan.at)（台灣時間）"
     }
     // 沒寫幾點：過了那天才算已經開賣
     if sale.on < today { return "已經開賣" }

@@ -45,7 +45,7 @@ struct NearbySheet: View {
         let origin: NearbyOrigin = nearbyOrigin(trip, store.s.settings, day)
         let ranked: [NearbyPick] = nearbyRanked(trip, store.s.settings, day)
         let part: Part? = nearbyPart(trip, day, origin, now)
-        DomyText(originLine(origin), .footnote, tone: .secondary)
+        DomyText(originLine(trip, origin), .footnote, tone: .secondary)
             .accessibilityIdentifier("nearby-origin")
         if !origin.known {
             unknownState(origin)
@@ -59,14 +59,15 @@ struct NearbySheet: View {
     }
 
     /// 第一次打開就寫清楚從哪裡算
-    private func originLine(_ o: NearbyOrigin) -> String {
+    private func originLine(_ trip: Trip, _ o: NearbyOrigin) -> String {
         switch o.from {
         case .next:
             return "從\(o.name)算，這趟還沒排的，照距離排"
         case .pulled:
             return "這天的站都拔完了，從最後拔起來的\(o.name)算，這趟還沒排的，照距離排"
         case .home:
-            return "這天還沒排站，從\(o.name)算，這趟還沒排的，照距離排"
+            let head: String = dayOnRoad(trip, day) ? "這天都在路上" : "這天還沒排站"
+            return "\(head)，從\(o.name)算，這趟還沒排的，照距離排"
         }
     }
 
@@ -85,7 +86,7 @@ struct NearbySheet: View {
             ForEach(Array(shown.enumerated()), id: \.element.place.id) { i, pick in
                 let part: Part? = nearbyPart(trip, day, origin, now, place: pick.place)
                 NearbyCard(
-                    pick: pick, index: i, addTitle: addTitle(part, left), canAdd: part != nil,
+                    pick: pick, index: i, addTitle: addTitle(trip, part, left), canAdd: part != nil,
                     onAdd: {
                         if let part { add(pick.place, part, origin) }
                     },
@@ -94,9 +95,12 @@ struct NearbySheet: View {
         }
     }
 
-    /// 「排進今天下午」；不是今天就寫第幾天；這天的時段都過了、能排的時段它都不開，就不能按
-    private func addTitle(_ part: Part?, _ left: Bool) -> String {
-        guard let part else { return left ? "能排的時段它都不開" : "這天的時段都過了" }
+    /// 「排進今天下午」；不是今天就寫第幾天；整天在路上、能排的時段都過了、能排的時段它都不開，就不能按
+    private func addTitle(_ trip: Trip, _ part: Part?, _ left: Bool) -> String {
+        guard let part else {
+            if left { return "能排的時段它都不開" }
+            return dayOnRoad(trip, day) ? "這天都在路上" : "能排的時段都過了"
+        }
         let when: String = isToday ? "今天" : "第 \(day) 天"
         return "排進\(when)\(PART[need: part])"
     }
@@ -209,11 +213,26 @@ private struct NearbyCard: View {
     }
 
     private var buttons: some View {
-        HStack(spacing: T.Space.s2) {
-            DomyButton(addTitle, variant: .secondary, size: .compact, disabled: !canAdd, fullWidth: true, action: onAdd)
-                .accessibilityIdentifier("nearby-add-\(index)")
-            DomyButton("看那站", variant: .plain, size: .compact, action: onOpen)
-                .accessibilityIdentifier("nearby-open-\(index)")
+        // 字級放大時一列放不下，改成一顆一列
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: T.Space.s2) {
+                addButton
+                openButton(false)
+            }
+            VStack(spacing: T.Space.s2) {
+                addButton
+                openButton(true)
+            }
         }
+    }
+
+    private var addButton: some View {
+        DomyButton(addTitle, variant: .secondary, size: .compact, disabled: !canAdd, fullWidth: true, action: onAdd)
+            .accessibilityIdentifier("nearby-add-\(index)")
+    }
+
+    private func openButton(_ wide: Bool) -> some View {
+        DomyButton("看那站", variant: .plain, size: .compact, fullWidth: wide, action: onOpen)
+            .accessibilityIdentifier("nearby-open-\(index)")
     }
 }

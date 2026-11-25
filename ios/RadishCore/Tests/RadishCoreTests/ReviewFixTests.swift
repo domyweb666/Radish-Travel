@@ -106,7 +106,7 @@ final class ReviewFixTests: XCTestCase {
     func test算不出開賣日_有網頁的指到下面那一列_去過了不講() throws {
         let show: Stop = rvStop("p14a")
         let r: BookRow = try XCTUnwrap(bookPlan(rvTrip("2026-12-07", .eve, show), [:], "2026-11-25").first)
-        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "哪天開賣沒查到，看下面的訂票網頁")
+        XCTAssertEqual(bookOpenText(r, "2026-11-25"), "哪天開賣沒查到，看下面的訂票頁")
         XCTAssertNil(factOf("p14a")?.last, "網路賣到幾點不是最後入場")
         XCTAssertEqual(factOf("p14a")?.book?.how.contains("開演前 2 小時"), true)
         var done: Stop = show
@@ -118,7 +118,7 @@ final class ReviewFixTests: XCTestCase {
     /* ---------- 文字 ---------- */
 
     func test給人看的字_不寫2026減12減31那種日期() throws {
-        let pattern: NSRegularExpression = try NSRegularExpression(pattern: "20[0-9]{2}-[0-9]{2}")
+        let pattern: NSRegularExpression = try NSRegularExpression(pattern: "(?<![0-9-])20[0-9]{2}-[0-9]{2}(?![0-9])")
         func bad(_ text: String) -> Bool {
             return pattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
         }

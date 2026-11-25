@@ -52,10 +52,11 @@ struct PlannedCard: View {
                 DomyButton("不要這一版", variant: .plain, size: .compact) {
                     drop()
                 }
+                // 高度只縮按鈕的：左邊的字換行時，上下才不會貼到卡邊和下面那段
+                .padding(.vertical, -T.Space.s2)
                 .padding(.trailing, -T.Space.s4)
                 .accessibilityIdentifier("planned-drop")
             }
-            .padding(.vertical, -T.Space.s2)
             DomyText(text.body, .subheadline)
             if let wish = text.wish {
                 DomyText(wish, .subheadline)

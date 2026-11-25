@@ -107,7 +107,7 @@ struct PrepBefore: View {
         }
     }
 
-    /// 開訂票網頁那一列念的：先念站名，免得好幾列聽起來一樣
+    /// 開訂票頁那一列念的：先念站名，免得好幾列聽起來一樣
     private func bookSpoken(_ r: BookRow, _ host: String) -> String {
         let head: String = "\(r.stop.n)，打開訂票頁，\(host)"
         guard let text = prepNote(r.foreigner) else { return head }
