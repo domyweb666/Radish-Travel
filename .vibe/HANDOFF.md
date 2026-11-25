@@ -1,67 +1,58 @@
-# Handoff: 0.5「排到能放心」五項做完第一版，review 的修正還在收，沒全綠、沒併、沒出 TestFlight
+# Handoff: 0.5「排到能放心」做完、兩關全綠、併回 swiftui，等多米點頭出 tf-7
 
-> 產出時間：2026-11-25（context-guard 到線自動寫）
+> 產出時間：2026-11-25（接續上一手，A 到 D 包都做完）
 > repo 根目錄的 `HANDOFF.md` 是產品開工依據，跟這份會話交接是兩回事。
-> 分支 `work/checked-data`（從 swiftui 18526ce 開），全部已提交、已 push。review 的修正在最後那個 fix(ios) commit，還沒編過，CI 正在跑。
+> 分支 `swiftui` 跟 `work/checked-data` 同一個 commit。程式碼那一版是 416176a，CI run 45559243108：規則 301 條、UI 44 條全過。
 
-## ✅ 這次完成了什麼
+## ✅ 完成了什麼
 
-多米 2026-11-25 說「照五項做」（五項的由來：`docs/排到能放心-跟現況對照.md`）：
-- 1、2 資料：71 個地點（原 52），「挑一間」換真店；狀態官方 28、二手 40、沒查到 3；四批核對加兩個獨立複查。疊在 seoul.json 上的 `Resources/seoul-checked.json`，原始檔、來源原文、合併腳本在 `docs/核對原始檔/`（還沒提交）
-- 3 休館日：generate、換一個、附近、restoreSeed、移站、講了改、AI 提示詞都看
-- 4 要先訂：一站一則提醒（開賣前 15 分鐘、最晚決定日、其餘併一則），旅途中也留
-- 5 須知跟日期走：K-ETA、電子入境卡
-- 一站頁：開放、怎麼訂、來源、這天休館、韓文地址
-- d30c2f8 的 CI 全綠（run 45542497610，規則 257、UI 31），那時資料還是空的
-- 獨立 review 一輪，14 條加低風險若干
-
-## 🚧 還沒做完
-
-下面兩包都已交件並提交，列出來給你核對有沒有漏：
-- 規則與資料（擁有 ios/RadishCore 全部）：同組一趟只取一間、白天吃的一天最多一站且一天最多兩站；PlaceFact 加 parts／partsOn，排行程看開放時段，`partClosedWhy`；以後都不排的舊代號（p4 等）要擋新店；NthDay 加 months（p44 每年 3、6、9、12 月第一個週一）；p6 拿掉 decideDays；p16b、p47b 的 book.url 是文章要拿掉；「開賣時間還不知道」的句子；tip 蓋掉舊 tip（南怡島、水原華城、通仁市場、北村）；N 首爾塔改 caution 只提醒；南大門 closed 拿掉；Chat 計數與樂天世界舊檔；餐廳不說休館；datedFact；提醒時區與內文縮短；資料文字；c1、c2 縮到兩行且去空格；Jungsik 改台灣時間；84 種組合掃描測試
-- 畫面（擁有 ios/Radish 全部）：同一件事只講一次、餐廳用詞、接 partClosedWhy／cautionWhy、「訂之前要知道的」收合、datedFact、VoiceOver、book.url 是 nil 沒按鈕、tipOf extra、換一個文案；MoveSheet 第 5 天被切、大字按鈕被切、附近的「想要別的條件，跟 AI 講」被切、大字天數分頁、要先訂沒資料只留一句
-- 之後：review 修好的 diff 看一遍 → 提交 → push → CI 全綠 → 看有資料的截圖（test29–34：檢查這趟、K-ETA 兩種、N 首爾塔、須知按天、移到休館日、後苑整頁、大字）→ 文件與交接
+- 五項（由來 `docs/排到能放心-跟現況對照.md`）：核對資料、休館日與開放時段、要先訂提醒、須知跟日期走、一站頁顯示核對結果
+- 沒參與的子代理從頭讀過 diff：0 高、6 中、6 低，都處理了
+- 晚餐：只吃小館那種設定以前會空晚上（掃描缺 11,695 晚 → 0），挑不到才放寬同組第二間；8 天以上白天也放寬（72 趟整天空 73 → 35）
+- 一站頁順序回到線框 A5（移到別的時段、換一個在前，開放、怎麼訂、來源在後）
+- 輔助大字移站、整天在路上的說法、要先訂看現在的資料（`needsBook`）、說法統一（二手資料、打開訂票頁）
+- 文件：ios/README、詞彙表、0.5.0 版號、`.github/workflows/ios.yml` 的測試說明
+- `docs/核對原始檔/merge.py` 擋重跑（再跑會蓋掉後來的修正）
 
 ## 📌 關鍵決策（Agent 先定的，多米可以改）
 
-- 核對資料獨立一個檔，不動 mobile/ 的 seoul.ts
-- 二手就標二手；查不到留空；沒查到不猜
-- 汗蒸幕換東大門 SPAREX（男女都能去），只收女生的兩家不放；樂天世界不再標要先訂
-- 精緻餐廳改晚餐價，每人 5,100–10,300（粗估），花費預估會變高；同分時便宜的排前面
-- 提醒維持沒有聲音（權限只有 .alert），要不要加聲音問多米
-- 旅遊中途提醒不停，整趟走完才停
-- 不畫體力條、開一趟不加欄位、維持首爾、旅伴各自填放第二版
+- 核對資料獨立一個檔，不動 mobile/ 的 seoul.ts；二手標二手，查不到留空
+- 汗蒸幕換東大門 SPAREX；樂天世界不再標要先訂（舊存檔也是）
+- 精緻餐廳改晚餐價，每人 5,100 到 10,300（粗估），花費預估會變高
+- 放寬同組：只名店可能連兩晚炸雞，只精緻可能兩晚都是米其林，14 天會出現同組第二間
+- 白天放寬只在 8 天以上；拿掉 `d.days > 7` 的話，2 到 7 天也有一些空時段會補上（多半住江南）
+- 提醒維持沒有聲音，整趟走完才停
+- 不畫體力條、開一趟不加欄位、維持首爾
 
-## ⚠️ 要告訴多米
+## ⚠️ 還沒做、還沒驗
 
-- 愛寶樂園、清溪川、樂天世界、Seoul Sky 官網機器讀不到
-- Google 地圖在韓國 11-13 獲准，步行導航報導說最快 2027 年初；根目錄 `HANDOFF.md` 7-2 要更新（沒改）
+- 真機全部沒驗；真的打一次 Anthropic API 沒驗；❓29、閘門 1、2
+- 官網機器讀不到：愛寶樂園、清溪川、樂天世界、Seoul Sky
+- 兩支米其林頁的訂位電話只由網頁讀取工具讀到，沒打過
 - 樂天世界海盜船 11-23 起停；中央博物館多個展室修到 2027-01-28；宮殿票價 2027 可能調
+- 根目錄 `HANDOFF.md` 7-2 的 Google 地圖要更新（韓國 11-13 獲准，步行導航報導說最快 2027 年初）
 - 定稿寫不做記帳，但 app 有自己記的花費
-- H：真的打一次 Anthropic API、真機全部沒驗（舊的待辦）；❓29、閘門 1、2
+- 只吃路邊的設定晚上還是會空（市場只有四個），要補店
+- 旅途中移站還能點已過的日子，用講的會擋
+- 餐廳寫「已經開賣」「打開訂票頁」有點怪；來源名有「2026-10-08」這種日期；`ios/ci/README.md` 還寫 0.2.0
 
-## 📂 下個會話最重要的檔案
+## 📂 最重要的檔案
 
 - `ios/README.md`、`ios/RadishCore/Sources/RadishCore/{SeoulFacts,Book,Remind,Plan,PlanGenerate}.swift`
 - `ios/Radish/Components/StopFacts.swift`、`ios/Radish/Screens/PrepBefore.swift`
-- `docs/排到能放心-跟現況對照.md`、`docs/核對原始檔/BRIEF.md`
 
-## ⏭️ 下一步從哪繼續
+## ⏭️ 下一步
 
-1. `gh run list --branch work/checked-data --limit 2` 看最後那輪；紅的派子代理修
-2. 派一個沒參與的子代理從頭讀 `git diff e28f601..HEAD -- ios`（規則那包沒人完整讀過）
-3. `bash ios/tools/watch-check.sh`（背景跑，約 30 分鐘），派子代理修到全綠並看截圖
-4. 全綠後：併回 swiftui（ff），更新 ios/README、`.uiux/05-設計代號/詞彙表`；0.5.0 的 TESTFLIGHT_NOTES 和版號先寫好，tf-7 標籤要多米點頭才推
+1. 多米點頭才推：`git tag tf-7`、`git push origin tf-7`（在 swiftui 上）。會跑規則測試、上傳、填說明，不跑 UI 測試
+2. 出版後等真機回饋
 
 ## 🧩 剩下的工作
 
-- [ ] A：規則與資料的修正已交件（沒編過、沒提交）。要看：整份 diff 沒人從頭讀過；generate 的 `parts partCheck: @escaping PartCheck` 等三處可能編不過；只吃在地小館那種設定有些晚上沒晚餐（node 模擬 2016 種裡 411 晚），跟改之前比一下，變差就放寬同組限制｜CI 規則測試綠｜ios/RadishCore｜無
-- [ ] B：畫面修正已交件。可能編不過：StopFacts 的 guard case .trip(let now)?、StopScreenParts 的 alternatives 兩個閉包、NearbySheet 的 ForEach 內 let、MoveGrid 的尾隨閉包。截圖要看移站五天在 0.82 放不放得下、大字｜CI 綠｜ios/Radish｜依賴 A
-- [ ] C：push、CI 全綠、看有資料的截圖、修畫面｜兩關全綠、截圖逐張看過｜依賴 A、B
-- [ ] D：併 swiftui、README、詞彙表、0.5.0 版號與測試說明草稿｜不推標籤｜依賴 C
-- [ ] E：報告給多米（含上面「要告訴多米」），問要不要出 tf-7｜依賴 D
+- [x] A 規則與資料｜[x] B 畫面｜[x] C CI 與截圖｜[x] D 併 swiftui 與文件
+- [ ] E：tf-7（等多米）
 
 ## 🗑️ 雜訊
 
-- CI macOS 排不到機器 15 分鐘後 cancelled、0 個步驟，`gh run rerun <id> --failed`；推新 commit 會取消舊那輪
+- CI macOS 排不到機器 15 分鐘後 cancelled，`gh run rerun <id> --failed`；推新 commit 會取消舊那輪
 - Bash 單一指令超過 8KB 會壞，大檔用 Write；提交要指定檔名，不准 commit -a
+- 這台沒有 Swift；排行程規則可以移植成 node 掃描比對

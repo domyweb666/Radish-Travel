@@ -8,7 +8,7 @@
 
 推到 `swiftui`、`work/**` 或 `overnight-**` 分支，GitHub Actions 的「iOS check」會跑兩關：
 
-1. **規則引擎測試（Linux）**：`ios/RadishCore` 的 153 條以上測試，一分鐘左右。
+1. **規則引擎測試（Linux）**：`ios/RadishCore` 的 301 條測試，一分鐘左右。
 2. **編譯與模擬器截圖（macOS）**：把整個 app 編起來，開 iPhone 模擬器跑 `RadishUITests`，每個畫面截一張圖。
    `FlowUITests` 從空白走一次主流程；`SceneUITests` 用啟動參數直接開到某個狀態（旅途中、回來後、沒網路、句數用完、深色、大字），一個畫面一條。
    場景和假的 AI 在 `Radish/App/UITestScenes.swift`，只有 Debug 版有。
