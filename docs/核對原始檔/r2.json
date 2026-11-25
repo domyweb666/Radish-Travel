@@ -1,0 +1,812 @@
+{
+ "facts": {
+  "p10": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/264311"
+    }
+   ],
+   "closed": [],
+   "hours": "街道隨時可以走"
+  },
+  "p11": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "N首爾塔官網 營業時間",
+     "url": "https://www.nseoultower.co.kr/visit/use.asp"
+    },
+    {
+     "name": "N首爾塔官網 票價",
+     "url": "https://www.nseoultower.co.kr/visit/use2.asp"
+    },
+    {
+     "name": "N首爾塔官網 首頁公告",
+     "url": "https://www.nseoultower.co.kr/"
+    },
+    {
+     "name": "南山纜車官網",
+     "url": "https://namsancablecar.com/customer.html"
+    }
+   ],
+   "closed": [],
+   "off": [
+    {
+     "from": "2027-01-01",
+     "to": "2027-03-31",
+     "why": "展望台準備重新開幕，2027 年 1 到 3 月限制使用，重開日期官網還沒公布"
+    }
+   ],
+   "hours": "展望台平日 10:00 到 22:30，週末和國定假日 10:00 到 23:00，會因天氣調整",
+   "last": "展望台關門前 30 分鐘停止入場；南山纜車來回票賣到 22:30、單程票賣到 22:45，可能提早收",
+   "price": "展望台大人 29,000 韓元，3 到 12 歲 23,000 韓元",
+   "addr": "서울 용산구 남산공원길 105",
+   "tip": "南山纜車和展望台是分開的：纜車 10:00 到 23:00，只在現場賣票、不能預約，時間會因天氣調整"
+  },
+  "p12": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "南大門市場官網 商場營業時間",
+     "url": "http://www.namdaemunmarket.co.kr/01_int/04.php"
+    },
+    {
+     "name": "南大門市場官網 2026 中秋休業表",
+     "url": "http://www.namdaemunmarket.co.kr/pages/board/view.php?board_sid=1&data_sid=244"
+    }
+   ],
+   "closed": [
+    0
+   ],
+   "hours": "每個商場不同：童裝 09:30 到 17:00（另有夜間場），飾品多半 07:00 到 17:00、週六到 14:00，本市場的食品和餐館 06:00 到 23:00 各店自訂",
+   "addr": "서울 중구 남대문시장4길 21",
+   "tip": "週日公休說的是商場，靠馬路的店自己決定開不開；中秋連假多數商場也休"
+  },
+  "p17": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Visit Seoul 弘大紅路 R1",
+     "url": "https://korean.visitseoul.net/attractions/HONGDAE-R1/KOPidz0r2"
+    }
+   ],
+   "tip": "紅路 R1 在弘大入口站 9 號出口走 220 公尺的地方，有市集和街頭表演"
+  },
+  "p18": {
+   "status": "none",
+   "checked": "2026-11-25",
+   "src": []
+  },
+  "p19": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2010536"
+    },
+    {
+     "name": "望遠市場官網 交通",
+     "url": "http://www.mangwonmarket.com/stores-directions-kr"
+    }
+   ],
+   "closed": [],
+   "hours": "10:00 到 20:00，各店不同",
+   "addr": "서울 마포구 포은로6길 27",
+   "tip": "市場整體沒有固定休，個別店家的休息日和時間要問店家"
+  },
+  "p21": {
+   "status": "none",
+   "checked": "2026-11-25",
+   "src": []
+  },
+  "p13a": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "asoview 2026 汗蒸幕整理",
+     "url": "https://www.asoview.com/note/7604/"
+    },
+    {
+     "name": "Creatrip",
+     "url": "https://creatrip.com/en/blog/14008"
+    }
+   ],
+   "closed": [],
+   "hours": "24 小時",
+   "price": "入場 20,000 韓元",
+   "addr": "서울 중구 명동8가길 27 지하2층",
+   "tip": "汗蒸房、公共區和過夜區只有女生能用，男生只有澡堂",
+   "book": {
+    "how": "Creatrip 可以先買票，要在 3 天前訂",
+    "url": "https://creatrip.com/en/blog/14008",
+    "decideDays": 3,
+    "cancel": "在 Creatrip 訂的，3 天前取消全額退，2 天前起不退",
+    "foreigner": "Creatrip 有英文頁"
+   }
+  },
+  "p13b": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "花泥漿汗蒸幕官網 地址時間",
+     "url": "https://www.hanamud.co.kr/map"
+    },
+    {
+     "name": "花泥漿汗蒸幕官網 價格",
+     "url": "https://www.hanamud.co.kr/course"
+    },
+    {
+     "name": "花泥漿汗蒸幕官網 常見問題",
+     "url": "https://www.hanamud.co.kr/qna"
+    }
+   ],
+   "closed": [],
+   "closedOn": [
+    "seollal"
+   ],
+   "hours": "09:00 到 22:30，做完最後一位客人為止",
+   "last": "22:30 前入店",
+   "price": "基本套餐刷卡 64,000 韓元、付現 60,000 韓元",
+   "addr": "서울 중구 을지로14길 7 B1F",
+   "tip": "只收女生；春節官網一頁寫當天休、一頁寫連假都休，那幾天去先問",
+   "book": {
+    "how": "不訂也能去，要訂可用官網表單或電話，當天也收",
+    "url": "https://www.hanamud.co.kr/reservation",
+    "cancel": "官網寫不收取消費",
+    "foreigner": "官網表單是日文，填英文姓名和信箱，收海外信用卡"
+   }
+  },
+  "p14a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "亂打官網 明洞場",
+     "url": "https://nanta.co.kr/kr/show/detail.php?id=1"
+    },
+    {
+     "name": "亂打官網 英文頁",
+     "url": "https://www.nanta.co.kr/en/show/detail.php?id=1"
+    },
+    {
+     "name": "亂打官網 常見問題",
+     "url": "https://nanta.co.kr/kr/company/contactUs/faq.php"
+    }
+   ],
+   "closed": [],
+   "hours": "週一到週五 17:00、20:00，週六 14:00、17:00、20:00，週日和國定假日 14:00、17:00",
+   "last": "網路賣到開演前 2 小時",
+   "price": "VIP 70,000、S 60,000、A 50,000 韓元",
+   "addr": "서울 중구 명동길 26 유네스코회관 3층",
+   "tip": "取票和現場買票從開演前 1 小時開始，遲到不一定進得去",
+   "book": {
+    "how": "官網選位訂票",
+    "url": "https://www.nanta.co.kr/en/show/detail.php?id=1",
+    "decideDays": 1,
+    "cancel": "開演前 24 小時為止免費取消，之後不能退也不能改",
+    "foreigner": "官網有中文、英文、日文頁，下單要先註冊會員"
+   }
+  },
+  "p14b": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "The Painters 官網",
+     "url": "https://www.thepainters.co.kr/"
+    },
+    {
+     "name": "The Painters 官網 中文頁",
+     "url": "https://www.thepainters.co.kr/zh"
+    }
+   ],
+   "closed": [],
+   "hours": "每天 14:00、17:00、20:00 三場，一場 75 分鐘",
+   "addr": "서울 중구 정동길 3 경향아트힐 1층",
+   "tip": "售票處開演前 1 小時開，離西大門站 5 號出口走 6 分鐘",
+   "book": {
+    "how": "官網選位訂票，不用註冊，沒有手續費",
+    "url": "https://www.thepainters.co.kr/zh",
+    "foreigner": "官網有中文和英文頁"
+   }
+  },
+  "p15a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "POCA SPOT 官網",
+     "url": "https://www.pocaspot.com/myeongdong"
+    }
+   ],
+   "closed": [],
+   "hours": "每天 10:30 到 22:30",
+   "addr": "서울 중구 명동8나길 33",
+   "tip": "賣官方小卡；機台下單 16:00 前才能當天拿，拿貨時間先問店員"
+  },
+  "p15b": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "MUSIC KOREA 官網 門市",
+     "url": "https://www.musickorea.com/Paper/view/code/store"
+    }
+   ],
+   "closed": [],
+   "hours": "每天 10:00 到 22:00",
+   "addr": "서울 중구 퇴계로 134 1층"
+  },
+  "p16a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "韓國之家官網",
+     "url": "https://www.kh.or.kr/kh/"
+    },
+    {
+     "name": "韓國之家官網 韓定食",
+     "url": "https://www.kh.or.kr/combine/content/list/535"
+    }
+   ],
+   "closed": [
+    0,
+    1
+   ],
+   "shift": "open",
+   "closedOn": [
+    "seollal3",
+    "chuseok3"
+   ],
+   "hours": "午餐 12:00 到 15:00，晚餐 18:00 到 22:00",
+   "last": "午餐點到 13:00，晚餐點到 19:30",
+   "addr": "서울 중구 퇴계로36길 10",
+   "tip": "有宗教或過敏忌口，訂位時先說可以換部分菜",
+   "book": {
+    "how": "CatchTable 線上訂，或打 02-3011-9200",
+    "url": "https://app.catchtable.co.kr/ct/shop/koreahouse"
+   }
+  },
+  "p16b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "米其林指南 無窮花",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/mugunghwa"
+    },
+    {
+     "name": "CatchTable Global",
+     "url": "https://www.catchtable.net/discovery/koreas-10-best-korean-restaurants-in-myeongdong.html"
+    }
+   ],
+   "addr": "서울 중구 을지로 30 롯데호텔 38층",
+   "book": {
+    "how": "先打電話訂，熱門日期 3 個月前開放",
+    "url": "https://www.catchtable.net/discovery/koreas-10-best-korean-restaurants-in-myeongdong.html"
+   }
+  },
+  "p20a": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "WAUG",
+     "url": "https://www.waug.com/ko/activities/146145"
+    }
+   ],
+   "closed": [],
+   "closedOn": [
+    "seollal",
+    "chuseok"
+   ],
+   "hours": "週一到週五 12:00 到 20:00，週末 11:00 到 20:00",
+   "addr": "서울 마포구 어울마당로 147-1 동원빌딩 4층",
+   "tip": "做完要等 1 小時左右才能拿戒指",
+   "book": {
+    "how": "WAUG 線上訂，店家確認才算訂到",
+    "url": "https://www.waug.com/ko/activities/146145",
+    "decideDays": 8,
+    "cancel": "在 WAUG 訂的，8 天前全額退，7 到 2 天前退一半，前一天起不退"
+   }
+  },
+  "p20b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "WAUG",
+     "url": "https://www.waug.com/ko/activities/139866"
+    },
+    {
+     "name": "Trazy",
+     "url": "https://www.trazy.com/experience/detail/ring-making-experience-in-hongdae-myeongdong"
+    }
+   ],
+   "closedOn": [
+    "seollal",
+    "chuseok"
+   ],
+   "addr": "서울 마포구 잔다리로 7 4층",
+   "tip": "體驗約 2 小時；春節和中秋的前一天也休，週三開不開各平台寫的不一樣",
+   "book": {
+    "how": "WAUG 或 Trazy 線上訂，每 30 分鐘一個時段",
+    "url": "https://www.trazy.com/experience/detail/ring-making-experience-in-hongdae-myeongdong",
+    "decideDays": 1,
+    "cancel": "前一天 17:00 前全額退，當天不退",
+    "foreigner": "Trazy 有英文頁"
+   }
+  },
+  "p22a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "橋村炸雞官網 門市",
+     "url": "https://www.kyochon.com/shop/domestic_sch.asp?shop_id=1095&sido1=0&sido2=0"
+    }
+   ],
+   "hours": "12:00 到 24:00",
+   "addr": "서울 마포구 양화로16길 6"
+  },
+  "p22b": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "bhc 官網 門市",
+     "url": "https://www.bhc.co.kr/store"
+    }
+   ],
+   "hours": "每天 12:00 到 23:00",
+   "addr": "서울 마포구 홍익로6길 10 준봉빌딩 2F",
+   "tip": "店在 2 樓"
+  }
+ },
+ "drop": [
+  "p13",
+  "p14",
+  "p15",
+  "p16",
+  "p20",
+  "p22"
+ ],
+ "add": [
+  {
+   "after": "p13",
+   "place": {
+    "id": "p13a",
+    "n": "明洞黃金汗蒸幕",
+    "kr": "명동황금사우나",
+    "a": "C",
+    "s": "S",
+    "c": "fun",
+    "lat": 37.56193,
+    "lng": 126.98657,
+    "l": true,
+    "ic": "spa",
+    "fee": 400
+   }
+  },
+  {
+   "after": "p13",
+   "place": {
+    "id": "p13b",
+    "n": "明洞花泥漿汗蒸幕",
+    "kr": "명동하나머드한증막",
+    "a": "C",
+    "s": "S",
+    "c": "fun",
+    "lat": 37.565946,
+    "lng": 126.992228,
+    "l": true,
+    "ic": "spa",
+    "fee": 1400
+   }
+  },
+  {
+   "after": "p14",
+   "place": {
+    "id": "p14a",
+    "n": "亂打秀 明洞劇場",
+    "kr": "명동난타극장",
+    "a": "C",
+    "s": "S",
+    "c": "night",
+    "lat": 37.563452,
+    "lng": 126.98377,
+    "b": true,
+    "ic": "fun",
+    "fee": 1200
+   }
+  },
+  {
+   "after": "p14",
+   "place": {
+    "id": "p14b",
+    "n": "塗鴉秀 The Painters 光化門場",
+    "kr": "경향아트힐 페인터즈",
+    "a": "A",
+    "s": "S",
+    "c": "night",
+    "lat": 37.568072,
+    "lng": 126.969999,
+    "b": true,
+    "ic": "fun",
+    "fee": 1200
+   }
+  },
+  {
+   "after": "p15",
+   "place": {
+    "id": "p15a",
+    "n": "POCA SPOT 明洞店",
+    "kr": "포카스팟 명동점",
+    "a": "C",
+    "s": "S",
+    "c": "kpop",
+    "lat": 37.561184,
+    "lng": 126.983062
+   }
+  },
+  {
+   "after": "p15",
+   "place": {
+    "id": "p15b",
+    "n": "MUSIC KOREA 明洞 2 號店",
+    "kr": "뮤직코리아 명동2호점",
+    "a": "C",
+    "s": "S",
+    "c": "kpop",
+    "lat": 37.560663,
+    "lng": 126.986266
+   }
+  },
+  {
+   "after": "p16",
+   "place": {
+    "id": "p16a",
+    "n": "韓國之家韓定食",
+    "kr": "한국의집",
+    "a": "C",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.560203,
+    "lng": 126.994684,
+    "f": "famous",
+    "b": true,
+    "fee": 1200
+   }
+  },
+  {
+   "after": "p16",
+   "place": {
+    "id": "p16b",
+    "n": "無窮花（樂天飯店）",
+    "kr": "롯데호텔서울 무궁화",
+    "a": "C",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.565228,
+    "lng": 126.980629,
+    "f": "famous",
+    "b": true
+   }
+  },
+  {
+   "after": "p20",
+   "place": {
+    "id": "p20a",
+    "n": "Atelier Hosoo 戒指工坊 弘大店",
+    "kr": "반지공방 아뜰리에호수 홍대점",
+    "a": "D",
+    "s": "S",
+    "c": "fun",
+    "lat": 37.556695,
+    "lng": 126.926279,
+    "b": true,
+    "fee": 800
+   }
+  },
+  {
+   "after": "p20",
+   "place": {
+    "id": "p20b",
+    "n": "戒指大學 弘大本店",
+    "kr": "반지대학 홍대본점",
+    "a": "D",
+    "s": "S",
+    "c": "fun",
+    "lat": 37.550555,
+    "lng": 126.922145,
+    "b": true,
+    "fee": 800
+   }
+  },
+  {
+   "after": "p22",
+   "place": {
+    "id": "p22a",
+    "n": "橋村炸雞 弘大店",
+    "kr": "교촌치킨 홍대점",
+    "a": "D",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.553596,
+    "lng": 126.920133,
+    "f": "famous",
+    "fee": 600
+   }
+  },
+  {
+   "after": "p22",
+   "place": {
+    "id": "p22b",
+    "n": "bhc 炸雞 弘大店",
+    "kr": "bhc치킨 홍대점",
+    "a": "D",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.555014,
+    "lng": 126.922687,
+    "f": "famous",
+    "fee": 600
+   }
+  }
+ ],
+ "evidence": [
+  {
+   "id": "p10",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/tourspot/264311",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p11",
+   "field": "closed",
+   "url": "https://www.nseoultower.co.kr/visit/use.asp",
+   "said": "1년 365일 연중무휴",
+   "official": true
+  },
+  {
+   "id": "p11",
+   "field": "off",
+   "url": "https://www.nseoultower.co.kr/",
+   "said": "2027년 1월 ~3월",
+   "official": true
+  },
+  {
+   "id": "p11",
+   "field": "last",
+   "url": "https://www.nseoultower.co.kr/visit/use.asp",
+   "said": "마감시간 30분 전까지 입장",
+   "official": true
+  },
+  {
+   "id": "p11",
+   "field": "last",
+   "url": "https://namsancablecar.com/customer.html",
+   "said": "왕복 기준 22:30",
+   "official": true
+  },
+  {
+   "id": "p11",
+   "field": "tip",
+   "url": "https://namsancablecar.com/usage.html",
+   "said": "10:00 ~ 23:00",
+   "official": true
+  },
+  {
+   "id": "p12",
+   "field": "closed",
+   "url": "http://www.namdaemunmarket.co.kr/01_int/04.php",
+   "said": "매주 일요일 정기휴일",
+   "official": true
+  },
+  {
+   "id": "p12",
+   "field": "tip",
+   "url": "http://www.namdaemunmarket.co.kr/01_int/04.php",
+   "said": "외향점포 자율영업",
+   "official": true
+  },
+  {
+   "id": "p12",
+   "field": "tip",
+   "url": "http://www.namdaemunmarket.co.kr/pages/board/view.php?board_sid=1&data_sid=244",
+   "said": "9월 24일 (목) ~",
+   "official": true
+  },
+  {
+   "id": "p19",
+   "field": "closed",
+   "url": "https://mediahub.seoul.go.kr/archives/2010536",
+   "said": "휴무: 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p13a",
+   "field": "closed",
+   "url": "https://www.asoview.com/note/7604/",
+   "said": "年中無休",
+   "official": false
+  },
+  {
+   "id": "p13a",
+   "field": "decideDays",
+   "url": "https://creatrip.com/en/blog/14008",
+   "said": "100% refund",
+   "official": false
+  },
+  {
+   "id": "p13b",
+   "field": "closed",
+   "url": "https://www.hanamud.co.kr/map",
+   "said": "年中無休",
+   "official": true
+  },
+  {
+   "id": "p13b",
+   "field": "closedOn",
+   "url": "https://www.hanamud.co.kr/map",
+   "said": "旧正月当日のみ休み",
+   "official": true
+  },
+  {
+   "id": "p13b",
+   "field": "last",
+   "url": "https://www.hanamud.co.kr/map",
+   "said": "22:30まで入店可",
+   "official": true
+  },
+  {
+   "id": "p14a",
+   "field": "closed",
+   "url": "https://nanta.co.kr/kr/show/detail.php?id=1",
+   "said": "월~금 … 토 … 일,공휴일",
+   "official": true
+  },
+  {
+   "id": "p14a",
+   "field": "last",
+   "url": "https://nanta.co.kr/kr/show/detail.php?id=1",
+   "said": "공연시작 02시간 전",
+   "official": true
+  },
+  {
+   "id": "p14a",
+   "field": "decideDays",
+   "url": "https://nanta.co.kr/kr/show/detail.php?id=1",
+   "said": "공연시작 24시간 전",
+   "official": true
+  },
+  {
+   "id": "p14b",
+   "field": "closed",
+   "url": "https://www.thepainters.co.kr/",
+   "said": "365일 공연",
+   "official": true
+  },
+  {
+   "id": "p15a",
+   "field": "closed",
+   "url": "https://www.pocaspot.com/myeongdong",
+   "said": "Daily 10:30 AM",
+   "official": true
+  },
+  {
+   "id": "p15b",
+   "field": "closed",
+   "url": "https://www.musickorea.com/Paper/view/code/store",
+   "said": "Every day",
+   "official": true
+  },
+  {
+   "id": "p16a",
+   "field": "closed",
+   "url": "https://www.kh.or.kr/combine/content/list/535",
+   "said": "매주 일요일, 월요일",
+   "official": true
+  },
+  {
+   "id": "p16a",
+   "field": "closedOn",
+   "url": "https://www.kh.or.kr/combine/content/list/535",
+   "said": "설 연휴 및 추석 연휴",
+   "official": true
+  },
+  {
+   "id": "p16a",
+   "field": "shift",
+   "url": "https://www.kh.or.kr/kh/",
+   "said": "공휴일 정상 운영",
+   "official": true
+  },
+  {
+   "id": "p16a",
+   "field": "last",
+   "url": "https://www.kh.or.kr/combine/content/list/535",
+   "said": "주문마감 19:30",
+   "official": true
+  },
+  {
+   "id": "p20a",
+   "field": "closed",
+   "url": "https://www.waug.com/ko/activities/146145",
+   "said": "연중무휴",
+   "official": false
+  },
+  {
+   "id": "p20a",
+   "field": "closedOn",
+   "url": "https://www.waug.com/ko/activities/146145",
+   "said": "설날, 추석 당일 제외",
+   "official": false
+  },
+  {
+   "id": "p20a",
+   "field": "decideDays",
+   "url": "https://www.waug.com/ko/activities/146145",
+   "said": "8일 전: 전액 환불",
+   "official": false
+  },
+  {
+   "id": "p20b",
+   "field": "closedOn",
+   "url": "https://www.waug.com/ko/activities/139866",
+   "said": "명절 전날, 당일",
+   "official": false
+  },
+  {
+   "id": "p20b",
+   "field": "decideDays",
+   "url": "https://www.waug.com/ko/activities/139866",
+   "said": "1일전 오후 5시까지",
+   "official": false
+  },
+  {
+   "id": "p20b",
+   "field": "decideDays",
+   "url": "https://www.trazy.com/experience/detail/ring-making-experience-in-hongdae-myeongdong",
+   "said": "Before 5:00pm",
+   "official": false
+  }
+ ],
+ "notes": [
+  "p11：官網首頁輪播圖寫 2027 年 1 月到 3 月展望台限制使用，重開日期另行公告。原文是「이용이 제한됩니다」，當成不開處理；3/31 是照公告的 3 月底填，之後要回頭看。",
+  "p11：南山纜車 2026-10-09 到 11-29 秋季改成 09:00 開始（官網彈窗），沒寫進 hours。纜車 2026-02-23 到 03-20 停駛過，官網寫全年無休但每年可能有檢修。官網沒寫「末班」幾點，只寫售票截止和 23:00 結束。",
+  "p11：另一座 YTN 首爾塔官網（seoultower.co.kr）也寫纜車 10:00 到 23:00，兩邊一致。",
+  "p12：closed [0] 照官網「매주 일요일 정기휴일(외향점포 자율영업)」寫。這是商場整體的公休，靠馬路的店自己決定，所以 app 週日會顯示休，但不是整條街關門；本站分類是吃，週日還是可能有攤開。要不要在 app 改成提醒而不是擋，請主會話決定。",
+  "p12：中秋連假只有官網 2026 年的公告圖（多數商場 9/24 到 9/27，本洞和中央商場 1 樓靠馬路的自由營業），不是每年固定規定，所以沒寫 closedOn。官網營業時間表標示 2016 年發布，仍掛在現在的官網頁上。",
+  "p19：望遠市場官網有地址交通，但沒寫公休和營業時間；10:00 到 20:00、全年無休來自首爾市 내 손안에 서울 2024-03 市民記者文，所以算 second。",
+  "p10：二手（觀光公社資料轉載）只講街道隨時開放、全年無休，不代表各店。攤販營業時間查不到現在的資料。",
+  "p17：街區沒有官方營業時間。大壯弘大線終點站預定在紅路 R1、R2 之間，SBS Biz 2026-08-18 標題寫弘大入口站挖掘案保留，還沒看到封路公告，所以沒寫 off。",
+  "p18、p21：街區，查不到可引用的官方資料（京義線林蔭路的開放時間、夜店的入場規定都沒讀到），寫 none。",
+  "p13：明洞一帶查得到、現在還在開的兩家都只收女生（黃金是汗蒸房和過夜區只收女生）。男女都能去的 SPAREX 在東大門，官網打不開，沒放。Siloam（실로암불가마사우나）有旅客評論寫已歇業，沒放。",
+  "p13a：只有二手。Creatrip 商品頁另寫 13:00 到 22:00，看起來是預約時段，和 24 小時不同；前往前要再看。",
+  "p13b：韓國官網是日文。營業時間頁寫 09:00 到 22:30、FAQ 寫 09:00 到 23:00，取頁面標示較多的前者。地點在乙支路 3 街站，明洞旁邊，帶先放 C。fee 1400 是照刷卡 64,000 韓元估的。",
+  "p14：Nanta 弘大場官網文字寫週四、五、六、日，月曆卻有週三、有時週二，互相打架，沒放。",
+  "p14b：在貞洞（中區貞洞路 3），離光化門、西大門近，帶是 A，跟原本 C 不同。官網沒有票價和取消期限，沒寫 price、decideDays。西大門場（NH 藝術廳）每天只有 17:00 一場，沒放。",
+  "p15b：門市地址是退溪路 134，座標用 OpenStreetMap 的 MusicKorea 2nd Store。OSM 上還有一間明洞 8 街的 MusicKorea，Creatrip 2026-04 寫本店已關，不要混。",
+  "p15：WITHMUU 官網只剩空白頁，沒放。",
+  "p16a：2025-07 到 2026-03 整修過，2026-03-11 重開（newsis 等報導，搜尋摘要），官網現在有正常營業資訊。shift 是照官網首頁「설, 추석 연휴 제외 공휴일 정상 운영」寫成 open；韓定食那頁沒有這句，遇到週一是國定假日時要留意。韓定食價格在官網的菜單檔裡，沒讀到，fee 沿用 1200，可能偏低。",
+  "p16b：樂天飯店官網擋機器讀不到，只有二手。米其林寫 11:30 到 13:30、17:30 到 20:00，CatchTable 寫 11:30 到 21:30，另一個網站寫 11:30 到 14:30、18:00 到 22:00，互相打架，所以 hours、closed 沒填。米其林價位是最高一級，原本的 1200 明顯不合，所以 fee 沒填。搜尋摘要說飯店 2026-08 改名 THE GRAND LOTTE SEOUL（官網網址也從 seoul-hotel 轉到 seoul-grand），Naver 搜尋名可能要改。",
+  "p16：明洞餃子（명동교자）本來想放，但本店 2026-05 搬到退溪路 129（觀光公社資料地址已改，米其林還是舊址），查不到新址座標，沒放。其他資料如果有寫明洞餃子舊址明洞 10 街 29，要改。",
+  "p20：弘大的工坊沒找到打得開的官網，兩家都是訂票平台資料。p20a 座標來自 WAUG 頁面，只有 WAUG 一頁寫營業時間（Klook 擋機器）。",
+  "p20b：WAUG 和 AutoReserve 寫每天 10:30 到 21:00，Trazy 寫週三休、10:30 到 19:00，互相打架，hours、closed 不填。WAUG 寫節日前一天也休，closedOn 只能填當天。",
+  "p22a：橋村官網寫 12:00 到 24:00，部落格寫到隔天 02:00，以官網為準。官網沒寫公休，closed 沒填。",
+  "p22b：bhc 官網門市查詢的資料寫平日週末都是 12:00 到 23:00、可內用，沒寫公休，closed 沒填。世界日報 2026-11-17 提到弘大的 bhc、BBQ 外國客多，BBQ 弘大店的官網地址查不到，沒放。",
+  "資料包原本 p11 的 tip 沒錯但少了 2027 年 1 到 3 月展望台限制這件事；p14、p16、p20 的「先買票、先訂」改成每家各自的規定。"
+ ]
+}

@@ -1,0 +1,895 @@
+{
+ "facts": {
+  "p23": {
+   "status": "none",
+   "checked": "2026-11-25",
+   "src": []
+  },
+  "p24": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/2930901"
+    }
+   ],
+   "hours": "各店不同",
+   "addr": "서울특별시 성동구 성수동2가"
+  },
+  "p25": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2019859"
+    }
+   ],
+   "closed": [],
+   "hours": "24 小時開放",
+   "tip": "生態林等部分設施有自己的開放時間，晚上去先確認。首爾林站 4 號出口走約 2 分鐘"
+  },
+  "p27": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "NOL",
+     "url": "https://nol.yanolja.com/leisure/10381329"
+    },
+    {
+     "name": "여기유",
+     "url": "https://xn--ok0b236bp0a.com/place/9321"
+    },
+    {
+     "name": "LOTTE HOTEL WORLD",
+     "url": "https://app.lottehotel.com/world-hotel/en/offers/packages/260101/activity_world"
+    }
+   ],
+   "closed": [],
+   "hours": "週日到週四 10:00 到 21:00，週五、週六 10:00 到 22:00，當天時間以官網為準",
+   "last": "閉園前 1 小時停止售票和入場",
+   "addr": "서울특별시 송파구 올림픽로 240",
+   "tip": "海盜船（스페인 해적선）從 2026-11-23 起整修停開，什麼時候恢復還沒公布",
+   "book": {
+    "how": "可以先在訂票平台買，也可以到現場售票口買"
+   }
+  },
+  "p28": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "VISIT SEOUL",
+     "url": "https://korean.visitseoul.net/attractions/SeoulSky/KOPowtoyc"
+    },
+    {
+     "name": "Seoul Sky 官網",
+     "url": "https://seoulsky.lotteworld.com/ko/index.do"
+    }
+   ],
+   "closed": [],
+   "hours": "週日到週四 10:30 到 22:00，週五、週六 10:30 到 23:00",
+   "last": "打烊前 1 小時停止售票和入場",
+   "tip": "入場時間前 1 小時內只能在現場售票口買票",
+   "book": {
+    "how": "官網、樂天世界 App 或現場售票口買，官網寫開賣期間可能調整",
+    "url": "https://seoulsky.lotteworld.com/ko/index.do",
+    "opensDays": 14
+   }
+  },
+  "p29": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "여기유",
+     "url": "https://xn--ok0b236bp0a.com/place/11854"
+    },
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2019987"
+    }
+   ],
+   "closed": [],
+   "hours": "隨時開放",
+   "price": "免費",
+   "addr": "서울특별시 송파구 잠실로 180",
+   "tip": "2026-10-30 到 2027-02-28 東湖西湖有燈飾，每天 17:30 到 22:30 亮燈，免費，時間會看日落和現場調整"
+  },
+  "p31": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Starfield COEX MALL",
+     "url": "https://www.starfield.co.kr/coexmall/starfieldLibrary/library.do"
+    }
+   ],
+   "hours": "10:30 到 22:00",
+   "price": "免費",
+   "addr": "서울특별시 강남구 영동대로 513"
+  },
+  "p32": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/eng/tourspot/264107"
+    }
+   ],
+   "hours": "街道 24 小時開放"
+  },
+  "p26a": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Polle",
+     "url": "https://polle.com/place/2DAUX0/%EB%8C%80%EC%84%B1%EA%B0%88%EB%B9%84"
+    },
+    {
+     "name": "Esquire Korea",
+     "url": "https://www.esquirekorea.co.kr/eee/4861"
+    }
+   ],
+   "addr": "서울특별시 성동구 상원1길 26",
+   "tip": "已經搬到上元一街的新址，舊地址不要去。有來源寫週日休，週日去之前先確認"
+  },
+  "p26b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "AutoReserve",
+     "url": "https://autoreserve.com/en/restaurants/dras4RmD3zAaADwpivPr"
+    },
+    {
+     "name": "Polle",
+     "url": "https://polle.com/place/1fBGzz/%EA%BF%89%EB%8B%B9"
+    }
+   ],
+   "hours": "平日 15:00 到約 23:00，週末 12:00 到約 23:00",
+   "addr": "서울특별시 성동구 성수이로20길 10",
+   "tip": "有來源寫國定假日休息，假日去之前先確認"
+  },
+  "p26c": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/food/2899749"
+    },
+    {
+     "name": "KoreaCharts",
+     "url": "https://info.koreacharts.com/tour/2899749/contents.html"
+    }
+   ],
+   "closedOn": [
+    "seollal",
+    "chuseok"
+   ],
+   "hours": "16:00 到 23:00",
+   "last": "22:00 最後點餐",
+   "addr": "서울특별시 성동구 아차산로 110",
+   "tip": "賣的是韓牛大腸、小腸這類內臟，不吃內臟的不要選"
+  },
+  "p30a": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/food/2616369"
+    }
+   ],
+   "closed": [],
+   "hours": "平日 7:00 到 21:00（15:30 到 17:00 休息），週六、週日 7:00 到 20:00",
+   "last": "平日 20:30、週日 19:30 最後點餐",
+   "addr": "서울특별시 송파구 가락로16길 3-12",
+   "tip": "1982 年開的牛骨湯店，政府選的百年店家"
+  },
+  "p30b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/food/2839458"
+    },
+    {
+     "name": "Polle",
+     "url": "https://polle.com/place/22n7rR/%EC%98%A4%EB%AA%A8%EB%A6%AC%EC%B0%8C%EA%B0%9C"
+    }
+   ],
+   "closed": [],
+   "addr": "서울특별시 송파구 송파대로 471",
+   "tip": "賣老泡菜鍋。營業時間各處寫的不一樣，太早或太晚去先確認"
+  },
+  "p30c": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/food/2844673"
+    }
+   ],
+   "closed": [],
+   "hours": "週一到週四 16:00 到 22:40，週五 12:00 到 22:40（14:30 到 16:00 休息），週末 12:00 到 22:40",
+   "last": "平日 22:00 最後點餐",
+   "addr": "서울특별시 송파구 백제고분로45길 28"
+  },
+  "p33a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "정식당 官網",
+     "url": "https://www.jungsik.kr/reservation/"
+    },
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/jungsik511965"
+    }
+   ],
+   "closed": [],
+   "hours": "午餐 12:00 到 15:00，晚餐 17:30 到 22:00",
+   "last": "午餐 13:15、晚餐 19:15 最後點餐",
+   "price": "午餐 230,000 韓元，晚餐 330,000 韓元",
+   "addr": "서울특별시 강남구 선릉로 158길 11",
+   "tip": "米其林指南 2026 兩星。2 樓主廳 13 歲以上才能進",
+   "book": {
+    "how": "只收 Catchtable 線上訂位，雙數月的 1 號 11:00（韓國時間）開放後面兩個月，例如 4 月 1 日開 5、6 月",
+    "url": "https://www.jungsik.kr/reservation/",
+    "foreigner": "官網連到 Catchtable 的外國人版，不用韓國手機門號，可以刷海外卡，有繁體中文"
+   }
+  },
+  "p33b": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "EVETT 官網",
+     "url": "https://www.restaurantevett.com/reservation"
+    },
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/evett"
+    }
+   ],
+   "closed": [
+    0,
+    1
+   ],
+   "hours": "週二到週四 17:20 到 22:30，週五、週六 12:00 到 14:30 和 17:20 到 22:30",
+   "last": "午餐 13:30、晚餐 20:30 最後點餐",
+   "price": "午餐 190,000 韓元，晚餐 330,000 韓元，2027-01-01 起 220,000 和 350,000",
+   "addr": "서울특별시 강남구 도산대로45길 10-5",
+   "tip": "米其林指南 2026 兩星。遲到 30 分鐘以上可能進不去，訂金不退",
+   "book": {
+    "how": "只收 Catchtable 線上訂位，訂的時候要付訂金",
+    "url": "https://www.restaurantevett.com/reservation",
+    "decideDays": 2,
+    "cancel": "48 小時前取消全額退訂金，前一天和當天取消不退",
+    "foreigner": "官網連到 Catchtable 的外國人版，不用韓國手機門號，可以刷海外卡，有繁體中文，官網有英文和日文"
+   }
+  },
+  "p33c": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Restaurant Allen 官網",
+     "url": "https://restaurantallen.com/info"
+    },
+    {
+     "name": "Restaurant Allen 訂位頁",
+     "url": "https://restaurantallen.com/reservation"
+    },
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/restaurant-allen"
+    }
+   ],
+   "closed": [
+    0,
+    1
+   ],
+   "hours": "週二 18:00 到 22:00，週三到週六 12:00 到 15:00 和 18:00 到 22:00",
+   "price": "午餐 250,000 韓元，晚餐 370,000 韓元",
+   "addr": "서울특별시 강남구 테헤란로 231 EAST 2층 E205호",
+   "tip": "米其林指南 2026 兩星，在 Centerfield EAST 2 樓",
+   "book": {
+    "how": "用 Catchtable 訂，最早 30 天前，要付訂金，5 人以上打電話或寫信",
+    "url": "https://restaurantallen.com/reservation",
+    "opensDays": 30,
+    "foreigner": "官網有英文訂位說明，可以寫信到 info@restaurantallen.com"
+   }
+  },
+  "p34a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "삼원가든 官網",
+     "url": "https://dinehill.co.kr/samwon-garden/overview/"
+    },
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/food/132892"
+    },
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/samwon-garden"
+    }
+   ],
+   "closed": [],
+   "hours": "平日 11:30 到 14:30、17:30 到 21:30，週末和國定假日 11:00 到 14:30、17:00 到 21:00",
+   "last": "午餐 14:00，晚餐平日 20:45、週末和國定假日 20:30 最後點餐",
+   "addr": "서울특별시 강남구 언주로 835",
+   "tip": "米其林指南 2026 有收錄。用包廂另收 30,000 韓元",
+   "book": {
+    "how": "官網有 Naver 預約，也可以打 02-548-3030",
+    "url": "https://dinehill.co.kr/samwon-garden/overview/"
+   }
+  },
+  "p34b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/boreumsae"
+    }
+   ],
+   "addr": "서울특별시 강남구 테헤란로81길 36",
+   "tip": "米其林指南有收錄的烤肉店。15:00 到 17:00 有來源寫休息，這時段去先確認",
+   "book": {
+    "how": "餐廳自己收訂位，米其林頁面連到 Naver 預約，電話 02-569-9967"
+   }
+  },
+  "p35a": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Visit Gangnam（江南區廳）",
+     "url": "https://www.visitgangnam.net/en/kpop"
+    }
+   ],
+   "tip": "狎鷗亭羅德奧站 2 號出口往清潭十字路口約 1 公里，有 17 隻江南娃娃，位置會換。SM、JYP 都已經搬離這一帶"
+  },
+  "p35b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Visit Gangnam（江南區廳）",
+     "url": "https://www.visitgangnam.net/en/kpop"
+    },
+    {
+     "name": "Korea Trip Tips",
+     "url": "https://koreatriptips.com/en/cultural-facilities/3307357.html"
+    }
+   ],
+   "closed": [],
+   "hours": "11:00 到 20:00",
+   "addr": "서울특별시 강남구 영동대로 513",
+   "tip": "在 COEX Artium 的 2 到 4 樓，買專輯和周邊，3 樓是舞蹈教室"
+  },
+  "p35c": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/shopping/2988778"
+    },
+    {
+     "name": "KOREA TRIP TIPS 英文頁",
+     "url": "https://www.ktriptips.com/eng/shopping/4031017"
+    }
+   ],
+   "hours": "10:30 到 20:00",
+   "addr": "서울특별시 성동구 왕십리로 83-21",
+   "tip": "SM 的官方周邊店。休息日公布在 Instagram kwangya_seoul，農曆年和中秋有來源寫休息"
+  }
+ },
+ "drop": [
+  "p26",
+  "p30",
+  "p33",
+  "p34",
+  "p35"
+ ],
+ "add": [
+  {
+   "after": "p26",
+   "place": {
+    "id": "p26a",
+    "n": "大成排骨（聖水烤豬排骨）",
+    "kr": "대성갈비",
+    "a": "E",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.546194,
+    "lng": 127.048432,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p26",
+   "place": {
+    "id": "p26b",
+    "n": "Kkubdang 聖水店（烤豬肉）",
+    "kr": "꿉당 성수점",
+    "a": "E",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.543228,
+    "lng": 127.057642,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p26",
+   "place": {
+    "id": "p26c",
+    "n": "聖水 Noru（烤韓牛大腸）",
+    "kr": "성수노루",
+    "a": "E",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.544242,
+    "lng": 127.056173,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p30",
+   "place": {
+    "id": "p30a",
+    "n": "真味屋雪濃湯",
+    "kr": "진미옥설농탕",
+    "a": "F",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.501152,
+    "lng": 127.109236,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p30",
+   "place": {
+    "id": "p30b",
+    "n": "Omori 泡菜鍋 蠶室本店",
+    "kr": "오모리찌개 잠실본점",
+    "a": "F",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.508094,
+    "lng": 127.104078,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p30",
+   "place": {
+    "id": "p30c",
+    "n": "古都食（松理團路烤豬肉）",
+    "kr": "고도식",
+    "a": "F",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.510402,
+    "lng": 127.108683,
+    "f": "local"
+   }
+  },
+  {
+   "after": "p33",
+   "place": {
+    "id": "p33a",
+    "n": "Jungsik 정식당（米其林兩星）",
+    "kr": "정식당",
+    "a": "G",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.525584,
+    "lng": 127.041069,
+    "f": "fine",
+    "b": true,
+    "fee": 5000
+   }
+  },
+  {
+   "after": "p33",
+   "place": {
+    "id": "p33b",
+    "n": "EVETT（米其林兩星）",
+    "kr": "에빗",
+    "a": "G",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.52334,
+    "lng": 127.0362,
+    "f": "fine",
+    "b": true,
+    "fee": 4200
+   }
+  },
+  {
+   "after": "p33",
+   "place": {
+    "id": "p33c",
+    "n": "Restaurant Allen（米其林兩星）",
+    "kr": "레스토랑 알렌",
+    "a": "G",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.5036,
+    "lng": 127.0418,
+    "f": "fine",
+    "b": true,
+    "fee": 5500
+   }
+  },
+  {
+   "after": "p34",
+   "place": {
+    "id": "p34a",
+    "n": "三元花園（韓牛烤肉）",
+    "kr": "삼원가든",
+    "a": "G",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.52499,
+    "lng": 127.03297,
+    "f": "famous",
+    "b": true,
+    "fee": 1500
+   }
+  },
+  {
+   "after": "p34",
+   "place": {
+    "id": "p34b",
+    "n": "Boreumsae（濟州黑牛烤肉）",
+    "kr": "보름쇠",
+    "a": "G",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.509328,
+    "lng": 127.056611,
+    "f": "famous",
+    "b": true,
+    "fee": 1500
+   }
+  },
+  {
+   "after": "p35",
+   "place": {
+    "id": "p35a",
+    "n": "K-Star Road 江南娃娃",
+    "kr": "한류스타거리",
+    "a": "G",
+    "s": "S",
+    "c": "kpop",
+    "lat": 37.527786,
+    "lng": 127.041325
+   }
+  },
+  {
+   "after": "p35",
+   "place": {
+    "id": "p35b",
+    "n": "Ktown4u COEX",
+    "kr": "케이타운포유 코엑스",
+    "a": "G",
+    "s": "S",
+    "c": "kpop",
+    "lat": 37.511918,
+    "lng": 127.059218
+   }
+  },
+  {
+   "after": "p35",
+   "place": {
+    "id": "p35c",
+    "n": "KWANGYA SEOUL（SM 周邊店）",
+    "kr": "광야 서울",
+    "a": "E",
+    "s": "S",
+    "c": "kpop",
+    "lat": 37.544155,
+    "lng": 127.043358
+   }
+  }
+ ],
+ "evidence": [
+  {
+   "id": "p25",
+   "field": "closed",
+   "url": "https://mediahub.seoul.go.kr/archives/2019859",
+   "said": "연중무휴 24시간 개방",
+   "official": true
+  },
+  {
+   "id": "p27",
+   "field": "closed",
+   "url": "https://nol.yanolja.com/leisure/10381329",
+   "said": "휴무일 : 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p27",
+   "field": "closed",
+   "url": "https://xn--ok0b236bp0a.com/place/9321",
+   "said": "휴무정보 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p27",
+   "field": "last",
+   "url": "https://xn--ok0b236bp0a.com/place/9321",
+   "said": "1시간 전 매표·입장마감",
+   "official": false
+  },
+  {
+   "id": "p27",
+   "field": "tip",
+   "url": "https://app.lottehotel.com/world-hotel/en/offers/packages/260101/activity_world",
+   "said": "will be closed",
+   "official": false
+  },
+  {
+   "id": "p28",
+   "field": "closed",
+   "url": "https://korean.visitseoul.net/attractions/SeoulSky/KOPowtoyc",
+   "said": "연중무휴",
+   "official": false
+  },
+  {
+   "id": "p28",
+   "field": "last",
+   "url": "https://seoulsky.lotteworld.com/assets/index-GgCbV12w.js",
+   "said": "영업종료 1시간 전까지",
+   "official": true
+  },
+  {
+   "id": "p28",
+   "field": "opensDays",
+   "url": "https://seoulsky.lotteworld.com/assets/index-GgCbV12w.js",
+   "said": "관람일 14일전부터",
+   "official": true
+  },
+  {
+   "id": "p29",
+   "field": "closed",
+   "url": "https://xn--ok0b236bp0a.com/place/11854",
+   "said": "휴무정보 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p29",
+   "field": "tip",
+   "url": "https://mediahub.seoul.go.kr/archives/2019987",
+   "said": "17:30 ~ 22:30",
+   "official": true
+  },
+  {
+   "id": "p31",
+   "field": "hours",
+   "url": "https://www.starfield.co.kr/coexmall/starfieldLibrary/library.do",
+   "said": "10:30 - 22:00",
+   "official": true
+  },
+  {
+   "id": "p26c",
+   "field": "closedOn",
+   "url": "https://www.ktriptips.com/kor/food/2899749",
+   "said": "휴일 설·추석 당일",
+   "official": false
+  },
+  {
+   "id": "p26c",
+   "field": "last",
+   "url": "https://www.ktriptips.com/kor/food/2899749",
+   "said": "마지막 주문 22:00",
+   "official": false
+  },
+  {
+   "id": "p30a",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/food/2616369",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p30a",
+   "field": "last",
+   "url": "https://www.ktriptips.com/kor/food/2616369",
+   "said": "마지막 주문 20:30",
+   "official": false
+  },
+  {
+   "id": "p30b",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/food/2839458",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p30c",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/food/2844673",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p30c",
+   "field": "last",
+   "url": "https://www.ktriptips.com/kor/food/2844673",
+   "said": "마지막 주문 22:00",
+   "official": false
+  },
+  {
+   "id": "p33a",
+   "field": "closed",
+   "url": "https://www.jungsik.kr/reservation/",
+   "said": "*연중무휴",
+   "official": true
+  },
+  {
+   "id": "p33a",
+   "field": "last",
+   "url": "https://www.jungsik.kr/reservation/",
+   "said": "Order 19:15",
+   "official": true
+  },
+  {
+   "id": "p33a",
+   "field": "book",
+   "url": "https://www.jungsik.kr/reservation/",
+   "said": "1일 오전 11시",
+   "official": true
+  },
+  {
+   "id": "p33b",
+   "field": "closed",
+   "url": "https://www.restaurantevett.com/reservation",
+   "said": "휴일인 일-월요일",
+   "official": true
+  },
+  {
+   "id": "p33b",
+   "field": "last",
+   "url": "https://www.restaurantevett.com/reservation",
+   "said": "라스트오더 20:30",
+   "official": true
+  },
+  {
+   "id": "p33b",
+   "field": "decideDays",
+   "url": "https://www.restaurantevett.com/reservation",
+   "said": "48시간 전까지 취소",
+   "official": true
+  },
+  {
+   "id": "p33c",
+   "field": "closed",
+   "url": "https://restaurantallen.com/info",
+   "said": "Sun, Mon OFF",
+   "official": true
+  },
+  {
+   "id": "p33c",
+   "field": "opensDays",
+   "url": "https://restaurantallen.com/reservation",
+   "said": "최대 30일 전에 가능",
+   "official": true
+  },
+  {
+   "id": "p33a",
+   "field": "michelin",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/jungsik511965",
+   "said": "두 개의 별",
+   "official": true
+  },
+  {
+   "id": "p33b",
+   "field": "michelin",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/evett",
+   "said": "두 개의 별",
+   "official": true
+  },
+  {
+   "id": "p33c",
+   "field": "michelin",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/restaurant-allen",
+   "said": "두 개의 별",
+   "official": true
+  },
+  {
+   "id": "p33a",
+   "field": "foreigner",
+   "url": "https://english.visitkorea.or.kr/svc/contents/infoHtmlView.do?vcontsId=205615",
+   "said": "Korean phone",
+   "official": false
+  },
+  {
+   "id": "p33b",
+   "field": "foreigner",
+   "url": "https://english.visitkorea.or.kr/svc/contents/infoHtmlView.do?vcontsId=205615",
+   "said": "Korean phone",
+   "official": false
+  },
+  {
+   "id": "p34a",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/food/132892",
+   "said": "연중무휴",
+   "official": false
+  },
+  {
+   "id": "p34a",
+   "field": "last",
+   "url": "https://dinehill.co.kr/samwon-garden/overview/",
+   "said": "라스트 오더 20:45",
+   "official": true
+  },
+  {
+   "id": "p34b",
+   "field": "michelin",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/boreumsae",
+   "said": "보름쇠",
+   "official": true
+  },
+  {
+   "id": "p35a",
+   "field": "tip",
+   "url": "https://www.visitgangnam.net/en/kpop",
+   "said": "17 GangnamDols",
+   "official": true
+  },
+  {
+   "id": "p35b",
+   "field": "closed",
+   "url": "https://koreatriptips.com/en/cultural-facilities/3307357.html",
+   "said": "Open all year",
+   "official": false
+  },
+  {
+   "id": "p35c",
+   "field": "hours",
+   "url": "https://www.ktriptips.com/kor/shopping/2988778",
+   "said": "10:30~20:00",
+   "official": false
+  }
+ ],
+ "notes": [
+  "p23：整個街區，沒有單一官方頁，街區本身沒有休館可言，寫 none。",
+  "p27：樂天世界官網擋機器打不開，所以是 second。樂天飯店頁寫海盜船 2026-11-23 起整修，飯店同一系列較早的公告寫部分設施 2026-11-01 到 2027-11-30 可能受限（這一句只看到搜尋摘要）。Herald 2026-11-16 也報了海盜船停開。搜尋摘要另外看到 2026-09-30、10-16 整園包場停開，表示偶爾會臨時休園，建議畫面上提醒看官網月曆。11-30 TXT 活動是 23:00 到隔天 3:00，不影響白天。票價各處差很多，沒寫。",
+  "p27：資料包原本寫「先上網買票通常比較便宜」，沒有官方頁可核對，tip 已換成海盜船停開。原本的 b=true 可以留，但不是一定要先訂，現場也賣。",
+  "p28：官網是 JS 網頁，畫面資料要另外載入。opensDays 和 last 來自官網程式檔裡的預設文字，同檔有 2024 年的舊字，可能沒更新。大人票價官網程式檔寫 31,000、VISIT SEOUL 寫 33,000，兩邊打架所以沒填 price。休館日和開放時間是 VISIT SEOUL，所以寫 second。",
+  "p29：休館日是二手，燈飾日期是首爾市官方媒體。",
+  "p31：星空圖書館官方頁沒寫休館日，官方 FAQ 的全年無休是講顧客服務中心，所以沒填 closed。",
+  "p26a：大成排骨搬過家。Esquire 舊地址（서울숲4길 27）寫週日休，新址沒有可靠來源寫休哪天，closed 沒填。座標取自 Polle。",
+  "p26b：AutoReserve 寫國定假日休，沒有第二個來源，沒填。座標 Polle 和 AutoReserve 一致。",
+  "p26、p30 的店都沒有官網可讀，全部是 second。p30b 一處寫 24 小時、一處寫 11:00 到 22:00（搜尋摘要），hours 沒填。p30c 只有觀光公社資料（2025-09-17 更新）一個來源有時間。",
+  "p33：三家都在 guide.michelin.com 2026 名單，頁面標兩星、地址在江南區，都在 G 帶。Mingles 三星太難訂沒選。",
+  "p33a：正食堂開放訂位是雙數月 1 號一次開後兩個月，opensMonths 表示不了（單數月是前 1 個月、雙數月是前 2 個月），所以只寫在 how。官網沒看到取消規則。",
+  "p33 的 fee 依官網午餐價用 1 韓元約 0.022 台幣換算，是粗估。原本 3000 偏低。",
+  "p33c：官網的訂位鈕連到 Catchtable 韓文版，有沒有上外國人版沒查到，所以沒寫可不可以刷海外卡。",
+  "p34a：closed 來自觀光公社資料（2026-10-21 更新），官網只列平日和週末國定假日的時間，沒有寫休息日。",
+  "p34b：米其林韓文頁現在寫每天 11:30 到 22:00，別的語言頁和其他站寫 15:00 到 17:00 休息，另有一處寫國定假日休，所以 hours 和 closed 都沒填。",
+  "p35：SM 2021 年搬到聖水、JYP 也搬走（江南區廳網站寫的），HYBE 在龍山。HYBE 龍山 1 樓是快閃場地（한강대로 42），每檔要先在 Weverse 預約，不是常設店，沒選。JYP 在首爾沒查到常設周邊店。江南的經紀公司大樓都不開放參觀。",
+  "p35c：KWANGYA SEOUL 在聖水，所以 a 是 E，跟原本的 G 不同。休假日韓文頁和英文頁寫法不同，closedOn 沒填。",
+  "p35 原本的名稱「娛樂公司周邊巡禮」已經不符合現況，drop。"
+ ]
+}

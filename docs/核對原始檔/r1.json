@@ -1,0 +1,270 @@
+{
+  "facts": {
+    "p0": {
+      "status": "official",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "宮陵遺跡本部 開放時間", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do"},
+        {"name": "宮陵遺跡本部 票價", "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do"},
+        {"name": "Korea Times 2026-10-08", "url": "https://www.koreatimes.co.kr/southkorea/20261008/govt-undecided-on-plan-to-raise-admission-fees-to-royal-palaces-tombs"}
+      ],
+      "closed": [2],
+      "shift": "next",
+      "hours": "11 到 2 月 09:00 到 17:00，3 到 5 月和 9、10 月到 18:00，6 到 8 月到 18:30",
+      "last": "關門前 1 小時停止入場，11 到 2 月是 16:00",
+      "price": "大人 3,000 韓元（韓國政府在討論調漲，2026 年 10 月時還沒定案）",
+      "addr": "서울 종로구 사직로 161",
+      "tip": "穿韓服免費入場；中文導覽 10:30 和 15:00，不用預約"
+    },
+    "p1": {
+      "status": "official",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "國立現代美術館 首爾館", "url": "https://www.mmca.go.kr/visitingInfo/seoulInfo.do"},
+        {"name": "國立現代美術館 首頁公告", "url": "https://www.mmca.go.kr/main.do"}
+      ],
+      "closed": [],
+      "closedOn": ["01-01", "seollal", "chuseok"],
+      "off": [{"from": "2026-12-01", "to": "2026-12-01", "why": "臨時休館"}],
+      "hours": "週一、二、四、五、日 10:00 到 18:00，週三、六 10:00 到 21:00",
+      "price": "看展覽，各展分開收；同時有 3 檔以上企劃展時，通票 10,000 韓元",
+      "addr": "서울 종로구 삼청로 30",
+      "tip": "週三、週六 18:00 到 21:00 和每月最後一個週三免費"
+    },
+    "p2": {
+      "status": "official",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "首爾韓屋入口網公告", "url": "https://hanok.seoul.go.kr/front/kor/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000000031&nttId=2482"},
+        {"name": "首爾市繁體中文公告", "url": "https://tchinese.seoul.go.kr/?p=171726"}
+      ],
+      "hours": "紅區（北村路 11 街一帶）觀光客只能 10:00 到 17:00 進去",
+      "tip": "紅區 17:00 到隔天 10:00 不能觀光，違反罰 10 萬韓元"
+    },
+    "p3": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "K-Trip Tips（轉載韓國觀光公社資料）", "url": "https://www.ktriptips.com/kor/shopping/1590323"},
+        {"name": "首爾市 內手裡的首爾 2025-05", "url": "https://mediahub.seoul.go.kr/archives/2014553"}
+      ],
+      "hours": "市場 07:00 到 21:00，各店不同；銅錢便當 11:00 開始，下午就收",
+      "addr": "서울 종로구 자하문로15길 18",
+      "tip": "銅錢便當的公休日各來源寫的不一樣，想吃先打 0507-1378-0940 問"
+    },
+    "p4a": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "Visit Seoul", "url": "https://korean.visitseoul.net/area/TosokchonSamgyetang/KOPywjsmm"},
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=97919"}
+      ],
+      "closed": [],
+      "hours": "10:00 到 22:00",
+      "last": "21:00 最後點餐",
+      "addr": "서울 종로구 자하문로5길 5",
+      "tip": "有英文、日文、中文菜單"
+    },
+    "p4b": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "Visit Seoul", "url": "https://english.visitseoul.net/restaurants/Korea-Samkyetang-Samgyetang/ENP008646"},
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=99774"},
+        {"name": "K-Trip Tips（轉載韓國觀光公社資料）", "url": "https://www.ktriptips.com/kor/food/133854"}
+      ],
+      "closed": [],
+      "closedOn": ["seollal", "chuseok", "05-01"],
+      "hours": "平日 10:30 到 21:00，週末 10:30 到 20:30",
+      "price": "約 20,000 韓元",
+      "addr": "서울 중구 서소문로11길 1",
+      "tip": "在地鐵市廳站 10 號出口旁，走路約 100 公尺"
+    },
+    "p4c": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "Visit Seoul", "url": "https://korean.visitseoul.net/restaurants/JongnoGinsengChickenSoup/KOPz0vzz8"}
+      ],
+      "closed": [0],
+      "hours": "週一到週五 11:00 到 21:00（15:00 到 17:00 休息），週六 11:00 到 15:00",
+      "last": "平日 20:15、週六 14:15 最後點餐",
+      "price": "蔘雞湯 20,000 韓元",
+      "addr": "서울 종로구 종로8길 21",
+      "tip": "在地鐵鐘閣站 4 號出口旁，走路約 120 公尺"
+    },
+    "p5a": {
+      "status": "official",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "Oneday 韓服官網 常見問題", "url": "https://www.onedayhanbok.com/ko/faq/"},
+        {"name": "Oneday 韓服官網 交通", "url": "https://www.onedayhanbok.com/ko/location/"},
+        {"name": "Oneday 韓服官網 繁體中文", "url": "https://www.onedayhanbok.com/zh-Hant/"}
+      ],
+      "closed": [],
+      "hours": "每天 09:00 到 19:00，景福宮夜間開放期間到 21:00",
+      "price": "4 小時 24,000 韓元，一整天 32,000 韓元",
+      "addr": "서울 종로구 사직로 137 지하 1층",
+      "tip": "挑衣服換裝約 30 到 40 分鐘，租借期間行李可以免費寄放",
+      "book": {
+        "how": "不用預約也能租，週末和國定假日店家建議先在官網預約",
+        "url": "https://www.onedayhanbok.com/zh-Hant/",
+        "foreigner": "有繁體中文網頁；一組押一本護照加每人現金 10,000 韓元，或給護照照片加每套 50,000 韓元"
+      }
+    },
+    "p5b": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "韓服男官網 景福宮店", "url": "https://www.hanboknam.com/hanboknam/branch/gyeongbok.html"},
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=63312"}
+      ],
+      "closed": [],
+      "hours": "09:00 到 19:30，衣服 19:00 前要還；打烊時間會看季節調整",
+      "price": "傳統韓服 10,000 到 30,000 韓元，看款式和時間",
+      "addr": "서울 종로구 사직로 133-5",
+      "book": {
+        "how": "官網和 Naver 可以先預約",
+        "url": "https://www.hanboknam.com/hanboknam/branch/gyeongbok.html"
+      }
+    },
+    "p6": {
+      "status": "official",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "宮陵遺跡本部 開放時間", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do"},
+        {"name": "宮陵遺跡本部 票價", "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do"},
+        {"name": "宮陵遺跡本部 後苑訂票說明", "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg&schM=view&resIdx=202401090246&pageType=more"},
+        {"name": "昌德宮訂票頁", "url": "https://ticket.uforus.co.kr/web/main?shopEncode=&productGroupCode=02000005&lang=ko"}
+      ],
+      "closed": [1],
+      "shift": "next",
+      "hours": "宮殿 11 到 1 月 09:00 到 17:30，2 到 5 月和 9、10 月到 18:00，6 到 8 月到 18:30；後苑照場次進，中文場週二、四、六 12:30",
+      "last": "宮殿關門前 1 小時停止入場，11 到 1 月是 16:30；後苑英文末場 12 到 2 月 14:30、3 到 11 月 15:30",
+      "price": "大人宮殿 3,000 韓元加後苑 5,000 韓元，後苑要兩張都買（韓國政府在討論調漲，2026 年 10 月時還沒定案）",
+      "addr": "서울 종로구 율곡로 99",
+      "tip": "從大門走到後苑入口要 15 分鐘以上，遲到不能進也不退費",
+      "book": {
+        "how": "後苑一場 100 人，網路賣 50、當天 09:00 起現場賣 50；網路只賣到前一天，訂了 24 小時內要刷卡付款，不然會自動取消",
+        "url": "https://ticket.uforus.co.kr/web/main?shopEncode=&productGroupCode=02000005&lang=ko",
+        "opensDays": 6,
+        "opensAt": "10:00",
+        "decideDays": 0,
+        "cancel": "場次開始 2 小時前取消不收費，之後到開始前扣 10%，開始後不能取消；付款後不能改人數",
+        "foreigner": "可以，訂票頁右上角切英文，用 email 註冊，收海外發行的 Visa、Mastercard、JCB；不會發簡訊到海外"
+      }
+    },
+    "p7": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=184434"},
+        {"name": "Visit Seoul 通訊", "url": "https://korean.visitseoul.net/partners-kr/goSeoulNewsletter/13957/KOB013957"}
+      ],
+      "closed": [],
+      "hours": "巷子全年隨時能走，每家店的營業時間不同"
+    },
+    "p8": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=111926"},
+        {"name": "VisitKorea 仁寺洞文化街", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=186687"}
+      ],
+      "closed": [],
+      "hours": "街道全年隨時能走"
+    },
+    "p9": {
+      "status": "second",
+      "checked": "2026-11-25",
+      "src": [
+        {"name": "Visit Seoul", "url": "https://english.visitseoul.net/area/Gwangjang-Market/ENP000286"},
+        {"name": "VisitKorea", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=106345"}
+      ],
+      "closed": [],
+      "hours": "小吃街每天 09:00 到 23:00；一般店 09:00 到 18:00，週日休",
+      "addr": "서울 종로구 창경궁로 88",
+      "tip": "週日只有小吃街開，布料、韓服和二手衣店都休"
+    }
+  },
+  "drop": ["p4", "p5"],
+  "add": [
+    {"after": "p4", "place": {"id": "p4a", "n": "土俗村蔘雞湯", "kr": "토속촌삼계탕", "a": "A", "s": "S", "c": "eat", "lat": 37.577603, "lng": 126.971632, "f": "local"}},
+    {"after": "p4", "place": {"id": "p4b", "n": "高麗蔘雞湯", "kr": "고려삼계탕", "a": "C", "s": "S", "c": "eat", "lat": 37.562997, "lng": 126.972913, "f": "local"}},
+    {"after": "p4", "place": {"id": "p4c", "n": "鍾路蔘雞湯", "kr": "종로삼계탕", "a": "B", "s": "S", "c": "eat", "lat": 37.569074, "lng": 126.984123, "f": "local"}},
+    {"after": "p5", "place": {"id": "p5a", "n": "Oneday 韓服", "kr": "원데이한복", "a": "A", "s": "S", "c": "fun", "lat": 37.576014, "lng": 126.973842, "fee": 500}},
+    {"after": "p5", "place": {"id": "p5b", "n": "韓服男 景福宮店", "kr": "한복남 경복궁점", "a": "A", "s": "S", "c": "fun", "lat": 37.576235, "lng": 126.973305, "fee": 500}}
+  ],
+  "evidence": [
+    {"id": "p0", "field": "closed", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do", "said": "화요일 경복궁, 종묘, 칠궁", "official": true},
+    {"id": "p0", "field": "shift", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do", "said": "첫 번째 비공휴일이 정기휴일", "official": true},
+    {"id": "p0", "field": "last", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do", "said": "입장마감 16:00", "official": true},
+    {"id": "p0", "field": "price", "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do", "said": "경복궁 대인 3,000원", "official": true},
+    {"id": "p0", "field": "price", "url": "https://www.koreatimes.co.kr/southkorea/20261008/govt-undecided-on-plan-to-raise-admission-fees-to-royal-palaces-tombs", "said": "timing remains undecided", "official": false},
+    {"id": "p0", "field": "tip", "url": "https://royal.khs.go.kr/ROYAL/contents/R706010000.do", "said": "중국어 10:30 15:00", "official": true},
+    {"id": "p1", "field": "closed", "url": "https://www.mmca.go.kr/visitingInfo/seoulInfo.do", "said": "휴관일: 1월1일, 설날, 추석", "official": true},
+    {"id": "p1", "field": "closedOn", "url": "https://www.mmca.go.kr/visitingInfo/seoulInfo.do", "said": "휴관일: 1월1일, 설날, 추석", "official": true},
+    {"id": "p1", "field": "off", "url": "https://www.mmca.go.kr/main.do", "said": "임시 휴관일: 12/1(화)", "official": true},
+    {"id": "p2", "field": "hours", "url": "https://hanok.seoul.go.kr/front/kor/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000000031&nttId=2482", "said": "17:00부터 익일 10:00까지", "official": true},
+    {"id": "p3", "field": "hours", "url": "https://www.ktriptips.com/kor/shopping/1590323", "said": "점포 07:00~21:00", "official": false},
+    {"id": "p4a", "field": "closed", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=97919", "said": "Open all year round", "official": false},
+    {"id": "p4a", "field": "last", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=97919", "said": "Last order 21:00", "official": false},
+    {"id": "p4b", "field": "closed", "url": "https://www.ktriptips.com/kor/food/133854", "said": "평일·주말 영업, 연중무휴", "official": false},
+    {"id": "p4b", "field": "closedOn", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=99774", "said": "Day of Seollal & Chuseok", "official": false},
+    {"id": "p4b", "field": "closedOn", "url": "https://english.visitseoul.net/restaurants/Korea-Samkyetang-Samgyetang/ENP008646", "said": "Labor Day", "official": false},
+    {"id": "p4c", "field": "closed", "url": "https://korean.visitseoul.net/restaurants/JongnoGinsengChickenSoup/KOPz0vzz8", "said": "휴무일 일요일", "official": false},
+    {"id": "p4c", "field": "last", "url": "https://korean.visitseoul.net/restaurants/JongnoGinsengChickenSoup/KOPz0vzz8", "said": "라스트오더 20:15", "official": false},
+    {"id": "p5a", "field": "closed", "url": "https://www.onedayhanbok.com/ko/faq/", "said": "정기 휴무일은 없습니다", "official": true},
+    {"id": "p5b", "field": "closed", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=63312", "said": "Open all year round", "official": false},
+    {"id": "p5b", "field": "hours", "url": "https://www.hanboknam.com/hanboknam/branch/gyeongbok.html", "said": "9:00 - 19:30 마감", "official": true},
+    {"id": "p6", "field": "closed", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do", "said": "월요일 창덕궁, 덕수궁", "official": true},
+    {"id": "p6", "field": "shift", "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg&schM=view&resIdx=202401090246&pageType=more", "said": "다음 비공휴일이 휴궁", "official": true},
+    {"id": "p6", "field": "last", "url": "https://royal.khs.go.kr/ROYAL/contents/R702000000.do", "said": "11월~1월 입장마감 16:30", "official": true},
+    {"id": "p6", "field": "opensDays", "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg", "said": "관람일 제외 6일 전", "official": true},
+    {"id": "p6", "field": "opensAt", "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg", "said": "오전10시부터 전날까지", "official": true},
+    {"id": "p6", "field": "decideDays", "url": "https://ticket.uforus.co.kr/web/main?shopEncode=&productGroupCode=02000005&lang=ko", "said": "회차 시작 시간 2시간 전", "official": true},
+    {"id": "p6", "field": "foreigner", "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg&schM=view&resIdx=202401090246&pageType=more", "said": "해외 발급 카드만 가능", "official": true},
+    {"id": "p6", "field": "foreigner", "url": "https://ticket.uforus.co.kr/web/main?shopEncode=&productGroupCode=02000005&lang=en", "said": "Your E-Mail address is your ID", "official": true},
+    {"id": "p7", "field": "closed", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=184434", "said": "Open all year round", "official": false},
+    {"id": "p8", "field": "closed", "url": "https://english.visitkorea.or.kr/svc/contents/contentsView.do?vcontsId=111926", "said": "상시 개방, 연중무휴", "official": false},
+    {"id": "p9", "field": "closed", "url": "https://english.visitseoul.net/area/Gwangjang-Market/ENP000286", "said": "Food Alley open year round", "official": false},
+    {"id": "holidays", "field": "2027", "url": "https://astro.kasi.re.kr/life/post/calendarData?year=2027", "said": "설날 2월 6일~2월 8일", "official": true},
+    {"id": "holidays", "field": "2027", "url": "https://www.segye.com/newsView/20260629506183", "said": "공휴일이 72일", "official": false},
+    {"id": "holidays", "field": "2028", "url": "https://astro.kasi.re.kr/life/post/calendarData?year=2028", "said": "대체공휴일 10월 5일", "official": true}
+  ],
+  "holidays": [
+    "2026-12-25",
+    "2027-01-01", "2027-02-06", "2027-02-07", "2027-02-08", "2027-02-09", "2027-03-01", "2027-05-01", "2027-05-03", "2027-05-05", "2027-05-13", "2027-06-06", "2027-07-17", "2027-07-19", "2027-08-15", "2027-08-16", "2027-09-14", "2027-09-15", "2027-09-16", "2027-10-03", "2027-10-04", "2027-10-09", "2027-10-11", "2027-12-25", "2027-12-27",
+    "2028-01-01", "2028-01-26", "2028-01-27", "2028-01-28", "2028-03-01", "2028-04-12", "2028-05-01", "2028-05-02", "2028-05-05", "2028-06-06", "2028-07-17", "2028-08-15", "2028-10-02", "2028-10-03", "2028-10-04", "2028-10-05", "2028-10-09", "2028-12-25"
+  ],
+  "lunar": {
+    "seollal": ["2027-02-07", "2028-01-27"],
+    "seollal3": ["2027-02-06", "2027-02-07", "2027-02-08", "2028-01-26", "2028-01-27", "2028-01-28"],
+    "chuseok": ["2027-09-15", "2028-10-03"],
+    "chuseok3": ["2027-09-14", "2027-09-15", "2027-09-16", "2028-10-02", "2028-10-03", "2028-10-04"]
+  },
+  "notes": [
+    "holidays 2027：天文研究院（KASI）的資料和 2026-06-29 航太廳公布的 2027 月曆要項報導一致，加上週日正好 72 天。勞動節 5/1 和制憲節 7/17 從 2026 年起是國定假日，也適用替代假日。",
+    "holidays 2028：2028 月曆要項還沒公布，用的是 KASI 2026-06-30 的資料，KASI 自己寫明不是正式公布。2028-10-05 替代假日（開天節和中秋同一天）列在 KASI 資料裡所以收進來，但正式公布前可能變，2027 年年中要重核。4/12 國會議員選舉日也來自 KASI。",
+    "holidays 不含一般的週日（韓國法律上週日也算公休日），景福宮和昌德宮的補休規則在這三年不會遇到差別。臨時公休日（政府臨時宣布）無法預先列。",
+    "lunar：韓國 2027 農曆新年是 2/7（台灣 2/6），2028 是 1/27（台灣 1/26），用 KASI 的陰曆表。",
+    "p0、p6 補休規則：官方寫碰到國定假日和替代假日照開，改休之後第一個不是假日的日子。新聞提到 2026 年春節 2/14 到 2/18 全開、2/19 全休，跟規則一致。2027 春節後景福宮和昌德宮都會落在 2/10 休，中秋後景福宮落在 9/17 休。",
+    "p0、p6：票價原訂 2027-01-01 調漲，2026-10-08 報導說未定；韓服免費入場也在檢討。2027 年出發前要重核。",
+    "p6：宮殿每週三（文化日）免費而且不能預訂，後苑不適用。這點寫在官方預約頁，行程碰到週三只要訂後苑。",
+    "p6：一次最多訂幾張，官方兩頁寫 10 張、訂票頁上方寫 5 張，互相矛盾所以沒寫。訂票頁英文版混著 2020 年疫情時的舊字，取消規則中英文一致才採用。",
+    "p6：官方導覽頁寫後苑玉流川一帶整修不開放、到另行公告為止，但訂票頁的春秋路線還列玉流川，所以沒寫進 tip。敦化門正在整修，入口是旁邊的金虎門。",
+    "p6：資料包 fee 是 230，現價宮殿 3,000 加後苑 5,000 共 8,000 韓元。",
+    "p6：資料包的 b:true 正確，但當天 09:00 起現場還有每場 50 張，10 到 11 月、4 到 5 月官方說很快賣完。",
+    "p1：臨時休館 2026-09-08 已過，只留 12-01。官網沒寫最後入場時間，last 沒填。2027 年有沒有臨時休館還沒公布。",
+    "p2：官方頁沒講週日或其他休息日，closed 沒填。資料包的『有開放參觀的時段』現在有罰則：2025-03-01 起罰 10 萬韓元。",
+    "p3：銅錢便當公休日，2020 年首爾市文章寫週一和第 3 個週日，2025-08 修訂的文章寫週二和第 3 個週日，觀光公社只寫各店不同，所以 closed 沒填。市場官方 modoo 網站已關，Instagram 讀不到內文。",
+    "p8：步行街時段，首爾市網頁寫每天 10:00 到 22:00（沒標日期），VisitKorea 寫週六 14:00 起、週日 10:00 起，互相矛盾所以沒寫。",
+    "p9：官方網站 kwangjangmarket.co.kr 有機器驗證，沒有繞過，所以是 second。資料包的『人多，先問價錢再點』沒有錯，2026 年仍有亂收費報導；如果要留這句，可以接在新 tip 後面。",
+    "p4：換成三家。土俗村的官網有機器驗證，沒有繞過，用觀光公社和首爾觀光財團的頁面。土俗村搜尋摘要有一家媒體說明節當天休，那頁打不開，兩個觀光單位都寫全年無休，出發碰到節日建議先打 02-737-7444。",
+    "p4b 高麗蔘雞湯在西小門（市廳站），area 用 C（明洞・南山），跟原本 A 不同。觀光公社韓文資料寫全年無休，英文 VisitKorea 寫春節和中秋當天休，首爾觀光財團（2026-09-28 修訂）寫節日當天和勞動節休，取比較保守的寫法。地圖上另有世宗路分店，搜尋時看地址。",
+    "p4c 鍾路蔘雞湯在鐘閣（貫鐵洞），area 用 B，跟原本 A 不同。只有首爾觀光財團一個來源（2026-06-30 修訂），兩代經營。",
+    "p4 沒選的：百年土種蔘雞湯北村店，營業時間 VisitKorea 寫 09:00 到 21:00、媒體寫 10:30 到 20:00，公休查不到，首爾觀光財團的頁面寫的是弘大那家，所以沒選。",
+    "p5：Oneday 韓服搜尋摘要說 2026-07 搬到同棟地下 1 樓，官網地址已是地下 1 樓。韓服男官網只寫時間沒寫公休，全年無休是 VisitKorea 寫的，所以標 second。",
+    "座標：p4a、p4b、p4c 取自 Visit Seoul 頁面，p5b 取自 VisitKorea 頁面，p5a 取自官網交通頁；p4a 另用 OSM 對過，差約 10 公尺。Nominatim 用韓文地址查不到這幾家。"
+  ]
+}

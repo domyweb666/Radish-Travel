@@ -1,0 +1,650 @@
+{
+ "facts": {
+  "p36": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/1059479"
+    },
+    {
+     "name": "首爾市未來漢江本部",
+     "url": "https://hangang.seoul.go.kr/www/contents/669.do?mid=473"
+    }
+   ],
+   "closed": [],
+   "hours": "全天開放",
+   "addr": "서울 영등포구 여의동로 330",
+   "tip": "草地搭遮陽帳只能在劃定的兩區，開放時間是 3 到 11 月"
+  },
+  "p37": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "現代百貨",
+     "url": "https://www.ehyundai.com/mobile/main.do"
+    },
+    {
+     "name": "The Hyundai Seoul 官網",
+     "url": "https://thehyundaiseoul.ehyundai.com/about/location"
+    },
+    {
+     "name": "KoreaCharts",
+     "url": "https://info.koreacharts.com/tour/2708109/contents.html"
+    }
+   ],
+   "hours": "10:30 到 20:00，餐廳到 22:00；週五到週日可能晚半小時關",
+   "addr": "서울 영등포구 여의대로 108",
+   "tip": "每個月的公休日不一樣（2026 年 11 月是 11/2），去之前看現代百貨官網"
+  },
+  "p38": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "E-Cruise 官網",
+     "url": "https://www.elandcruise.com/"
+    },
+    {
+     "name": "E-Cruise 官方訂票頁",
+     "url": "https://www.maketicket.co.kr/ticket/GD19514"
+    }
+   ],
+   "closed": [],
+   "hours": "白天的船和 17:00 的夕陽船每天開；音樂夜船 11 月 19:00、20:30，12 月 19:30",
+   "price": "白天的船官網價 18,900 韓元（原價 19,900）",
+   "addr": "서울 영등포구 여의동로 280",
+   "tip": "開船時間沒到就算當天取消；天氣或船況停航、不滿 20 人停航都全額退",
+   "book": {
+    "how": "在官方訂票頁選船班買票",
+    "url": "https://www.maketicket.co.kr/ticket/GD19514",
+    "decideDays": 1,
+    "cancel": "開船前一天以前取消全額退，當天不能取消",
+    "foreigner": "官網可以切英文"
+   }
+  },
+  "p39": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "DDP 官網",
+     "url": "http://ddp.or.kr/?menuno=228"
+    },
+    {
+     "name": "DDP 設施介紹",
+     "url": "https://ddp.or.kr/?menuno=233"
+    }
+   ],
+   "closed": [],
+   "closedOn": [
+    "01-01",
+    "seollal",
+    "chuseok"
+   ],
+   "hours": "10:00 到 20:00",
+   "addr": "서울 중구 을지로 281",
+   "tip": "展覽館的時間跟著各個展走，看展要先查那個展"
+  },
+  "p40": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "首爾市 Mediahub",
+     "url": "https://mediahub.seoul.go.kr/archives/2016207"
+    },
+    {
+     "name": "亞洲經濟",
+     "url": "https://www.asiae.co.kr/en/article/2025051618392570040"
+    }
+   ],
+   "closed": [],
+   "hours": "全天開放",
+   "tip": "大雨特報時會封河邊步道"
+  },
+  "p41": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Doota Mall 官網",
+     "url": "https://www.doota-mall.com/"
+    },
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/shopping/273758"
+    }
+   ],
+   "hours": "每棟不同；Doota Mall 每天 10:30 到 24:00",
+   "tip": "Migliore 每週一休，其他棟去之前先查"
+  },
+  "p42": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/704507"
+    },
+    {
+     "name": "K-TRIP TIPS 陳玉華本店",
+     "url": "https://www.ktriptips.com/eng/food/1325115"
+    }
+   ],
+   "hours": "每家不同；陳玉華奶奶一隻雞本店 10:30 到隔天 01:00",
+   "last": "陳玉華本店最後點餐 23:30",
+   "addr": "서울 종로구 종로40가길 18"
+  },
+  "p43": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "magister1318 部落格（2026-11）",
+     "url": "https://magister1318.blog/ja/euljiro-nogari-alley-price-winter-2026/"
+    }
+   ],
+   "hours": "每家不同；元祖萬船 Hof 12:00 到隔天 05:00（2026-10 的紀錄）",
+   "tip": "2026 年 4 月有周邊施工的紀錄，巷子裡戶外座位變少，主要坐萬船 Hof 的室內和屋頂"
+  },
+  "p44": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "國立中央博物館參觀資訊",
+     "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do"
+    },
+    {
+     "name": "兒童博物館參觀資訊",
+     "url": "https://www.museum.go.kr/CHILD/contents/C0102000000.do"
+    },
+    {
+     "name": "國立中央博物館公告",
+     "url": "https://www.museum.go.kr/MUSEUM/contents/M0701010000.do?schM=view&catCustomType=united&catId=128&arcId=23711"
+    }
+   ],
+   "closed": [],
+   "closedOn": [
+    "01-01",
+    "seollal",
+    "chuseok"
+   ],
+   "off": [
+    {
+     "from": "2026-12-07",
+     "to": "2026-12-07",
+     "why": "常設展和特展室這天定期休"
+    }
+   ],
+   "hours": "9:30 到 17:30；週三、六到 21:00",
+   "last": "閉館前 30 分鐘停止入場：17:00，週三、六 20:30",
+   "price": "常設展免費，收費的特展另外買票",
+   "addr": "서울 용산구 서빙고로 137",
+   "tip": "3、6、9、12 月第一個週一展廳休；佛教繪畫、佛教雕刻、金屬工藝等展室分批休到 2027-01-28"
+  },
+  "p45": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "戰爭紀念館參觀資訊",
+     "url": "https://www.warmemo.or.kr/Home/H10000/H10100/html"
+    },
+    {
+     "name": "戰爭紀念館施工公告",
+     "url": "https://www.warmemo.or.kr/Home/H40000/H40200/H40201/boardView?board_key=5595"
+    },
+    {
+     "name": "戰爭紀念館 12 月開館公告",
+     "url": "https://www.warmemo.or.kr/Home/H40000/H40200/H40201/boardView?board_key=5601"
+    }
+   ],
+   "closed": [
+    1
+   ],
+   "closedOn": [
+    "01-01",
+    "seollal",
+    "chuseok"
+   ],
+   "shift": "next",
+   "hours": "9:30 到 17:40",
+   "last": "17:00 停止入場",
+   "price": "免費，外借場地的展覽另外算",
+   "addr": "서울 용산구 이태원로 29",
+   "tip": "補強施工到 2026-12-28，部分展區不能進、動線會改；兒童博物館休到 2026-12-16"
+  },
+  "p46": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/126999"
+    }
+   ],
+   "hours": "每家店不同",
+   "addr": "서울 용산구 이태원로 150"
+  },
+  "p48": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/126999"
+    }
+   ],
+   "hours": "每家店不同",
+   "addr": "서울 용산구 이태원로 150"
+  },
+  "p47a": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/mosu"
+    },
+    {
+     "name": "Mosu Seoul 官網",
+     "url": "https://mosuseoul.com"
+    },
+    {
+     "name": "infogoodman 部落格（2026-04）",
+     "url": "https://www.infogoodman.com/2026/04/mosu-seoul-menu-price-reservation.html"
+    }
+   ],
+   "closed": [
+    0,
+    1
+   ],
+   "hours": "週二到週六 18:00 到 22:00，週三到週六另有 12:00 到 15:00",
+   "price": "午餐 320,000 韓元，晚餐 420,000 韓元",
+   "addr": "서울 용산구 회나무로41길 4",
+   "tip": "全部預約制，電話、email、私訊都不收訂位",
+   "book": {
+    "how": "只能在 CatchTable 訂",
+    "url": "https://www.catchtable.net/shop/tempmosuseoul",
+    "decideDays": 3,
+    "cancel": "3 天前取消訂金全退，之後不退",
+    "foreigner": "官網有給外國人的訂位連結（CatchTable Global）"
+   }
+  },
+  "p47b": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/escondido"
+    },
+    {
+     "name": "CatchTable Global",
+     "url": "https://www.catchtable.net/discovery/koreas-10-famous-fine-dining-restaurants-in-hannam.html"
+    }
+   ],
+   "closed": [
+    0,
+    1
+   ],
+   "addr": "서울 용산구 한남대로20길 61-7 지하1층",
+   "tip": "吧台 9 個座位，晚上才開",
+   "book": {
+    "how": "先在 CatchTable 訂位",
+    "url": "https://www.catchtable.net/discovery/koreas-10-famous-fine-dining-restaurants-in-hannam.html",
+    "foreigner": "CatchTable Global 英文頁有列這家"
+   }
+  },
+  "p47c": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "Soul Dining 官網",
+     "url": "https://restaurant-soul.com/"
+    },
+    {
+     "name": "米其林指南",
+     "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/soul-dining"
+    }
+   ],
+   "closed": [
+    2,
+    3
+   ],
+   "hours": "12:00 到 15:00，18:00 到 22:00",
+   "last": "午餐最後點餐 13:00，晚餐 19:30",
+   "price": "午餐 170,000 韓元，晚餐 270,000 韓元",
+   "addr": "서울 용산구 신흥로26길 35 바나힐 지하2층",
+   "book": {
+    "how": "官網連到 CatchTable 訂位",
+    "url": "https://app.catchtable.co.kr/ct/shop/souldining"
+   }
+  },
+  "p49": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "水原文化財團",
+     "url": "https://www.swcf.or.kr/?p=65"
+    }
+   ],
+   "closed": [],
+   "hours": "城牆全天開放；華城行宮 9:00 到 18:00",
+   "last": "行宮 17:00 停止入場",
+   "price": "城牆免費；行宮大人 2,000 韓元",
+   "addr": "경기 수원시 팔달구 정조로 825",
+   "tip": "行宮每月最後一個週三免費；夜間開放只在 5 到 11 月初（2026 年到 11/1）"
+  },
+  "p50": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/127797"
+    },
+    {
+     "name": "Insight（2026-11）",
+     "url": "https://www.insight.co.kr/news/581993"
+    },
+    {
+     "name": "FoxCG 部落格（2026-10）",
+     "url": "https://foxcg.com/everland-autumn-visit-tips/"
+    }
+   ],
+   "closed": [],
+   "hours": "10:00 開園，關園時間每季不同，以官網當天為準",
+   "price": "大人 65,000 韓元（2026 年 11 月原價，每天不同）",
+   "addr": "경기 용인시 처인구 포곡읍 에버랜드로 199",
+   "tip": "門票要先登錄到官方 app，才能抽號排貓熊世界、野生動物園這些熱門設施",
+   "book": {
+    "how": "在官網選日期先買票",
+    "url": "https://www.everland.com"
+   }
+  },
+  "p51": {
+   "status": "official",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "南怡島船班",
+     "url": "https://www.namisum.com/275"
+    },
+    {
+     "name": "南怡島票價",
+     "url": "https://www.namisum.com/276"
+    },
+    {
+     "name": "南怡島交通",
+     "url": "https://www.namisum.com/277"
+    }
+   ],
+   "closed": [],
+   "hours": "進島的船 8:00 到 21:00，白天 10 到 20 分鐘一班，9:00 前和 18:00 後 30 分鐘一班",
+   "last": "進島末班 21:00，離島末班 21:05",
+   "price": "大人 19,000 韓元，含來回船",
+   "addr": "경기 가평군 가평읍 북한강변로 1024",
+   "tip": "船程約 5 分鐘，下雨照開"
+  }
+ },
+ "drop": [
+  "p47"
+ ],
+ "add": [
+  {
+   "after": "p47",
+   "place": {
+    "id": "p47a",
+    "n": "Mosu Seoul",
+    "kr": "모수 서울",
+    "a": "K",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.54115,
+    "lng": 126.99615,
+    "f": "fine",
+    "b": true,
+    "fee": 8800,
+    "tip": "要先訂位"
+   }
+  },
+  {
+   "after": "p47",
+   "place": {
+    "id": "p47b",
+    "n": "Escondido",
+    "kr": "에스콘디도",
+    "a": "K",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.53517,
+    "lng": 127.01046,
+    "f": "fine",
+    "b": true,
+    "fee": 2200,
+    "tip": "要先訂位"
+   }
+  },
+  {
+   "after": "p47",
+   "place": {
+    "id": "p47c",
+    "n": "Soul Dining",
+    "kr": "소울다이닝",
+    "a": "K",
+    "s": "S",
+    "c": "eat",
+    "lat": 37.54533,
+    "lng": 126.98443,
+    "f": "fine",
+    "b": true,
+    "fee": 5700,
+    "tip": "要先訂位"
+   }
+  }
+ ],
+ "evidence": [
+  {
+   "id": "p36",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/tourspot/1059479",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p38",
+   "field": "closed",
+   "url": "https://www.elandcruise.com/",
+   "said": "매일 낮시간／매일 17:00",
+   "official": true
+  },
+  {
+   "id": "p38",
+   "field": "decideDays",
+   "url": "https://www.maketicket.co.kr/ticket/GD19514",
+   "said": "출항 하루전까지만 100% 환불",
+   "official": true
+  },
+  {
+   "id": "p39",
+   "field": "closed",
+   "url": "http://ddp.or.kr/?menuno=228",
+   "said": "휴무 1월 1일/설날, 추석 당일",
+   "official": true
+  },
+  {
+   "id": "p39",
+   "field": "closedOn",
+   "url": "http://ddp.or.kr/?menuno=228",
+   "said": "1월 1일 / 설날, 추석 당일",
+   "official": true
+  },
+  {
+   "id": "p40",
+   "field": "closed",
+   "url": "https://mediahub.seoul.go.kr/archives/2016207",
+   "said": "연중무휴 24시간 개방",
+   "official": false
+  },
+  {
+   "id": "p42",
+   "field": "last",
+   "url": "https://www.ktriptips.com/eng/food/1325115",
+   "said": "마지막 주문 23:30",
+   "official": false
+  },
+  {
+   "id": "p44",
+   "field": "closed",
+   "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do",
+   "said": "월, 화, 목, 금, 일요일 : 9:30",
+   "official": true
+  },
+  {
+   "id": "p44",
+   "field": "closedOn",
+   "url": "https://www.museum.go.kr/CHILD/contents/C0102000000.do",
+   "said": "1월1일, 설날 및 추석",
+   "official": true
+  },
+  {
+   "id": "p44",
+   "field": "off",
+   "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do",
+   "said": "2026년 휴실일: 12.7.(월)",
+   "official": true
+  },
+  {
+   "id": "p44",
+   "field": "last",
+   "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do",
+   "said": "입장 마감: 17:00／20:30",
+   "official": true
+  },
+  {
+   "id": "p45",
+   "field": "closed",
+   "url": "https://www.warmemo.or.kr/Home/H10000/H10100/html",
+   "said": "매주 월요일 정기 휴관",
+   "official": true
+  },
+  {
+   "id": "p45",
+   "field": "shift",
+   "url": "https://www.warmemo.or.kr/Home/H10000/H10100/html",
+   "said": "연휴 다음날 휴관",
+   "official": true
+  },
+  {
+   "id": "p45",
+   "field": "closedOn",
+   "url": "https://www.warmemo.or.kr/Home/H10000/H10100/html",
+   "said": "신정·설날당일·추석당일 휴관",
+   "official": true
+  },
+  {
+   "id": "p45",
+   "field": "last",
+   "url": "https://www.warmemo.or.kr/Home/H10000/H10100/html",
+   "said": "입장마감 : 17시",
+   "official": true
+  },
+  {
+   "id": "p47a",
+   "field": "closed",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/mosu",
+   "said": "월요일 휴무, 일요일 휴무",
+   "official": false
+  },
+  {
+   "id": "p47a",
+   "field": "decideDays",
+   "url": "https://mosuseoul.com",
+   "said": "3 days before: 100% refund",
+   "official": true
+  },
+  {
+   "id": "p47b",
+   "field": "closed",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/escondido",
+   "said": "월요일 휴무, 일요일 휴무",
+   "official": false
+  },
+  {
+   "id": "p47c",
+   "field": "closed",
+   "url": "https://restaurant-soul.com/",
+   "said": "Closed on Tue & Wed",
+   "official": true
+  },
+  {
+   "id": "p47c",
+   "field": "last",
+   "url": "https://restaurant-soul.com/",
+   "said": "L.O 1:00 PM / 7:30 PM",
+   "official": true
+  },
+  {
+   "id": "p49",
+   "field": "closed",
+   "url": "https://www.swcf.or.kr/?p=65",
+   "said": "휴무일 연중무휴",
+   "official": true
+  },
+  {
+   "id": "p49",
+   "field": "last",
+   "url": "https://www.swcf.or.kr/?p=65",
+   "said": "입장마감은 1시간 전",
+   "official": true
+  },
+  {
+   "id": "p50",
+   "field": "closed",
+   "url": "https://www.ktriptips.com/kor/tourspot/127797",
+   "said": "휴일 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p51",
+   "field": "closed",
+   "url": "https://www.namisum.com/276",
+   "said": "1년 365일 입장이 가능",
+   "official": true
+  },
+  {
+   "id": "p51",
+   "field": "last",
+   "url": "https://www.namisum.com/275",
+   "said": "마지막 배 21:00 / 21:05",
+   "official": true
+  }
+ ],
+ "notes": [
+  "p37：公休日每月公告，官方首頁 11/25 顯示『11.2(월) 휴점』和當天 10:30～20:00，所以 closed、closedNth 都沒寫。媒體報導 2026 年春節休 2/16～17、中秋休 9/24～25（前一天加當天），不是固定規則，closedOn 沒寫。週五到週日 20:30 是二手資料（KoreaCharts）。",
+  "p38：官網只列『每天白天』，沒列白天各班時刻，要進訂票頁選日期才看得到，hours 沒寫。月光音樂船、星光船的 12 月時間和 11 月不同；1 月以後的班次官網還沒列。訂票頁也寫 10 月起所有漢江遊覽船班都往下游（西江大橋方向）開，公司登記地址是여의동로 290，碼頭是 280。",
+  "p39：官網『휴무』只列三個節日，所以 closed 寫 []。展覽館（알림터、배움터、살림터）時間看節目，沒有寫單獨的休館日。seoul.json 沒錯。",
+  "p40：서울시설공단（sisul.or.kr）連線被拒，沒讀到官方頁，只有首爾市 Mediahub 的市民記者文章和新聞。",
+  "p41：Doota 官網讀過（10:30～24:00），沒寫節日休。Migliore 週一休是 KTO 資料（2026-10-22 更新），官網沒找到；同站英文頁寫全年無休，但那頁 2020 年就沒更新。整區其他商場、批發商場沒查。Doota 那段是官方頁，整區混了二手，所以 status 記 second。",
+  "p42：KTO 只寫各店不同，陳玉華本店資料 2026-11-04 更新。巷子沒有查到 2026 年拆遷或火災的消息，也沒有官方頁。",
+  "p43：沒有官方頁。元老店乙支 OB Bear 2022 年被強制拆除；同一篇部落格說 2026-04 萬船 Hof 周邊有大型工程、路地變空。另一個 KTO 轉載頁寫整條街 16:00 起、只收現金或轉帳，和萬船的 12:00 打架，所以付款方式沒寫。建議把說明從『巷子』改成『萬船 Hof 一帶』，重新核對。",
+  "p44：2026 官方頁寫定期休室是每年 3、6、9、12 月第一個週一（常設展館、特展室 1、2 休，戶外照開），2026 年只剩 12/7。closedNth 沒有月份欄位，寫了會變每個月都休，所以 12/7 用 off、規則放 tip。2027 年的日期官方還沒列（照規則是 3/1、6/7、9/6、12/6；3/1 是國定假日，2026 年 3 月那次就因假日取消），沒寫進 off。夏天 7/27～8/17 曾延長為 9:00～18:00，2027 夏天不知道。收費化：2026-10 的新聞仍說檢討中，沒有時程，現在官方頁寫免費。",
+  "p45：官方規則『월요일이 포함된 연휴에는 연휴 다음날 휴관』，寫成 shift next；官方 12 月公告寫 12/25 正常開館。KTO 轉載頁寫 18:00 關、沒寫中秋休，和官方不同，以官方 17:40、中秋休為準。",
+  "p46、p48：整區，各店不同。只有二手資料，沒有任何休業規則可寫。",
+  "p47：換成三家。Mosu（二星）、Escondido（一星）在 2026 米其林指南頁還在；小說漢南（소설한남）米其林頁 404，沒選。Soul 在해방촌（還是 K 帶）、Escondido 在漢南洞、Mosu 在梨泰院경리단길邊，三家都在 K 帶。座標是米其林頁的座標，用 OSM 的街道位置對過，差 250 公尺以內。",
+  "p47a：官網沒寫營業日，週一週日休是米其林的資料；CatchTable 的介紹文只寫 18:00～22:00，比米其林舊。票價是部落格轉述 CatchTable。fee 8,800 是晚餐 420,000 韓元用 0.021 換的，原本的 2,200 太低。開賣時間沒找到，沒寫 opensDays。",
+  "p47b：米其林寫 17:00～01:00，CatchTable 寫 17:10～23:00，打架，hours 沒寫。價格沒查到，fee 沿用 2,200，可能偏低（米其林標 ₩₩₩）。",
+  "p47c：官網訂位連到韓文版 CatchTable，外國人訂不訂得到沒查到。fee 5,700 是晚餐 270,000 韓元用 0.021 換的。",
+  "p49：官方頁還掛著行宮部分區域施工（2025-11-17～2026-05-03 預定），日期已過，沒看到延長公告，沒寫 off。seoul.json 的 fee 50 大約等於行宮 2,000 韓元。",
+  "p50：官網是要 JS 的頁面，訂票站擋機器，沒讀到官方頁。最後入園、外國人訂票、遊園是否要預約都沒有可靠來源。部落格寫智慧預約 2 天前免費取消，官方沒核對到，decideDays 沒寫。冬天關園時間各來源 19:00 到 22:00 不一，沒寫。",
+  "p51：加開班次只到 2026-11-22 為止，現在回到平常時刻。雨天照開是 2024-07-17 的公告。結冰停航沒查到任何公告。地址是加平這邊的售票處，島本身在春川。",
+  "p36：泡麵那句 tip 沒核對到來源，facts 的 tip 換成官方頁寫的搭帳篷規定。"
+ ]
+}

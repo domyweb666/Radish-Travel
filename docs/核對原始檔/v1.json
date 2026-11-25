@@ -1,0 +1,139 @@
+{
+ "fix": [
+  {
+   "id": "p20b",
+   "field": "closedOn",
+   "now": [
+    "seollal",
+    "chuseok"
+   ],
+   "should": [
+    "seollal",
+    "chuseok",
+    "2027-02-06",
+    "2027-09-14",
+    "2028-01-26",
+    "2028-10-02"
+   ],
+   "why": "WAUG 寫「명절 전날, 당일」都休，現在只填當天，前一天 app 會顯示開。closedOn 收完整日期，可以填。",
+   "url": "https://www.waug.com/ko/activities/139866"
+  },
+  {
+   "id": "p20b",
+   "field": "tip",
+   "now": "體驗約 2 小時；春節和中秋的前一天也休，週三開不開各平台寫的不一樣",
+   "should": "體驗約 2 小時；週三開不開各平台寫的不一樣，訂之前先看訂票頁",
+   "why": "前一天休改放進 closedOn 後，tip 不用重複。若不改 closedOn，這筆也不要改。",
+   "url": "https://www.trazy.com/experience/detail/ring-making-experience-in-hongdae-myeongdong"
+  },
+  {
+   "id": "p6",
+   "field": "book.how",
+   "now": "後苑一場 100 人，網路賣 50、當天 09:00 起現場賣 50；網路只賣到前一天，訂了 24 小時內要刷卡付款，不然會自動取消",
+   "should": "網路每場 50 張，只賣到前一天，24 小時內刷卡（前一天訂的到 23:59）；當天 09:00 起現場賣 50 張",
+   "why": "原句 66 字，超過 60；也漏掉官方寫的「前一天訂要在訂的當天 23:59 前付款」，照原句會以為還有 24 小時。",
+   "url": "https://royal.khs.go.kr/ROYAL/contents/R601000000.do?schGroupCode=cdg&schM=view&resIdx=202401090246&pageType=more"
+  },
+  {
+   "id": "p12",
+   "field": "tip",
+   "now": "週日公休說的是商場，靠馬路的店自己決定開不開；中秋連假多數商場也休",
+   "should": "週日公休說的是商場，靠馬路的店自己決定開不開；2026 年中秋連假多數商場休",
+   "why": "官方只有 2026 年那張公告圖，沒說每年都這樣，原句講成固定規定。",
+   "url": "http://www.namdaemunmarket.co.kr/pages/board/view.php?board_sid=1&data_sid=244"
+  },
+  {
+   "id": "p13b",
+   "field": "book.foreigner",
+   "now": "官網表單是日文，填英文姓名和信箱，收海外信用卡",
+   "should": "官網表單是日文，填英文姓名、信箱、電話，當天在店裡付；收 Visa、Mastercard、JCB、Amex",
+   "why": "官網沒寫「海外信用卡」，寫的是收哪幾家卡、當天在店裡付。表單電話是必填。",
+   "url": "https://www.hanamud.co.kr/reservation"
+  },
+  {
+   "id": "p13b",
+   "field": "last",
+   "now": "22:30 前入店",
+   "should": "22:30 前要進店",
+   "why": "「入店」是日文用法。",
+   "url": "https://www.hanamud.co.kr/map"
+  },
+  {
+   "id": "p2",
+   "field": "tip",
+   "now": "紅區 17:00 到隔天 10:00 不能觀光，違反罰 10 萬韓元",
+   "should": "開放時間以外進紅區，會罰 10 萬韓元",
+   "why": "時段跟 hours 重複，只留罰款。",
+   "url": "https://hanok.seoul.go.kr/front/kor/bbs/selectBoardArticle.do?bbsId=BBSMSTR_000000000031&nttId=2482"
+  },
+  {
+   "id": "p9",
+   "field": "tip",
+   "now": "週日只有小吃街開，布料、韓服和二手衣店都休",
+   "should": null,
+   "why": "跟 hours 的「一般店週日休」重複；來源只點名二手衣街（Guje）和一般店，沒有逐項寫布料、韓服。刪掉後 app 會用資料包那句「人多，先問價錢再點」。",
+   "url": "https://english.visitseoul.net/area/Gwangjang-Market/ENP000286"
+  },
+  {
+   "id": "p19",
+   "field": "tip",
+   "now": "市場整體沒有固定休，個別店家的休息日和時間要問店家",
+   "should": null,
+   "why": "跟 closed [] 和 hours 的「各店不同」重複，沒有新資訊。",
+   "url": "https://mediahub.seoul.go.kr/archives/2010536"
+  }
+ ],
+ "unverified": [
+  {
+   "id": "p11",
+   "field": "off.to",
+   "why": "公告圖只寫 2027년 1월~3월 限制使用、重開日期另行公告。3/31 是照月底填的，4 月初開不開沒有來源；到 2027 年 3 月要重看。1 到 3 月這段本身我看過圖，對。"
+  },
+  {
+   "id": "p16a",
+   "field": "book.url",
+   "why": "CatchTable 頁要 JS，讀不到內容；連結本身在韓國之家官網裡有，電話 02-3011-9200 也對過官網。"
+  },
+  {
+   "id": "p16a",
+   "field": "closedOn",
+   "why": "官網寫「설 연휴」，春節三天填 seollal3 對；2027-02-09 替代假日（週二）算不算連假，官網沒講。"
+  },
+  {
+   "id": "p16b",
+   "field": "status／kr",
+   "why": "飯店官網（已轉到 seoul-grand）擋機器，沒讀到。second 標得對。飯店 2026-08-14 改名，有多家媒體報導，Naver 上店名有沒有跟著改查不到。"
+  },
+  {
+   "id": "p4a",
+   "field": "closedOn",
+   "why": "兩個觀光單位（VisitKorea、觀光公社資料 2026-11-11 修訂）都寫全年無休，closed [] 對得上；官網 tosokchon.co.kr 讀不到內容，春節中秋當天休不休沒辦法複查。"
+  },
+  {
+   "id": "p9",
+   "field": "closed",
+   "why": "官網有驗證，沒繞過。Visit Seoul 和 VisitKorea 兩頁都讀到小吃街全年開、一般店週日休，second 標得對；春節中秋沒有來源。"
+  },
+  {
+   "id": "p13a",
+   "field": "營業狀態",
+   "why": "asoview 和 Creatrip 都讀到 24 小時、年中無休、只收女生、3 天前全退，跟資料一致。店家沒有自己的網頁，現在是否營業只有這兩個二手來源。"
+  },
+  {
+   "id": "p20a",
+   "field": "book.how",
+   "why": "WAUG 同一頁標籤寫「즉시 확정」，使用方法寫「업체에서 확인 후 예약 확정」，互相打架；現在取後者，比較保守。"
+  },
+  {
+   "id": "p14b",
+   "field": "place.kr",
+   "why": "官網用的是「광화문 전용관 (경향아트힐)」，「경향아트힐 페인터즈」在 Naver 搜不搜得到沒辦法查。地址座標對得上。"
+  },
+  {
+   "id": "holidays",
+   "field": "2028",
+   "why": "KASI 2028 頁和 Python holidays 0.107 都跟清單一致（另一個來源 Nager 沒有 4/12 和 10/5）；正式月曆要項還沒公布，10/5 替代假日 2027 年年中要重看。"
+  }
+ ],
+ "ok": 25
+}

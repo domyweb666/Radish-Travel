@@ -1,0 +1,440 @@
+{
+ "fix": [
+  {
+   "id": "p25",
+   "field": "status",
+   "now": "official",
+   "should": "second",
+   "why": "來源是首爾市 Mediahub 的市民記者投稿（시민기자），不是公園官方頁；p40 同一種來源就寫 second。公園官方頁打不開，觀光公社資料也寫全年開放，其他欄位不用改",
+   "url": "https://www.ktriptips.com/kor/tourspot/128611"
+  },
+  {
+   "id": "p25",
+   "field": "src",
+   "now": [
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2019859"
+    }
+   ],
+   "should": [
+    {
+     "name": "首爾市 내 손안에 서울（市民記者）",
+     "url": "https://mediahub.seoul.go.kr/archives/2019859"
+    },
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/128611"
+    }
+   ],
+   "why": "補第二個來源，並寫明是市民記者",
+   "url": "https://www.ktriptips.com/kor/tourspot/128611"
+  },
+  {
+   "id": "p28",
+   "field": "book.opensDays",
+   "now": 14,
+   "should": null,
+   "why": "官網那句是程式檔裡的預設文字（同一組寫舊票價 31,000），觀光公社頁的 14 天跟更舊的 29,000 票價寫在同一段，兩個都看不出現在還算不算。官網正式文字要另外載入，讀不到",
+   "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+  },
+  {
+   "id": "p28",
+   "field": "book.how",
+   "now": "官網、樂天世界 App 或現場售票口買，官網寫開賣期間可能調整",
+   "should": "可以在網路、手機上買，也可以到現場售票口買",
+   "why": "「官網寫開賣期間可能調整」是程式檔預設文字，不能說成官網寫的；觀光公社資料寫線上、手機、現場都能買",
+   "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+  },
+  {
+   "id": "p28",
+   "field": "tip",
+   "now": "入場時間前 1 小時內只能在現場售票口買票",
+   "should": null,
+   "why": "這句只在官網程式檔的預設文字，沒有別的來源",
+   "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+  },
+  {
+   "id": "p28",
+   "field": "last",
+   "now": "打烊前 1 小時停止售票和入場",
+   "should": "週日到週四 21:00、週五和週六 22:00 停止入場",
+   "why": "原本的來源是程式檔預設文字，換成觀光公社 2026-11-24 更新的頁，時間一致、寫得更清楚",
+   "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+  },
+  {
+   "id": "p28",
+   "field": "src",
+   "now": [
+    {
+     "name": "VISIT SEOUL",
+     "url": "https://korean.visitseoul.net/attractions/SeoulSky/KOPowtoyc"
+    },
+    {
+     "name": "Seoul Sky 官網",
+     "url": "https://seoulsky.lotteworld.com/ko/index.do"
+    }
+   ],
+   "should": [
+    {
+     "name": "VISIT SEOUL",
+     "url": "https://korean.visitseoul.net/attractions/SeoulSky/KOPowtoyc"
+    },
+    {
+     "name": "KOREA TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+    }
+   ],
+   "why": "官網那個網址打開是 404 畫面，不能當來源",
+   "url": "https://www.ktriptips.com/kor/tourspot/2492348"
+  },
+  {
+   "id": "p28",
+   "field": "book.url",
+   "now": "https://seoulsky.lotteworld.com/ko/index.do",
+   "should": "https://seoulsky.lotteworld.com/",
+   "why": "原網址打開顯示「找不到頁面」，首頁才開得起來",
+   "url": "https://seoulsky.lotteworld.com/"
+  },
+  {
+   "id": "p29",
+   "field": "tip",
+   "now": "2026-10-30 到 2027-02-28 東湖西湖有燈飾，每天 17:30 到 22:30 亮燈，免費，時間會看日落和現場調整",
+   "should": "東湖西湖的燈飾到 2027-02-28，每天 17:30 到 22:30 亮燈，時間會看日落和現場調整",
+   "why": "原本 66 字太長；免費跟 price 重複",
+   "url": "https://mediahub.seoul.go.kr/archives/2019987"
+  },
+  {
+   "id": "p33a",
+   "field": "book.how",
+   "now": "只收 Catchtable 線上訂位，雙數月的 1 號 11:00（韓國時間）開放後面兩個月，例如 4 月 1 日開 5、6 月",
+   "should": "只收 Catchtable 訂位。雙數月 1 號 11:00（韓國時間）開後面兩個月，例如 4/1 開 5、6 月",
+   "why": "內容對，原本 64 字太長",
+   "url": "https://www.jungsik.kr/reservation/"
+  },
+  {
+   "id": "p33a",
+   "field": "add.fee",
+   "now": 5000,
+   "should": 8100,
+   "why": "匯率抓太低：2026-11-25 是 1 韓元約 0.0245 台幣，不是 0.022；而且 p33 用午餐、p47 用晚餐，兩邊不一致。統一用每個營業日都有的晚餐：330,000×0.0245。只看午餐是 5,600",
+   "url": "https://www.jungsik.kr/eat/"
+  },
+  {
+   "id": "p33b",
+   "field": "add.fee",
+   "now": 4200,
+   "should": 8100,
+   "why": "同上。晚餐 330,000×0.0245（2027-01-01 起 350,000，約 8,600）。午餐只有週五、週六有，不能當預設；只看午餐是 4,700",
+   "url": "https://www.restaurantevett.com/menu"
+  },
+  {
+   "id": "p33c",
+   "field": "add.fee",
+   "now": 5500,
+   "should": 9100,
+   "why": "同上。晚餐 370,000×0.0245；只看午餐是 6,100",
+   "url": "https://restaurantallen.com/menu"
+  },
+  {
+   "id": "p33a",
+   "field": "tip",
+   "now": "米其林指南 2026 兩星。2 樓主廳 13 歲以上才能進",
+   "should": "米其林指南現在列兩星。2 樓主廳 13 歲以上才能進",
+   "why": "店家頁有兩顆星但沒寫年份，也沒找到 2026 名單有寫這家",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/jungsik511965"
+  },
+  {
+   "id": "p33b",
+   "field": "tip",
+   "now": "米其林指南 2026 兩星。遲到 30 分鐘以上可能進不去，訂金不退",
+   "should": "米其林指南現在列兩星。遲到 30 分鐘以上可能進不去，訂金不退",
+   "why": "同上，店家頁沒寫年份",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/evett"
+  },
+  {
+   "id": "p33c",
+   "field": "tip",
+   "now": "米其林指南 2026 兩星，在 Centerfield EAST 2 樓",
+   "should": "米其林指南現在列兩星，在 Centerfield EAST 2 樓",
+   "why": "同上，店家頁沒寫年份",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/restaurant-allen"
+  },
+  {
+   "id": "p34a",
+   "field": "closed",
+   "now": [],
+   "should": null,
+   "why": "官網只列平日和週末國定假日的時間，沒寫全年無休；全年無休是觀光公社的二手資料，跟 official 標在一起會讓人以為官網講的。平日、週末都有時間，拿掉不影響排行程",
+   "url": "https://dinehill.co.kr/samwon-garden/overview/"
+  },
+  {
+   "id": "p37",
+   "field": "tip",
+   "now": "每個月的公休日不一樣（2026 年 11 月是 11/2），去之前看現代百貨官網",
+   "should": "每個月的公休日不一樣，去之前看現代百貨官網",
+   "why": "11/2 在核對那天已經過了，留著沒用也會過時",
+   "url": "https://www.ehyundai.com/newPortal/index.do"
+  },
+  {
+   "id": "p39",
+   "field": "src.0.url",
+   "now": "http://ddp.or.kr/?menuno=228",
+   "should": "https://ddp.or.kr/?menuno=228",
+   "why": "改 https，內容沒錯",
+   "url": "https://ddp.or.kr/?menuno=233"
+  },
+  {
+   "id": "p44",
+   "field": "tip",
+   "now": "3、6、9、12 月第一個週一展廳休；佛教繪畫、佛教雕刻、金屬工藝等展室分批休到 2027-01-28",
+   "should": "3、6、9、12 月第一個週一展廳休；佛教繪畫、佛教雕刻、金屬工藝等 6 個展室休到 2027-01-28",
+   "why": "官方公告是 6 個展室、全部同一天（1/28）結束，只是開始日不同，寫「分批休到」會誤會成陸續重開",
+   "url": "https://www.museum.go.kr/MUSEUM/contents/M0701010000.do?schM=view&catCustomType=united&catId=128&arcId=23711"
+  },
+  {
+   "id": "p44",
+   "field": "off",
+   "now": [
+    {
+     "from": "2026-12-07",
+     "to": "2026-12-07",
+     "why": "常設展和特展室這天定期休"
+    }
+   ],
+   "should": [
+    {
+     "from": "2026-12-07",
+     "to": "2026-12-07",
+     "why": "室內展廳和兒童博物館這天定期休，只開戶外展區"
+    }
+   ],
+   "why": "off 留著是對的：官方頁寫常設展館、特展室 1、2 和兒童博物館都休，只剩戶外。原因寫清楚一點",
+   "url": "https://www.museum.go.kr/MUSEUM/contents/M0101000000.do"
+  },
+  {
+   "id": "p45",
+   "field": "tip",
+   "now": "補強施工到 2026-12-28，部分展區不能進、動線會改；兒童博物館休到 2026-12-16",
+   "should": "補強施工到 2026-12-28，部分展區可能不能進、動線可能改；兒童博物館預定休到 2026-12-16",
+   "why": "公告寫的是「可能」受限、變更；兒童博物館公告寫期間可能再變。不能講成確定。沒寫 off 是對的",
+   "url": "https://www.warmemo.or.kr/Home/H40000/H40200/H40201/boardView?board_key=5595"
+  },
+  {
+   "id": "p47a",
+   "field": "add.fee",
+   "now": 8800,
+   "should": 10300,
+   "why": "匯率用 0.021 太低，今天約 0.0245：晚餐 420,000×0.0245。只看午餐是 7,800",
+   "url": "https://www.infogoodman.com/2026/04/mosu-seoul-menu-price-reservation.html"
+  },
+  {
+   "id": "p47a",
+   "field": "tip",
+   "now": "全部預約制，電話、email、私訊都不收訂位",
+   "should": null,
+   "why": "跟 book.how「只能在 CatchTable 訂」重複",
+   "url": "https://mosuseoul.com"
+  },
+  {
+   "id": "p47a",
+   "field": "add.tip",
+   "now": "要先訂位",
+   "should": null,
+   "why": "有 book 了；facts 沒 tip 時畫面會拿這句標「未核對」",
+   "url": "https://mosuseoul.com"
+  },
+  {
+   "id": "p47b",
+   "field": "add.fee",
+   "now": 2200,
+   "should": 5100,
+   "why": "Polle 列晚餐套餐 210,000 韓元，×0.0245。沿用的 2,200 差一倍以上（頁面沒寫日期，仍是粗估）",
+   "url": "https://polle.com/place/14taif/%EC%97%90%EC%8A%A4%EC%BD%98%EB%94%94%EB%8F%84"
+  },
+  {
+   "id": "p47b",
+   "field": "add.tip",
+   "now": "要先訂位",
+   "should": null,
+   "why": "有 book 了，重複",
+   "url": "https://guide.michelin.com/kr/ko/seoul-capital-area/kr-seoul/restaurant/escondido"
+  },
+  {
+   "id": "p47c",
+   "field": "add.fee",
+   "now": 5700,
+   "should": 6600,
+   "why": "匯率用 0.021 太低：晚餐 270,000×0.0245。只看午餐是 4,200",
+   "url": "https://restaurant-soul.com/"
+  },
+  {
+   "id": "p47c",
+   "field": "add.tip",
+   "now": "要先訂位",
+   "should": null,
+   "why": "有 book 了；facts 沒 tip 時畫面會拿這句標「未核對」",
+   "url": "https://restaurant-soul.com/"
+  },
+  {
+   "id": "p49",
+   "field": "tip",
+   "now": "行宮每月最後一個週三免費；夜間開放只在 5 到 11 月初（2026 年到 11/1）",
+   "should": "行宮每月最後一個週三免費；2026 年的夜間開放到 11/1 結束",
+   "why": "官方只寫 2026 年的期間，還註明可能變，不能講成每年固定",
+   "url": "https://www.swcf.or.kr/?p=65"
+  },
+  {
+   "id": "p51",
+   "field": "tip",
+   "now": "船程約 5 分鐘，下雨照開",
+   "should": "船程約 5 分鐘",
+   "why": "下雨照開只有 2024 年的公告，現在的船班、票價頁都沒這句，船班頁寫會看狀況變動",
+   "url": "https://www.namisum.com/275"
+  }
+ ],
+ "unverified": [
+  {
+   "id": "p27",
+   "field": "closed／hours／last",
+   "why": "樂天世界官網擋機器，沒再打，只重讀了 NOL 和 여기유，兩邊一致；臨時包場停園查不到"
+  },
+  {
+   "id": "p28",
+   "field": "官網",
+   "why": "正式文字要另外載入，首頁打得開、票價和時間頁打不開。首頁優惠價 23,100 和兩人 46,200 剛好是 33,000 的七折，但沒有明寫原價"
+  },
+  {
+   "id": "p31",
+   "field": "closed",
+   "why": "官方頁沒寫休館日，搜尋也沒有；原本就沒填，維持"
+  },
+  {
+   "id": "p43",
+   "field": "tip／hours",
+   "why": "只有一篇部落格（配圖是 AI 圖），2026-04 施工和萬船 Hof 的時間找不到第二個來源"
+  },
+  {
+   "id": "p40",
+   "field": "官方頁",
+   "why": "서울시설공단連不上，只重讀市民記者文章和新聞"
+  },
+  {
+   "id": "p50",
+   "field": "官方頁",
+   "why": "everland.com 回錯誤頁；票價（insight 2026-11-14）、app 登錄（FoxCG 一篇）是二手，重讀都有"
+  },
+  {
+   "id": "p47b",
+   "field": "hours／book",
+   "why": "米其林寫到 01:00、CatchTable 寫到 23:00，還是打架，沒填是對的；外國人訂不訂得到沒辦法複查"
+  },
+  {
+   "id": "p47a",
+   "field": "price",
+   "why": "只有部落格轉述 CatchTable，官網沒寫價格，CatchTable 店家頁讀不到"
+  },
+  {
+   "id": "p33a",
+   "field": "book.foreigner",
+   "why": "官網確實連到 catchtable.net，但繁中、海外卡是 VisitKorea 2024-09 的文章，店家頁讀不到"
+  },
+  {
+   "id": "p33b",
+   "field": "book.foreigner",
+   "why": "同 p33a"
+  },
+  {
+   "id": "p30a",
+   "field": "座標",
+   "why": "OSM 只對得到路，差 60 公尺，可以用"
+  },
+  {
+   "id": "p25",
+   "field": "官方頁",
+   "why": "parks.seoul.go.kr 打不開"
+  }
+ ],
+ "ok": 24,
+ "add": [
+  {
+   "after": "p13",
+   "place": {
+    "id": "p13c",
+    "n": "SPAREX 東大門 Good Morning City 店（汗蒸幕）",
+    "kr": "스파렉스 굿모닝시티",
+    "a": "I",
+    "s": "S",
+    "c": "fun",
+    "lat": 37.566852,
+    "lng": 127.007544,
+    "l": true,
+    "ic": "spa",
+    "fee": 400
+   }
+  }
+ ],
+ "facts": {
+  "p13c": {
+   "status": "second",
+   "checked": "2026-11-25",
+   "src": [
+    {
+     "name": "WAUG",
+     "url": "https://www.waug.com/ko/activities/143280"
+    },
+    {
+     "name": "Creatrip",
+     "url": "https://creatrip.com/en/spot/13261"
+    },
+    {
+     "name": "NOL World",
+     "url": "https://world.nol.com/en/tna/products/c92936ac-f8a9-4ae3-baee-b61ff8eb04d2"
+    }
+   ],
+   "closed": [],
+   "hours": "24 小時",
+   "price": "白天 14,000、晚上 16,000 韓元；2026-12-01 起 15,000、18,000 韓元",
+   "addr": "서울특별시 중구 장충단로 247 굿모닝시티 지하3층",
+   "tip": "東大門歷史文化公園站 14 號出口旁。刷背 1:00 到 3:00 不做，22:00 後未成年要大人陪"
+  }
+ },
+ "evidence": [
+  {
+   "id": "p13c",
+   "field": "closed",
+   "url": "https://www.waug.com/ko/activities/143280",
+   "said": "24시간 영업 연중무휴",
+   "official": false
+  },
+  {
+   "id": "p13c",
+   "field": "hours",
+   "url": "https://world.nol.com/en/tna/products/c92936ac-f8a9-4ae3-baee-b61ff8eb04d2",
+   "said": "24 hours a day, year-round",
+   "official": false
+  },
+  {
+   "id": "p13c",
+   "field": "price",
+   "url": "https://creatrip.com/en/spot/13261",
+   "said": "14,000 12/1~ 15,000",
+   "official": false
+  },
+  {
+   "id": "p13c",
+   "field": "男女",
+   "url": "https://creatrip.com/en/spot/13261",
+   "said": "Adult (Male) / Adult (Female)",
+   "official": false
+  }
+ ],
+ "notes": [
+  "p13c：自己的官網連不上，全部二手。WAUG 2026-05 還有留言、Creatrip 已列 2026-12-01 的新票價、NOL 可買 12 月的票，判斷還在營業。在 I 帶，跟原本 p13 的 C 不同。座標是 WAUG 頁面的，跟 OSM 的 굿모닝시티 大樓差 15 公尺。fee 400 沿用（12 月起白天約 370、晚上約 440）。Seoul Station 的 Siloam 搜尋結果寫已歇業，沒選。",
+  "p27 沒有 off，海盜船停開寫在 tip，這樣對。p45、p49 沒有 off，對。p44 的 off 那天室內全休，留著對。",
+  "所有加店的座標都用 OSM 對過，最大差 152 公尺（p47b），沒有超過 500 公尺的。",
+  "p27 想補票價的話：insight 2026-11-14 寫大人一日券原價 67,000 韓元（https://www.insight.co.kr/news/581993）。",
+  "匯率來源 open.er-api.com 2026-11-25：1 韓元 = 0.024532 台幣。",
+  "field 前面寫 add. 的是改 add 裡那一筆 place 的欄位，其他都是改 facts。src.0.url 是 src 第一筆的 url。"
+ ]
+}
