@@ -1,3 +1,6 @@
+# 只合併過一次（2026-11-25）。之後的修正都直接改 seoul-checked.json，再跑會把修正蓋掉，所以擋住。
+import sys
+if '--force' not in sys.argv: sys.exit('再跑會蓋掉 seoul-checked.json 後來的修正；真的要跑加 --force')
 import json,io,sys
 D=r"C:/Users/fcharlie/AppData/Local/Temp/claude/76cd8714ebb655cf/ac3b4a6c-d6a7-4ec6-9978-9d9d3c906136/scratchpad/facts/"
 R=r"E:/蘿蔔旅行/ios/RadishCore/Sources/RadishCore/Resources/"

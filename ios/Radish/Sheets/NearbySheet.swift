@@ -126,7 +126,7 @@ struct NearbySheet: View {
         DomyEmptyState(
             icon: IconPaths.sprout, title: "算不出附近",
             message: "「\(o.name)」沒有位置資料，手機算不出離它多遠。可以跟 AI 講你在哪一帶。",
-            actionTitle: "想要別的條件，跟 AI 講"
+            actionTitle: "跟 AI 講條件"
         ) {
             goAsk()
         }
@@ -139,7 +139,7 @@ struct NearbySheet: View {
         DomyEmptyState(
             icon: IconPaths.sprout, title: "附近沒有還沒排的地方",
             message: "離這裡 \(Int(NEARBY_MAX_KM)) 公里內（估），資料包裡的地方都排進這趟了、這天不開，或是你說過不排的。",
-            actionTitle: "想要別的條件，跟 AI 講"
+            actionTitle: "跟 AI 講條件"
         ) {
             goAsk()
         }
