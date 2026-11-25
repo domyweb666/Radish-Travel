@@ -93,6 +93,11 @@ func diffDays(_ a: String, _ b: String) -> Int {
     return toDays(b) - toDays(a)
 }
 
+/// 星期幾：0 是星期日
+func dowOf(_ iso: String) -> Int {
+    return utcDay(toDays(iso))
+}
+
 func weekday(_ iso: String) -> String {
     return WEEK[utcDay(toDays(iso))]
 }

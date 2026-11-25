@@ -1,0 +1,22 @@
+{
+ "checked": "2026-11-25",
+ "facts": {},
+ "drop": [],
+ "add": [],
+ "lunar": {},
+ "holidays": [],
+ "dated": [
+  {
+   "id": "c1",
+   "until": "9999-12-31",
+   "before": "每次入境都要填電子入境卡 e-Arrival Card，免費。你 {start} 到，{minus3} 起可以線上填。官網 e-arrivalcard.go.kr",
+   "after": ""
+  },
+  {
+   "id": "c2",
+   "until": "2026-12-31",
+   "before": "K-ETA 不用辦：台灣護照免申請，公告到 2026-12-31，你 {start} 到，在期限內",
+   "after": "K-ETA 要再查一次：台灣護照免申請只公告到 2026-12-31，你 {start} 到。2027 年還沒公布（2026-11-25 查），出發前到官方 k-eta.go.kr 看，沒有延長就要先申請"
+  }
+ ]
+}
