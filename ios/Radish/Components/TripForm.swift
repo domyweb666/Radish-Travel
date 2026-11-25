@@ -1,9 +1,9 @@
-// 一趟的基本資料，一頁填完：去哪、哪天、幾天、幾點到幾點走、幾個人、住哪、名稱、封面。
+// 一趟的基本資料，一頁填完：去哪、哪天去哪天回來、幾點到幾點走、幾個人、住哪、名稱、封面。
+// 出發和回來都在月曆上點（QC-0013 #104）：第一下出發日、第二下回來那天，存的還是出發日＋天數。
 // 開一趟時填一次，排好之後在「行程設定」可以回來改。用講的改行程時 AI 也看得到這些。
 // 對應 mobile/src/components/TripForm.tsx。
 import SwiftUI
 
-private let DAYS: [Int] = [3, 4, 5, 6, 7, 8, 9, 10, 12, 14]
 private let ARRIVE: [(Part, String)] = [(.am, "中午前"), (.pm, "下午"), (.eve, "晚上")]
 private let LEAVE: [(Part, String)] = [(.am, "上午"), (.pm, "下午"), (.eve, "晚上")]
 private let PEOPLE: [(Int, String)] = [(1, "我一個人"), (2, "兩個人"), (4, "三四個人")]
@@ -73,7 +73,7 @@ func formOf(_ t: Trip) -> TripFormValue {
 func missingOf(_ v: TripFormValue) -> [String] {
     var out: [String] = []
     if (v.start ?? "").isEmpty { out.append("出發日") }
-    if (v.days ?? 0) == 0 { out.append("去幾天") }
+    if (v.days ?? 0) == 0 { out.append("回來那天") }
     if v.arrive == nil { out.append("第一天幾點到") }
     if v.leave == nil { out.append("最後一天幾點走") }
     if (v.people ?? 0) == 0 { out.append("幾個人") }
@@ -167,6 +167,8 @@ struct TripForm: View {
     let fallbackBase: BaseKey
     /// 要不要放「想怎麼玩」那一格。開一趟放，行程設定不放
     let showWish: Bool
+    /// 月曆上剛剛那一下沒選上的原因（太近、太遠）。選上了就清掉
+    @State private var rangeNote: String?
 
     init(value: Binding<TripFormValue>, minStart: String, fallbackBase: BaseKey, showWish: Bool = false) {
         self._value = value
@@ -192,21 +194,31 @@ struct TripForm: View {
         return out + "沒送成的話，這句會留著。"
     }
 
-    /// 出發日那一欄的小標
-    private var startLabel: String {
-        if let start = value.start, !start.isEmpty {
-            return "出發日：\(fmtDay(start))"
+    /// 月曆下面那行：剛剛沒選上的原因，或下一下要點什麼
+    private var rangeHelper: String {
+        if let note = rangeNote { return note }
+        switch rangeStep(value.start, value.days) {
+        case .end:
+            return "一趟 \(TRIP_DAYS_MIN) 到 \(TRIP_DAYS_MAX) 天。點比出發日早的日子，就改成從那天出發。"
+        case .start:
+            if rangeEnd(value.start, value.days) != nil { return "要改日子的話，再點一下就從出發日重新選。" }
+            return "先點出發那天，再點回來那天。"
         }
-        return "出發日"
     }
 
-    /// 去幾天那一欄的小標：出發日和天數都有了，就順便講哪天回來
-    private var daysLabel: String {
-        if let start = value.start, !start.isEmpty, let days = value.days, days != 0 {
-            let end: String = fmtDay(addDays(start, days - 1))
-            return "去幾天：\(end)回來"
+    /// 月曆點了一下：照 RadishCore 的 pickRange 算出發日和天數
+    private func pick(_ iso: String) {
+        let r: RangePick = pickRange(value.start, value.days, tapped: iso)
+        rangeNote = r.note
+        if r.note != nil {
+            Haptic.notify(.warning)
+            return
         }
-        return "去幾天"
+        Haptic.select()
+        var next: TripFormValue = value
+        next.start = r.start
+        next.days = r.days
+        value = next
     }
 
     private var baseNote: String {
@@ -245,8 +257,7 @@ struct TripForm: View {
             if showWish {
                 WishField(text: wishText, helper: wishHelper)
             }
-            startField
-            daysField
+            rangeField
             arriveField
             leaveField
             peopleField
@@ -267,25 +278,25 @@ struct TripForm: View {
         }
     }
 
-    private var startField: some View {
-        FormField(startLabel) {
-            CalendarGrid(min: minStart, value: value.start) { (iso: String) in
-                value.start = iso
+    private var rangeField: some View {
+        let start: String? = value.start
+        let waiting: Bool = rangeStep(start, value.days) == .end
+        let reach: ClosedRange<String>? =
+            waiting ? start.map { (s: String) -> ClosedRange<String> in rangeReach(s) } : nil
+        return FormField("哪天出發、哪天回來") {
+            DomyText(rangeLine(start, value.days), .headline)
+                .accessibilityIdentifier("trip-range")
+            CalendarGrid(
+                min: minStart, value: start, end: rangeEnd(start, value.days), reach: reach
+            ) { (iso: String) in
+                pick(iso)
             }
+            DomyText(rangeHelper, .footnote, tone: rangeNote != nil ? .destructive : .secondary)
+                .accessibilityIdentifier("trip-range-note")
         }
-    }
-
-    private var daysField: some View {
-        FormField(daysLabel) {
-            ChipRow {
-                ForEach(DAYS, id: \.self) { (d: Int) in
-                    Chip("\(d) 天", selected: value.days == d) {
-                        value.days = d
-                    }
-                    .accessibilityIdentifier("days-\(d)")
-                }
-            }
-        }
+        // 外面清掉或換了日子（開好了、出發日過期被清掉、復原換趟）：剛剛那句原因不算了
+        .onChange(of: value.start) { (_: String?, _: String?) in rangeNote = nil }
+        .onChange(of: value.days) { (_: Int?, _: Int?) in rangeNote = nil }
     }
 
     private var arriveField: some View {

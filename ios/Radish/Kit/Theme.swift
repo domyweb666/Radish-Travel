@@ -6,6 +6,12 @@ import SwiftUI
 /// 尺寸、圓角、間距、字級的代號
 typealias T = DomyTokens
 
+/// 只有這款 App 用的尺寸，不放進套件
+extension DomyTokens.Size {
+    /// 這趟分頁最上面、跟天數分頁一起黏在上面的那張地圖多高。比路線半頁裡的（150）矮一點，下面還要留給這天的站
+    static let tripMap: CGFloat = 136
+}
+
 extension DomyTheme {
     /// 蘿蔔橘，暖色畫布
     static let radish = DomyTheme(

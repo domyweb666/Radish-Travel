@@ -3,6 +3,16 @@
 import { writeFileSync } from 'node:fs';
 import * as S from '../../mobile/src/data/seoul';
 
+// 住宿偏好（QC-0013 #105）是 SwiftUI 版才改的：名稱改成選項上的字、補一句住哪一類、多一種五星級飯店。
+// mobile/ 的 STAY 沒動，轉的時候在這裡疊上去，重轉才不會把 lux 弄丟（少了 lux，app 一讀到就當掉）。
+// 一晚多少都是粗估，沒核對。
+const STAY = {
+  cheap: { ...S.STAY.cheap, what: '青旅、民宿' },
+  mid: { ...S.STAY.mid, name: '一般', what: '商務旅館' },
+  nice: { ...S.STAY.nice, name: '舒服一點', what: '四星' },
+  lux: { name: '五星級飯店', perNight: 12000 },
+};
+
 const out = {
   dataChecked: S.DATA_CHECKED,
   area: S.AREA,
@@ -18,7 +28,7 @@ const out = {
   purpose: S.PURPOSE,
   part: S.PART,
   pullLines: S.PULL_LINES,
-  stay: S.STAY,
+  stay: STAY,
   taboo: S.TABOO,
   tabooLevel: S.TABOO_LEVEL,
   diff: S.DIFF,

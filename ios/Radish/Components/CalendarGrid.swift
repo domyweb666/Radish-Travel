@@ -1,4 +1,5 @@
-// 選出發日的月曆。今天以前的日子不能選。
+// 選出發日和回來那天的月曆。今天以前的日子不能選。
+// 第一下點出發日、第二下點回來那天，兩天之間整段標起來（QC-0013 #104，點了之後怎麼算在 RadishCore 的 DateRange.swift）。
 // 對應 mobile/src/components/Calendar.tsx（Foundation 已經有 Calendar，所以改名 CalendarGrid）。
 import SwiftUI
 
@@ -15,15 +16,25 @@ private func calPart(_ iso: String, _ index: Int) -> Int {
 
 struct CalendarGrid: View {
     let min: String
+    /// 出發日
     let value: String?
+    /// 回來那天。還沒選、或只選一天的月曆是 nil
+    let end: String?
+    /// 在等回來那天時，回來那天可以點的範圍。出發日之後、範圍外的日子字變淡（點了會講原因，不會選上）
+    let reach: ClosedRange<String>?
     let onPick: (String) -> Void
     /// 現在翻到哪一年哪一月
     @State private var year: Int
     @State private var month: Int
 
-    init(min: String, value: String?, onPick: @escaping (String) -> Void) {
+    init(
+        min: String, value: String?, end: String? = nil, reach: ClosedRange<String>? = nil,
+        onPick: @escaping (String) -> Void
+    ) {
         self.min = min
         self.value = value
+        self.end = end
+        self.reach = reach
         self.onPick = onPick
         let first: String = value ?? min
         self._year = State(initialValue: calPart(first, 0))
@@ -114,25 +125,64 @@ struct CalendarGrid: View {
         }
     }
 
+    /// 這天在不在出發到回來之間（含兩端）
+    private func inRange(_ iso: String) -> Bool {
+        guard let s = value, let e = end else { return false }
+        return iso >= s && iso <= e
+    }
+
+    /// 在等回來那天，而這天在出發日之後、卻不能當回來那天
+    private func outOfReach(_ iso: String) -> Bool {
+        guard let r = reach, let s = value else { return false }
+        return iso > s && !r.contains(iso)
+    }
+
+    /// 中間那條淡底：出發日只畫右半、回來那天只畫左半，中間的整格畫滿，連成一條
+    private func band(_ iso: String) -> some View {
+        let on: Bool = inRange(iso) && value != end
+        let left: Bool = on && iso != value
+        let right: Bool = on && iso != end
+        return HStack(spacing: 0) {
+            (left ? C.soft : Color.clear)
+            (right ? C.soft : Color.clear)
+        }
+        .frame(height: T.Size.buttonCompact)
+        .accessibilityHidden(true)
+    }
+
+    private func dayTone(_ iso: String, _ off: Bool, _ edge: Bool) -> TextTone {
+        if off || outOfReach(iso) { return .disabled }
+        return edge ? .onAccent : .primary
+    }
+
+    /// 念給 VoiceOver 聽的：哪天，加上是出發、回來還是在這趟裡
+    private func dayLabel(_ iso: String, _ day: Int) -> String {
+        let head: String = "\(month) 月 \(day) 日，星期\(weekday(iso))"
+        if iso == value { return head + "，出發" }
+        if iso == end { return head + "，回來" }
+        if inRange(iso) { return head + "，在這趟裡" }
+        return head
+    }
+
     private func dayButton(_ iso: String) -> some View {
         let off: Bool = iso < min
-        let on: Bool = iso == value
+        let edge: Bool = iso == value || iso == end
         let day: Int = calPart(iso, 2)
-        let tone: TextTone = off ? .disabled : (on ? .onAccent : .primary)
         return Button {
             onPick(iso)
         } label: {
-            DomyText(String(day), .body, tone: tone, lines: 1)
+            DomyText(String(day), .body, tone: dayTone(iso, off, edge), lines: 1)
                 .frame(width: T.Size.buttonCompact, height: T.Size.buttonCompact)
-                .background(on ? C.accent : Color.clear, in: Capsule())
+                .background(edge ? C.accent : Color.clear, in: Capsule())
                 .frame(maxWidth: .infinity)
+                .background { band(iso) }
                 .frame(height: T.Size.touch)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(off)
-        .accessibilityLabel("\(month) 月 \(day) 日，星期\(weekday(iso))")
-        .accessibilityAddTraits(on ? [.isSelected] : [])
+        .accessibilityLabel(dayLabel(iso, day))
+        .accessibilityAddTraits(edge ? [.isSelected] : [])
         .accessibilityIdentifier("cal-\(iso)")
     }
 }

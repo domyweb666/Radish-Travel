@@ -156,19 +156,6 @@ struct MapSheet: View {
         return dayStops(trip, day).map { (x: Found) -> Stop in x.it }
     }
 
-    /// 地圖上的點：住的地方，再來是有座標的站。號碼照這天第幾站，沒座標的站跳過但號碼不重排
-    private func pointsOf(_ h: HotelPt, _ stops: [Stop]) -> [MapPoint] {
-        var out: [MapPoint] = [
-            MapPoint(key: "home", title: "住的地方（\(h.n)）", subtitle: h.kr, lat: h.lat, lng: h.lng, home: true)
-        ]
-        for (i, it) in stops.enumerated() {
-            if let lat = it.lat, let lng = it.lng {
-                out.append(MapPoint(key: it.id, title: it.n, subtitle: it.kr, lat: lat, lng: lng, num: i + 1))
-            }
-        }
-        return out
-    }
-
     /* ---------- 路線那一面 ---------- */
 
     @ViewBuilder
@@ -183,7 +170,7 @@ struct MapSheet: View {
             if let note {
                 noteCard(note)
             }
-            DayMap(points: pointsOf(h, stops), compact: true)
+            DayMap(points: dayMapPoints(h, stops), compact: true)
             legSection(routeLegs(h, stops, legs))
         }
     }

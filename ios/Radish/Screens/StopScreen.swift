@@ -1,5 +1,6 @@
-// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。為什麼排、須知、花費、韓文名、找路、移到別的時段、換一個，
+// 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。建議停留、須知、預估花費、韓文名、找路、移到別的時段、換一個，
 // 照線框的順序；核對資料的開放／怎麼訂／來源（有查到才有）排在後面，不把要按的擠到後面幾頁。
+// QC-0013：不再顯示「為什麼排」；照片（去沒去過都能加）和「在這裡花的」在 StopScreenMine.swift。
 // 右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
 // 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
 // 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」、剛拿掉又從舊的入口進來的），只給看。
@@ -62,7 +63,7 @@ private struct StopGone: View {
     }
 }
 
-/// 不在這趟裡的地方（首爾資料包 PLACES 裡的）：為什麼、須知、花費、韓文名、給司機看、Naver，
+/// 不在這趟裡的地方（首爾資料包 PLACES 裡的）：建議停留、須知、預估花費、韓文名、給司機看、Naver，
 /// 跟這趟裡的站一樣，開放／怎麼訂／來源排在要按的後面。
 /// 不給移時段、換一個、不想去、拔起來；要排進來在附近還有什麼那張半頁按
 private struct StopPreview: View {
@@ -83,10 +84,14 @@ private struct StopPreview: View {
         placeShut(place.id)
     }
 
-    /// 這一頁不知道是從哪裡點進來的，只講確定的事
-    private var why: String {
+    /// 放在「下次再來」
+    private var later: Bool {
         let placeId: String = place.id
-        let later: Bool = store.s.seeds.contains { (x: Seed) -> Bool in x.stop?.id == placeId }
+        return store.s.seeds.contains { (x: Seed) -> Bool in x.stop?.id == placeId }
+    }
+
+    /// 這一頁不知道是從哪裡點進來的，只講確定的事。畫面上不顯示（QC-0013），換成上面的小標籤
+    private var why: String {
         if later {
             return "現在不在這趟裡，放在「下次再來」。"
         }
@@ -138,6 +143,9 @@ private struct StopPreview: View {
             }
             TagRow {
                 Tag("不在這趟裡", tone: .accent)
+                if later {
+                    Tag("放在下次再來")
+                }
                 Tag(place.s == .L ? "主要景點" : "順路小地方")
                 if place.b == true {
                     Tag("要先訂", tone: .accent)
@@ -221,15 +229,36 @@ private struct StopPage: View {
         StopAllergyEntry(it: it, trip: trip) {
             pane = .allergy
         }
-        StopVisitBlock(id: id, it: it, tripId: trip.id)
-        StopPlaceCard(it: it) {
-            driver = true
+        // 去過了：那一句、照片、花的排在一起，先寫回憶；還沒去：要按的（找路、移時段、換一個）先，照片和花的放後面
+        if it.status == .pulled {
+            StopVisitBlock(id: id, it: it, tripId: trip.id)
+            mine
+            StopPlaceCard(it: it) {
+                driver = true
+            }
+            edit
+        } else {
+            StopPlaceCard(it: it) {
+                driver = true
+            }
+            edit
+            mine
         }
+        StopFactBlocks(it: it, shut: shut, visit: visit)
+        StopOtherMaps(it: it)
+    }
+
+    private var edit: some View {
         StopEditBlock(
             id: id, it: it, trip: trip,
             onSwap: { pane = .swap })
-        StopFactBlocks(it: it, shut: shut, visit: visit)
-        StopOtherMaps(it: it)
+    }
+
+    /// 自己加的照片、在這裡花的
+    @ViewBuilder
+    private var mine: some View {
+        StopPhotoBlock(id: id, it: it, tripId: trip.id)
+        StopSpendBlock(id: id, it: it, trip: trip, day: found.s.day)
     }
 
     /// 右上角「不想去這一站」。跟移到別的時段、換一個分開放（.uiux/03-線框/方向說明-暫定.md：A5 畫的時候定的）

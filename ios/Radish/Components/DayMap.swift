@@ -138,15 +138,35 @@ final class MapLocator: NSObject, CLLocationManagerDelegate {
     }
 }
 
+/// 地圖上的點：住的地方，再來是有座標的站。號碼照這天第幾站，沒座標的站跳過但號碼不重排。
+/// 這一天的路線（MapSheet）和這趟分頁最上面的地圖共用
+func dayMapPoints(_ h: HotelPt, _ stops: [Stop]) -> [MapPoint] {
+    var out: [MapPoint] = [
+        MapPoint(key: "home", title: "住的地方（\(h.n)）", subtitle: h.kr, lat: h.lat, lng: h.lng, home: true)
+    ]
+    for (i, it) in stops.enumerated() {
+        if let lat = it.lat, let lng = it.lng {
+            out.append(MapPoint(key: it.id, title: it.n, subtitle: it.kr, lat: lat, lng: lng, num: i + 1))
+        }
+    }
+    return out
+}
+
 struct DayMap: View {
     let points: [MapPoint]
     let compact: Bool
+    /// 地圖多高。nil 照 compact 用原本的高度
+    let height: CGFloat?
+    /// 下面那排「我在哪」「看整條路線」。這趟分頁最上面那張只給看、點了開路線，不放
+    let controls: Bool
     @State private var position: MapCameraPosition
     @State private var locator: MapLocator = MapLocator()
 
-    init(points: [MapPoint], compact: Bool = false) {
+    init(points: [MapPoint], compact: Bool = false, height: CGFloat? = nil, controls: Bool = true) {
         self.points = points
         self.compact = compact
+        self.height = height
+        self.controls = controls
         self._position = State(initialValue: dayMapCamera(points, compact))
     }
 
@@ -164,19 +184,28 @@ struct DayMap: View {
     var body: some View {
         VStack(alignment: .leading, spacing: T.Space.s3) {
             map
-                .frame(height: compact ? MAP_H_COMPACT : MAP_H)
+                .frame(height: height ?? (compact ? MAP_H_COMPACT : MAP_H))
                 .clipShape(RoundedRectangle(cornerRadius: T.Radius.xl, style: .continuous))
-            HStack(spacing: T.Space.s2) {
-                DomyButton("我在哪", variant: .secondary, size: .compact) { locator.locate() }
-                    .accessibilityIdentifier("map-locate")
-                DomyButton("看整條路線", variant: .secondary, size: .compact) { fit() }
-                    .accessibilityIdentifier("map-fit")
+            if controls {
+                HStack(spacing: T.Space.s2) {
+                    DomyButton("我在哪", variant: .secondary, size: .compact) { locator.locate() }
+                        .accessibilityIdentifier("map-locate")
+                    DomyButton("看整條路線", variant: .secondary, size: .compact) { fit() }
+                        .accessibilityIdentifier("map-fit")
+                }
             }
-            if locator.denied {
+            if controls && locator.denied {
                 DomyText("沒有拿到定位的允許。到 iPhone 的「設定 → 蘿蔔旅行 → 位置」打開，就能在地圖上看到自己。", .footnote, tone: .secondary)
             }
         }
         .onChange(of: locator.tick) { _, _ in goToMe() }
+        // 點換了（這趟分頁最上面那張跟著看的那一天換）：鏡頭移過去框住新的點，不用整張地圖重建
+        .onChange(of: pointKey) { (_: String, _: String) in fit() }
+    }
+
+    /// 這些點的代號串起來，點換了才知道要重新框
+    private var pointKey: String {
+        return points.map { (p: MapPoint) -> String in p.key }.joined(separator: ",")
     }
 
     private var map: some View {

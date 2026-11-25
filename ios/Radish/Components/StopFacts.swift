@@ -122,7 +122,8 @@ func fullStop(_ text: String) -> String {
     return text + "。"
 }
 
-/// 這趟那一天的清單上面那一條。一天最多一條，都開就不出現。下一站卡講過的那一站不再講
+/// 這趟那一天的清單上面那一條。一天最多一條，都開就不出現。下一站卡講過的那一站不再講。
+/// 每一天連續排在同一頁（QC-0013），識別碼帶第幾天
 struct DayShutBanner: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
@@ -158,7 +159,7 @@ struct DayShutBanner: View {
                 act(x)
             }
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("day-closed")
+            .accessibilityIdentifier("day-closed-\(day)")
         }
     }
 }

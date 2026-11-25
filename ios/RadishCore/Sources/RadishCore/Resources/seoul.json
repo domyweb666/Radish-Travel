@@ -821,15 +821,22 @@
  "stay": {
   "cheap": {
    "name": "便宜就好",
-   "perNight": 900
+   "perNight": 900,
+   "what": "青旅、民宿"
   },
   "mid": {
-   "name": "普通",
-   "perNight": 2600
+   "name": "一般",
+   "perNight": 2600,
+   "what": "商務旅館"
   },
   "nice": {
-   "name": "要住好",
-   "perNight": 6000
+   "name": "舒服一點",
+   "perNight": 6000,
+   "what": "四星"
+  },
+  "lux": {
+   "name": "五星級飯店",
+   "perNight": 12000
   }
  },
  "taboo": [

@@ -4,7 +4,7 @@
 // 沒網路、句數用完時，要 AI 的說法變灰，打的字留著；手機答得出的照樣答。
 // 這個檔是 SwiftUI 版才有的，mobile/ 沒有對應的 TS。
 //
-// 用法：`Screen(...) { ... }.talkBar("第 3 天", target: .day(3))`、`.talkBar(stop.n, target: .stop(id: id))`
+// 用法：`.talkBar(stop.n, target: .stop(id: id))`（一站頁）。這趟分頁最下面那一列 QC-0013 拿掉了，問 AI 分頁直接用 TalkBar
 import SwiftUI
 
 /// 小標最多幾個字：站名太長就截掉，不要把輸入框擠沒了

@@ -59,8 +59,10 @@ enum BodyLimit: String, Codable, CaseIterable, CodingKeyRepresentable, Sendable 
     case stairs, heat, cold
 }
 
+/// 住宿偏好：估住宿花費，也送給 AI 讓它推薦旅館。lux（五星級飯店）是 QC-0013 #105 加的，
+/// 加在最後面，舊檔的 cheap、mid、nice 照舊讀得回來
 enum StayKind: String, Codable, CaseIterable, CodingKeyRepresentable, Sendable {
-    case cheap, mid, nice
+    case cheap, mid, nice, lux
 }
 
 /// 排隊願意度。TS 是 'no' | 'some' | 'any'，some 和 any 在 Swift 是保留字，所以換名字、存的字不變
@@ -124,7 +126,7 @@ struct Stop: Codable, Identifiable, Hashable, Sendable {
     var swaps: Int = 0
     var why: String = ""  // 為什麼排這一站
     var say: String?  // 那一句
-    var photos: [String]?  // 去過之後加的照片，只記檔名
+    var photos: [String]?  // 自己加的照片，只記檔名。去沒去過都能加（QC-0013 起）
     var mine: Bool?  // 自己加的
     var ai: Bool?  // AI 加的
 }
@@ -151,12 +153,21 @@ struct TripDraft: Codable, Hashable, Sendable {
     var people: Int
 }
 
-/// 使用者自己記的一筆花費，金額是韓元
+/// 一筆花費記的是哪一種錢。存檔裡不另外存這一欄：有 twd 的是台幣，其他都是韓元（舊檔也都是韓元）
+enum SpendCur: String, Codable, CaseIterable, Sendable {
+    case krw, twd
+}
+
+/// 使用者自己記的一筆花費。韓元那一筆金額在 krw；台幣那一筆金額在 twd、krw 是 0，
+/// 只加 krw 的舊算法不會把台幣當成韓元加
 struct Spend: Codable, Identifiable, Hashable, Sendable {
     var id: String
     var krw: Double
     var note: String?  // 花在哪，使用者自己打的
     var day: Int?  // 旅途中記的才有：第幾天
+    var stopId: String?  // 在一站頁記的才有：那一站的代號。舊檔沒有
+    var stopName: String?  // 在一站頁記的才有：記的時候那一站叫什麼。站被換掉、拿掉之後還看得出是在哪裡花的
+    var twd: Double?  // 台幣那一筆的金額。韓元那一筆是 nil，舊檔沒有
 }
 
 /// TS 的 Trip extends TripDraft：這裡把 TripDraft 的欄位攤平寫在前面

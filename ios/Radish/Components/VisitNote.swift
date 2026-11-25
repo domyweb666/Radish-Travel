@@ -1,5 +1,6 @@
 // 去過的一站可以留的東西：一句話、幾張照片。旅途中的站和已經收起來的旅行共用這一塊。
 // 對應 mobile/src/components/VisitNote.tsx。一站改成推進頁（Screens/StopScreen.swift）後也是放在那一頁裡。
+// QC-0013 起一站頁的照片去沒去過都能加，放在 StopScreenMine.swift 的 StopPhotoBlock，那一頁只用這裡的那一句（withPhotos: false）。
 import Combine
 import SwiftUI
 import UIKit
@@ -11,6 +12,8 @@ struct VisitNote: View {
     let onSay: (String) -> Void
     let onAdd: (String) -> Void
     let onRemove: (String) -> Void
+    /// false：只有那一句，照片在別的地方加
+    let withPhotos: Bool
     // 打到一半就按「好了」或「關閉」時，輸入框不一定來得及說它打完了。所以關掉這一塊的時候再存一次，打的字才不會不見。
     @State private var typed: String
     @State private var saved: String
@@ -22,13 +25,15 @@ struct VisitNote: View {
         photos: [String],
         onSay: @escaping (String) -> Void,
         onAdd: @escaping (String) -> Void,
-        onRemove: @escaping (String) -> Void
+        onRemove: @escaping (String) -> Void,
+        withPhotos: Bool = true
     ) {
         self.say = say
         self.photos = photos
         self.onSay = onSay
         self.onAdd = onAdd
         self.onRemove = onRemove
+        self.withPhotos = withPhotos
         self._typed = State(initialValue: say ?? "")
         self._saved = State(initialValue: say ?? "")
     }
@@ -42,7 +47,9 @@ struct VisitNote: View {
 
     var body: some View {
         sayField
-        photoCard
+        if withPhotos {
+            photoCard
+        }
     }
 
     private var sayField: some View {

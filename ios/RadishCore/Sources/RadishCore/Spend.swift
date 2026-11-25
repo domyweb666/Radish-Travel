@@ -51,7 +51,27 @@ func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = f
     next.wishOff = old.wishOff
     // 順路清單是使用者自己加的，跟排法無關
     next.pool = old.pool
+    keepPhotos(old, &next)
     return next
+}
+
+/// 重排之後，新的這一版裡還有同一個地點的，自己加的照片跟過去。
+/// 新的這一版沒排到的地點，照片只留在重排前那一步（可以復原回去）
+private func keepPhotos(_ old: Trip, _ next: inout Trip) {
+    var byId: [String: [String]] = [:]
+    for x in allItems(old) {
+        let list: [String] = x.it.photos ?? []
+        if !list.isEmpty { byId[x.it.id] = list }
+    }
+    if byId.isEmpty { return }
+    for i in next.slots.indices {
+        for j in next.slots[i].items.indices {
+            let id: String = next.slots[i].items[j].id
+            guard let list = byId[id], (next.slots[i].items[j].photos ?? []).isEmpty else { continue }
+            next.slots[i].items[j].photos = list
+            byId[id] = nil
+        }
+    }
 }
 
 /// 使用者打的金額 → 韓元整數。打錯或空的是 0
@@ -103,20 +123,119 @@ func toTwd(_ krw: Double, _ rate: Double?) -> Double? {
     return spendRound((krw / 1000) * r)
 }
 
+/// 整趟的合計：花費頁和一站頁都在一份 t.spend 裡，一站頁記的一起算。
+/// krw 只加韓元那幾筆；twd 是全部換成台幣（有韓元又沒填匯率是 nil，不猜）
 func spendTotal(_ t: Trip) -> (count: Int, krw: Double, twd: Double?) {
-    let list: [Spend] = t.spend ?? []
-    var krw: Double = 0
-    for x in list { krw += x.krw }
-    return (count: list.count, krw: krw, twd: toTwd(krw, t.rate))
+    let sum: SpendSum = spendSum(t.spend ?? [], t.rate)
+    return (count: sum.count, krw: sum.krw, twd: sum.twd)
 }
 
-/// 記一筆，新的排最上面。金額是 0 就不記
+/// 好幾筆加起來。韓元和台幣分開加，有匯率才合成一個台幣數字
+struct SpendSum: Hashable, Sendable {
+    var count: Int
+    var krw: Double  // 韓元那幾筆加起來
+    var ntd: Double  // 台幣那幾筆加起來
+    var twd: Double?  // 全部換成台幣。有韓元又沒填匯率是 nil
+}
+
+extension Spend {
+    /// 這一筆是哪一種錢
+    var cur: SpendCur {
+        return twd != nil ? SpendCur.twd : SpendCur.krw
+    }
+
+    /// 這一筆原本的金額（韓元或台幣）
+    var amount: Double {
+        return twd ?? krw
+    }
+}
+
+func spendSum(_ list: [Spend], _ rate: Double?) -> SpendSum {
+    var krw: Double = 0
+    var ntd: Double = 0
+    for x in list {
+        switch x.cur {
+        case SpendCur.krw: krw += x.krw
+        case SpendCur.twd: ntd += x.twd ?? 0
+        }
+    }
+    let twd: Double?
+    if krw == 0 {
+        // 沒有韓元：一筆都沒有就照舊（有匯率是 0、沒有是 nil），只有台幣就是台幣加起來
+        twd = list.isEmpty ? toTwd(0, rate) : ntd
+    } else if let conv = toTwd(krw, rate) {
+        twd = conv + ntd
+    } else {
+        twd = nil
+    }
+    return SpendSum(count: list.count, krw: krw, ntd: ntd, twd: twd)
+}
+
+/// 在這一站記的那幾筆，新的在上面
+func stopSpends(_ t: Trip, _ stopId: String) -> [Spend] {
+    let list: [Spend] = t.spend ?? []
+    return list.filter { (x: Spend) -> Bool in x.stopId == stopId }
+}
+
+/// 一筆的金額，照它自己的幣別寫：₩ 12,000、NT$ 300
+func spendAmountText(_ x: Spend) -> String {
+    switch x.cur {
+    case SpendCur.krw: return krwText(x.krw)
+    case SpendCur.twd: return money(x.twd ?? 0)
+    }
+}
+
+/// 一筆換成台幣的那一行（「約 NT$ 276」）。台幣那一筆本來就是台幣、沒填匯率，都是 nil
+func spendTwdText(_ x: Spend, _ rate: Double?) -> String? {
+    if x.cur == SpendCur.twd { return nil }
+    guard let t = toTwd(x.krw, rate) else { return nil }
+    return "約 \(money(t))"
+}
+
+/// 合計的一句，後面不帶句號：
+/// 「2 筆，一共 ₩ 20,000，約 NT$ 460（照你填的匯率算）」、「1 筆，一共 NT$ 300」、
+/// 「3 筆，₩ 20,000 和 NT$ 300，合起來約 NT$ 760（照你填的匯率算）」。沒填匯率就不合起來
+func spendSumText(_ s: SpendSum) -> String {
+    let head: String = "\(s.count) 筆"
+    if s.krw > 0 && s.ntd > 0 {
+        let both: String = "\(head)，\(krwText(s.krw)) 和 \(money(s.ntd))"
+        guard let twd = s.twd else { return both }
+        return both + "，合起來約 \(money(twd))（照你填的匯率算）"
+    }
+    if s.ntd > 0 {
+        return "\(head)，一共 \(money(s.ntd))"
+    }
+    let krw: String = "\(head)，一共 \(krwText(s.krw))"
+    guard let twd = s.twd, s.krw > 0 else { return krw }
+    return krw + "，約 \(money(twd))（照你填的匯率算）"
+}
+
+/// 有韓元的那幾筆，但沒填匯率，換不成台幣
+func spendNeedsRate(_ s: SpendSum) -> Bool {
+    return s.krw > 0 && s.twd == nil
+}
+
+/// 這一筆是在哪一站記的：現在這趟裡找得到就用現在的站名，找不到用記的時候的站名。從花費頁記的是 nil
+func spendPlaceName(_ t: Trip, _ x: Spend) -> String? {
+    guard let id = x.stopId else { return nil }
+    if let found = findItem(t, id) { return found.it.n }
+    return x.stopName
+}
+
+/// 記一筆，新的排最上面。金額是 0 就不記。
+/// cur 是台幣的話，金額記在 twd、krw 是 0。stopId、stopName 是在一站頁記的那一站
 @discardableResult
-func addSpend(_ t: inout Trip, _ krw: Double, _ note: String, _ day: Int? = nil) -> Spend? {
+func addSpend(
+    _ t: inout Trip, _ amount: Double, _ note: String, _ day: Int? = nil,
+    cur: SpendCur = SpendCur.krw, stopId: String? = nil, stopName: String? = nil
+) -> Spend? {
     // TS 是 if (krw <= 0) return；NaN 在 TS 會記進去，這裡照樣
-    if krw <= 0 { return nil }
+    if amount <= 0 { return nil }
     let trimmed: String = note.trimmingCharacters(in: .whitespacesAndNewlines)
-    let x: Spend = Spend(id: newId("s"), krw: krw, note: trimmed.isEmpty ? nil : trimmed, day: day)
+    let isTwd: Bool = cur == SpendCur.twd
+    let x: Spend = Spend(
+        id: newId("s"), krw: isTwd ? 0 : amount, note: trimmed.isEmpty ? nil : trimmed, day: day,
+        stopId: stopId, stopName: stopName, twd: isTwd ? amount : nil)
     let old: [Spend] = t.spend ?? []
     t.spend = [x] + old
     return x

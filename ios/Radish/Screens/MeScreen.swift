@@ -99,6 +99,8 @@ struct MeScreen: View {
             row("一天能走多少", MeOptions.label(MeOptions.walk, st.walk), .walk)
             row("身體上要避開的", bodyText, .body)
             row("住哪一帶", MeOptions.label(MeOptions.base, st.base), .base)
+            // QC-0013 #105：從預算那區搬上來，估花費和 AI 推薦旅館都照這個
+            row("住宿偏好", MeOptions.label(MeOptions.stays, st.stay), .stay)
         }
     }
 
@@ -110,8 +112,8 @@ struct MeScreen: View {
     }
 
     private var budgetSection: some View {
-        DomySection("預算", footer: "只拿來估這趟大概花多少，不會影響排哪些站。") {
-            row("住宿", MeOptions.label(MeOptions.stays, st.stay), .stay)
+        // 住宿只在上面「住宿偏好」改一個地方；住一晚多少照那裡估
+        DomySection("預算", footer: "只拿來估這趟大概花多少，不會影響排哪些站。住一晚多少照上面的「住宿偏好」估。") {
             row("一天吃喝", money(st.budget), .budget)
         }
     }

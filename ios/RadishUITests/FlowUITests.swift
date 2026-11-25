@@ -3,6 +3,15 @@ import XCTest
 /// 主流程：從空白開一趟 → 看排好的行程 → 拔一站 → 一站、講一句、路線、附近 → 逛三個分頁和推進頁 → 關掉重開資料還在。
 /// 每一步截一張圖，下載回來看畫面長得對不對。
 final class FlowUITests: RadishUITestCase {
+    /// 今天往後第幾天，yyyy-MM-dd
+    private func isoAfter(_ offset: Int) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date().addingTimeInterval(Double(offset) * 86400))
+    }
+
     private func todayISO() -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -29,7 +38,7 @@ final class FlowUITests: RadishUITestCase {
         element.tap()
     }
 
-    /// 畫面最下面那幾層（講的那一列、分頁列）最上緣在哪
+    /// 畫面最下面那幾層（一站頁講的那一列、分頁列）最上緣在哪。這趟分頁最下面沒有講的那一列了（QC-0013）
     private func coverTop() -> CGFloat {
         var top = app.frame.maxY
         for id in ["tab-trip", "talk-hint-0", "talk-input"] {
@@ -39,6 +48,23 @@ final class FlowUITests: RadishUITestCase {
             }
         }
         return top
+    }
+
+    /// 這趟分頁黏在上面的地圖和天數分頁的下緣。不在這趟分頁就是 0。
+    /// 捲到那一塊底下的站，isHittable 還是對的，點下去會點到地圖
+    private func pinBottom() -> CGFloat {
+        let tab = idQuery("day-tab-1").firstMatch
+        if tab.exists && !tab.frame.isEmpty && tab.frame.maxY.isFinite {
+            return tab.frame.maxY
+        }
+        return 0
+    }
+
+    /// 這趟分頁捲回最上面：右上角的更多看得到為止
+    private func scrollToTop() {
+        for _ in 0..<8 where visibleElement(in: idQuery("open-more")) == nil {
+            scrollUp()
+        }
     }
 
     /// 有出現就點，沒出現就算了（看狀態才會有的按鈕）
@@ -57,7 +83,12 @@ final class FlowUITests: RadishUITestCase {
         seeText("開一趟", timeout: 40)
         shot("開一趟-空白")
         tapClear("cal-\(todayISO())")
-        tapClear("days-5")
+        // 回來那天直接點月曆（QC-0013 #104）：今天出發、第 5 天回來
+        let end: String = isoAfter(4)
+        if !idQuery("cal-\(end)").firstMatch.waitForExistence(timeout: 2) {
+            tapClear("cal-next")
+        }
+        tapClear("cal-\(end)")
         tapClear("arrive-am")
         tapClear("leave-pm")
         tapClear("people-2")
@@ -97,17 +128,28 @@ final class FlowUITests: RadishUITestCase {
         }
     }
 
-    func test02一站與跟AI講() {
-        startTrip()
+    /// 行程裡整個露出來的一站：在黏在上面那一塊下面、分頁列上面。沒有就往下捲
+    private func clearStopRow() -> XCUIElement {
         let rows = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "stop-row-"))
-        let row = scrollToSee(rows, "行程裡的一站")
-        var tries = 0
-        while row.frame.maxY > coverTop() - 16 && tries < 4 {
+        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 15), "清單裡沒有站")
+        for _ in 0..<8 {
+            let top = pinBottom()
+            let bottom = coverTop() - 16
+            let hit = rows.allElementsBoundByIndex.first { (row: XCUIElement) -> Bool in
+                let f = row.frame
+                return row.exists && !f.isEmpty && f.minY >= top && f.maxY <= bottom
+            }
+            if let hit { return hit }
             scrollDown()
-            tries += 1
         }
-        row.tap()
+        XCTFail("捲了八次，還是沒有整個露出來的一站")
+        return rows.firstMatch
+    }
+
+    func test02一站與跟AI講() {
+        startTrip()
+        clearStopRow().tap()
         XCTAssertTrue(idQuery("stop-move").firstMatch.waitForExistence(timeout: 10), "沒有進到一站推進頁")
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         shot("一站")
@@ -123,12 +165,9 @@ final class FlowUITests: RadishUITestCase {
         shot("移到別的時段")
         tapButton("關閉")
         scrollShots("一站", count: 2)
-        goBack()
 
-        // 這一天最下面講的那一列：點第一個說法，升起剛剛那一則
-        scrollUp()
-        scrollUp()
-        shot("這一天最下面的講")
+        // 這趟分頁最下面沒有講的那一列了（QC-0013 #95），改在一站最下面那一列：點第一個說法，升起剛剛那一則
+        shot("一站最下面的講")
         tapId("talk-hint-0")
         RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         shot("剛剛那一則")
@@ -140,7 +179,10 @@ final class FlowUITests: RadishUITestCase {
             tapIfShown("reply-skip")
         }
         RunLoop.current.run(until: Date().addingTimeInterval(1))
+        goBack()
+        XCTAssertFalse(idQuery("talk-input").firstMatch.exists, "這趟分頁最下面不該再有講的那一列")
 
+        // 這一天的地圖黏在上面，捲到清單中間也看得到，點了開這天的路線
         tapClear("open-map")
         seeText("路線")
         RunLoop.current.run(until: Date().addingTimeInterval(3))
@@ -149,9 +191,7 @@ final class FlowUITests: RadishUITestCase {
         tapButton("關閉")
 
         // 更多在右上角，捲回最上面才看得到
-        scrollUp()
-        scrollUp()
-        scrollUp()
+        scrollToTop()
         tapId("open-more")
         seeText("關閉")
         shot("更多")

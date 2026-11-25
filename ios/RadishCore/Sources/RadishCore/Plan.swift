@@ -953,7 +953,8 @@ func settingsSummary(_ st: Settings) -> String {
     let never: String = neverBits.joined(separator: "、")
     let likeText: String = likes.isEmpty ? "什麼都可以" : likes.joined(separator: "、")
 
-    var out: String = "住\(STAY[need: st.stay].name)、\(HOTEL[need: st.base].n)一帶"
+    // 住宿偏好也送給 AI，問到住哪時照這個推薦（QC-0013 #105）
+    var out: String = "住\(HOTEL[need: st.base].n)一帶，住宿偏好：\(STAY[need: st.stay].label)"
     out += "；吃的是\(food)，一天吃喝 \(money(st.budget))"
     if !eat.isEmpty { out += "，" + eat }
     out += "；喜歡\(likeText)"

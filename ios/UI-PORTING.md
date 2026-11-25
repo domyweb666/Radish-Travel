@@ -78,7 +78,7 @@
 ```swift
 // Screens/
 // 2026-11-23 照線框 A 版改過外殼：三個分頁、推進頁走 Nav（App/Nav.swift 的 Push），半頁走 Sheets（App/Sheets.swift 的 SheetReq）
-struct TripScreen: View   { init() }                        // 這趟分頁；最下面 .talkBar
+struct TripScreen: View   { init() }                        // 這趟分頁；每一天連續排，這天的地圖和天數分頁黏在上面（QC-0013 起最下面沒有 .talkBar）
 struct StartTrip: View    { init(goSettings: @escaping () -> Void) }
 struct AskScreen: View    { init() }                        // 問 AI 分頁
 struct TripsScreen: View  { init(goTrip: @escaping () -> Void) }
@@ -110,7 +110,8 @@ struct PullMoment: View   { init(name: String, size: StopSize, line: String, onD
 struct VisitNote: View    { init(say: String?, photos: [String], onSay: @escaping (String) -> Void, onPhotos: @escaping ([String]) -> Void) }
 struct AllergyCardView: View { init(list: [String]) }          // TS 的 AllergyCard 元件（RadishCore 裡已經有同名的資料型別 AllergyCard）
 struct MapPoint: Identifiable { … }                             // 欄位照 TS，key 當 id
-struct DayMap: View       { init(points: [MapPoint]) }
+struct DayMap: View       { init(points: [MapPoint], compact: Bool = false, height: CGFloat? = nil, controls: Bool = true) }
+func dayMapPoints(_ h: HotelPt, _ stops: [Stop]) -> [MapPoint]   // 住的地方加這天有座標的站，MapSheet 和這趟最上面的地圖共用
 ```
 
 ## 寫 SwiftUI 時特別要注意

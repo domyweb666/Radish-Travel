@@ -246,6 +246,8 @@ struct PhotoImage: View {
     let ref: String
     /// 這張在畫面上最長那一邊是幾點。nil 是不縮（整列寬的封面）
     var edge: CGFloat? = nil
+    /// true：整張放進框裡（看大圖），不裁
+    var fit: Bool = false
 
     @Environment(\.displayScale) private var scale: CGFloat
     @State private var got: UIImage?
@@ -262,7 +264,7 @@ struct PhotoImage: View {
         let shown: UIImage? = (gotKey == key ? got : nil) ?? PhotoStore.cached(ref, px)
         ZStack {
             if let shown {
-                Image(uiImage: shown).resizable().scaledToFill()
+                Image(uiImage: shown).resizable().aspectRatio(contentMode: fit ? .fit : .fill)
             } else {
                 C.surfaceMuted
             }
@@ -281,8 +283,6 @@ struct PhotoAddButton: View {
     var disabled: Bool = false
     let onPicked: (String) -> Void
     let onFailed: () -> Void
-    @State private var item: PhotosPickerItem?
-    @State private var busy = false
 
     init(
         _ title: String = "加照片",
@@ -297,18 +297,46 @@ struct PhotoAddButton: View {
     }
 
     var body: some View {
-        let off: Bool = disabled || busy
-        PhotosPicker(selection: $item, matching: .images, photoLibrary: .shared()) {
+        PhotoPicker(disabled: disabled, onPicked: onPicked, onFailed: onFailed) { (busy: Bool) in
             Text(busy ? "處理中…" : title)
                 .font(T.TypeScale.callout.font)
-                .foregroundStyle(off ? C.textDisabled : C.textPrimary)
+                .foregroundStyle(disabled || busy ? C.textDisabled : C.textPrimary)
                 .padding(.horizontal, T.Space.s4)
                 .frame(height: T.Size.buttonCompact)
                 .background(C.surfaceMuted, in: Capsule())
                 .frame(minHeight: T.Size.touch)
                 .contentShape(Rectangle())
         }
-        .disabled(off)
+    }
+}
+
+/// 開系統相簿挑一張、縮小存好，把檔名交給 onPicked。長什麼樣子由 label 決定，拿到的是「正在處理」。
+/// 加照片的按鈕（PhotoAddButton）和一站頁的「上傳照片」方塊都用這一個，存照片只有 PhotoStore.save 一套
+struct PhotoPicker<Face: View>: View {
+    var disabled: Bool = false
+    let onPicked: (String) -> Void
+    let onFailed: () -> Void
+    let label: (Bool) -> Face
+    @State private var item: PhotosPickerItem?
+    @State private var busy = false
+
+    init(
+        disabled: Bool = false,
+        onPicked: @escaping (String) -> Void,
+        onFailed: @escaping () -> Void = {},
+        @ViewBuilder label: @escaping (Bool) -> Face
+    ) {
+        self.disabled = disabled
+        self.onPicked = onPicked
+        self.onFailed = onFailed
+        self.label = label
+    }
+
+    var body: some View {
+        PhotosPicker(selection: $item, matching: .images, photoLibrary: .shared()) {
+            label(busy)
+        }
+        .disabled(disabled || busy)
         .onChange(of: item) { _, picked in
             guard let picked else { return }
             busy = true

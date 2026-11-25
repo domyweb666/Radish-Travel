@@ -1,4 +1,5 @@
-// 一站（StopScreen.swift）的每一塊：最上面那一行、為什麼排／須知／花費、過敏、去過之後的那一句和照片、
+// 一站（StopScreen.swift）的每一塊：最上面那一行、建議停留／須知／預估花費、過敏、去過之後的那一句、
+// （照片和在這裡花的在 StopScreenMine.swift）
 // （開放、怎麼訂、來源在 Components/StopFacts.swift）
 // 韓文名、想改這一站、別的找路方式，還有這一頁自己開的兩張半頁：換一個、不去這一站。
 // 原本在 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheetParts.swift），字照搬，版面照線框 A5。
@@ -77,7 +78,7 @@ struct StopHeader: View {
     }
 }
 
-// MARK: - 為什麼排、須知、花費
+// MARK: - 建議停留、須知、預估花費
 
 struct StopInfoSection: View {
     let it: Stop
@@ -86,8 +87,9 @@ struct StopInfoSection: View {
     /// 要先訂但沒查到怎麼訂
     let noBook: Bool
 
-    private var whyText: String {
-        it.why.isEmpty ? "這一站沒有寫為什麼排。" : it.why
+    /// 建議停留多久。資料裡沒有停留時間，是照大站小站、種類粗估的（RadishCore/Stay.swift）
+    private var stayText: String? {
+        suggestedStay(it)
     }
 
     /// 核對過的須知優先，沒有才用資料包那句
@@ -129,21 +131,28 @@ struct StopInfoSection: View {
             return hasOpen ? "怎麼訂還沒查到，去之前自己查一下。" : "怎麼訂、營業時間都還沒查到，去之前自己查一下。"
         }
         if hasOpen { return nil }
-        return "照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。"
+        return "店家照片、招牌菜、平均消費、營業時間，要等接上地點查證才有。現在去之前請自己查一下。"
     }
 
     var body: some View {
         let tip: String? = tipText
         let fee: String? = feeText
+        let stay: String? = stayText
         DomySection(footer: footer) {
-            StopInfoRow(label: "為什麼排", text: whyText)
+            // 「為什麼排」不放在這一頁了（QC-0013 #96）。資料 it.why 還在，這趟的列表和 AI 會用
+            StopInfoRow(
+                label: "建議停留", text: stay ?? "自己加的站不知道是什麼地方，沒辦法估。", tag: stay == nil ? nil : "粗估",
+                muted: stay == nil
+            )
+            .accessibilityIdentifier("stop-stay")
             StopInfoRow(
                 label: "須知", text: tip ?? "這一站還沒有須知。", tag: tip == nil ? nil : tipSourceLabel(it),
                 muted: tip == nil)
             if let extra = extraText {
                 StopInfoRow(label: "另一句須知", text: extra, tag: "未核對")
             }
-            StopInfoRow(label: "花費", text: fee ?? "還沒有資料", muted: fee == nil)
+            // 這是門票、餐費的預估；實際花的記在下面「在這裡花的」
+            StopInfoRow(label: "預估花費", text: fee ?? "還沒有資料", muted: fee == nil)
         }
     }
 }
@@ -194,7 +203,7 @@ struct StopAllergyEntry: View {
     }
 }
 
-// MARK: - 去過之後：那一句、照片
+// MARK: - 去過之後：那一句
 
 struct StopVisitBlock: View {
     @Environment(AppStore.self) private var store
@@ -203,94 +212,41 @@ struct StopVisitBlock: View {
     /// 這一塊畫的是哪一趟。換了一趟，框裡打到一半的是上一趟的
     let tripId: String?
 
+    private var patch: StopPatch {
+        StopPatch(store: store, id: id, tripId: tripId)
+    }
+
     var body: some View {
         if it.status == .pulled {
             VStack(alignment: .leading, spacing: T.Space.s4) {
+                // 照片去沒去過都能加，在 StopPhotoBlock（StopScreenMine.swift）
                 VisitNote(
                     say: it.say,
                     photos: it.photos ?? [],
                     onSay: { (say: String) -> Void in saveSay(say) },
-                    onAdd: { (ref: String) -> Void in addPhoto(ref) },
-                    onRemove: { (ref: String) -> Void in removePhoto(ref) })
+                    onAdd: { (_: String) -> Void in },
+                    onRemove: { (_: String) -> Void in },
+                    withPhotos: false)
             }
             // 換了一趟就換一個新的框，上一趟打的字不會帶到這一趟
             .id(tripId ?? "")
         }
     }
 
-    /// 這一塊畫出來之後換了一趟（例：按了提示條的復原）
-    private var moved: Bool {
-        return store.s.trip?.id != tripId
-    }
-
-    /// 這一站現在的樣子。被拿掉、換掉了就是 nil
-    private var now: Stop? {
-        guard let trip = store.s.trip else { return nil }
-        return findItem(trip, id)?.it
-    }
-
     private func saveSay(_ say: String) {
         // 沒有存的話把那一句寫在提示條上，還來得及抄
-        if moved {
+        if patch.moved {
             if !say.isEmpty { store.say("剛剛換到別趟了，這一句沒有存：「\(say)」") }
             return
         }
-        guard let stop = now else {
+        guard let stop = patch.now else {
             if !say.isEmpty { store.say("這一站不在這趟裡了，這一句沒有存：「\(say)」") }
             return
         }
         // 沒有變就不留一步
         if (stop.say ?? "") == say { return }
-        change(say.isEmpty ? "那一句清掉了。" : "那一句記下來了。") { (x: inout Stop) -> Void in
+        patch.change(say.isEmpty ? "那一句清掉了。" : "那一句記下來了。") { (x: inout Stop) -> Void in
             x.say = say
-        }
-    }
-
-    /// 照片處理完才叫，中間清單可能變過，所以照現在的清單加
-    private func addPhoto(_ ref: String) {
-        if moved {
-            PhotoStore.removeLater(ref)
-            store.say("剛剛換到別趟了，照片沒有加上去。")
-            return
-        }
-        guard let stop = now else {
-            PhotoStore.removeLater(ref)
-            store.say("這一站不在這趟裡了，照片沒有加上去。")
-            return
-        }
-        if (stop.photos ?? []).count >= PhotoStore.max {
-            PhotoStore.removeLater(ref)
-            store.say("這一站已經有 \(PhotoStore.max) 張了，這張沒有加上去。")
-            return
-        }
-        change("加了一張照片。") { (x: inout Stop) -> Void in
-            var list: [String] = x.photos ?? []
-            list.append(ref)
-            x.photos = list
-        }
-    }
-
-    /// 只拿掉引用，檔案留到下次開 app 才刪，中間都能復原
-    private func removePhoto(_ ref: String) {
-        guard !moved, let stop = now else { return }
-        let old: [String] = stop.photos ?? []
-        if !old.contains(ref) { return }
-        change("照片拿掉了。") { (x: inout Stop) -> Void in
-            let list: [String] = x.photos ?? []
-            x.photos = list.filter { (p: String) -> Bool in p != ref }
-        }
-        PhotoStore.removeLater(ref)
-    }
-
-    /// 改這一站，留一步可以復原
-    private func change(_ msg: String, _ edit: (inout Stop) -> Void) {
-        let stopId: String = id
-        store.act(undoable: true) { (d: inout AppState) -> String? in
-            guard var trip = d.trip else { return nil }
-            guard let x = findItem(trip, stopId) else { return nil }
-            edit(&trip.slots[x.si].items[x.ii])
-            d.trip = trip
-            return msg
         }
     }
 }
