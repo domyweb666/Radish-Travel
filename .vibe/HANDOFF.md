@@ -2,8 +2,7 @@
 
 > 產出時間：2026-11-25（context-guard 到線自動寫）
 > repo 根目錄的 `HANDOFF.md` 是產品開工依據，跟這份會話交接是兩回事。
-> 分支 `work/checked-data`（從 swiftui 18526ce 開）。origin 停在 d30c2f8；本機多 0e51ea4（資料）、e28f601（測試與場景），沒 push。
-> **工作區有沒提交的改動：兩個子代理寫的修正（見下）。先 `git status` 看，不要 reset、不要 checkout 掉。**
+> 分支 `work/checked-data`（從 swiftui 18526ce 開），全部已提交、已 push。review 的修正在最後那個 fix(ios) commit，還沒編過，CI 正在跑。
 
 ## ✅ 這次完成了什麼
 
@@ -18,7 +17,7 @@
 
 ## 🚧 還沒做完
 
-兩個子代理在本會話背景跑，改檔但不 commit：
+下面兩包都已交件並提交，列出來給你核對有沒有漏：
 - 規則與資料（擁有 ios/RadishCore 全部）：同組一趟只取一間、白天吃的一天最多一站且一天最多兩站；PlaceFact 加 parts／partsOn，排行程看開放時段，`partClosedWhy`；以後都不排的舊代號（p4 等）要擋新店；NthDay 加 months（p44 每年 3、6、9、12 月第一個週一）；p6 拿掉 decideDays；p16b、p47b 的 book.url 是文章要拿掉；「開賣時間還不知道」的句子；tip 蓋掉舊 tip（南怡島、水原華城、通仁市場、北村）；N 首爾塔改 caution 只提醒；南大門 closed 拿掉；Chat 計數與樂天世界舊檔；餐廳不說休館；datedFact；提醒時區與內文縮短；資料文字；c1、c2 縮到兩行且去空格；Jungsik 改台灣時間；84 種組合掃描測試
 - 畫面（擁有 ios/Radish 全部）：同一件事只講一次、餐廳用詞、接 partClosedWhy／cautionWhy、「訂之前要知道的」收合、datedFact、VoiceOver、book.url 是 nil 沒按鈕、tipOf extra、換一個文案；MoveSheet 第 5 天被切、大字按鈕被切、附近的「想要別的條件，跟 AI 講」被切、大字天數分頁、要先訂沒資料只留一句
 - 之後：review 修好的 diff 看一遍 → 提交 → push → CI 全綠 → 看有資料的截圖（test29–34：檢查這趟、K-ETA 兩種、N 首爾塔、須知按天、移到休館日、後苑整頁、大字）→ 文件與交接
@@ -49,15 +48,15 @@
 
 ## ⏭️ 下一步從哪繼續
 
-1. `git status`、`git diff --stat`：看兩個子代理的修正在不在、有沒有做完（對照上面「還沒做完」逐項 grep：placeGroup、partsOn、cautionWhy、datedFact、「訂之前要知道的」）
-2. 不完整的派新子代理補；完整的指定檔名提交，`docs/核對原始檔/` 一起提交
-3. push work/checked-data，`bash ios/tools/watch-check.sh`（背景跑，約 30 分鐘），派子代理修到全綠並看截圖
+1. `gh run list --branch work/checked-data --limit 2` 看最後那輪；紅的派子代理修
+2. 派一個沒參與的子代理從頭讀 `git diff e28f601..HEAD -- ios`（規則那包沒人完整讀過）
+3. `bash ios/tools/watch-check.sh`（背景跑，約 30 分鐘），派子代理修到全綠並看截圖
 4. 全綠後：併回 swiftui（ff），更新 ios/README、`.uiux/05-設計代號/詞彙表`；0.5.0 的 TESTFLIGHT_NOTES 和版號先寫好，tf-7 標籤要多米點頭才推
 
 ## 🧩 剩下的工作
 
-- [ ] A：確認 review 修正（規則與資料）完整｜上面清單逐項在、CI 規則測試綠｜ios/RadishCore｜無
-- [ ] B：確認 review 修正（畫面）完整｜上面清單逐項在｜ios/Radish｜依賴 A 的簽名
+- [ ] A：規則與資料的修正已交件（沒編過、沒提交）。要看：整份 diff 沒人從頭讀過；generate 的 `parts partCheck: @escaping PartCheck` 等三處可能編不過；只吃在地小館那種設定有些晚上沒晚餐（node 模擬 2016 種裡 411 晚），跟改之前比一下，變差就放寬同組限制｜CI 規則測試綠｜ios/RadishCore｜無
+- [ ] B：畫面修正已交件。可能編不過：StopFacts 的 guard case .trip(let now)?、StopScreenParts 的 alternatives 兩個閉包、NearbySheet 的 ForEach 內 let、MoveGrid 的尾隨閉包。截圖要看移站五天在 0.82 放不放得下、大字｜CI 綠｜ios/Radish｜依賴 A
 - [ ] C：push、CI 全綠、看有資料的截圖、修畫面｜兩關全綠、截圖逐張看過｜依賴 A、B
 - [ ] D：併 swiftui、README、詞彙表、0.5.0 版號與測試說明草稿｜不推標籤｜依賴 C
 - [ ] E：報告給多米（含上面「要告訴多米」），問要不要出 tf-7｜依賴 D
