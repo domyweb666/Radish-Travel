@@ -19,17 +19,21 @@ struct Screen<Actions: View, Content: View>: View {
     /// 捲動的階段變了就叫（手指在捲、放開後還在滑、停了、程式在捲）。沒給就不管。
     /// 這趟分頁用它分辨是手指捲的還是點分頁程式捲的，手指捲到哪一天，天數分頁才跟著換
     var onScrollPhase: ((ScrollPhase) -> Void)?
+    /// 看得到的那一段有多高（扣掉狀態列、下緣安全區）。這趟分頁點天數捲過去時，用它算那一天要停在哪
+    var onVisibleHeight: ((CGFloat) -> Void)?
     @ViewBuilder var actions: Actions
     @ViewBuilder var content: Content
 
     init(
         _ title: String, scrollTo: String? = nil, onScrollPhase: ((ScrollPhase) -> Void)? = nil,
+        onVisibleHeight: ((CGFloat) -> Void)? = nil,
         @ViewBuilder actions: () -> Actions,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.scrollTo = scrollTo
         self.onScrollPhase = onScrollPhase
+        self.onVisibleHeight = onVisibleHeight
         self.actions = actions()
         self.content = content()
     }
@@ -56,6 +60,13 @@ struct Screen<Actions: View, Content: View>: View {
             .onScrollPhaseChange { (_: ScrollPhase, now: ScrollPhase) in
                 if let onScrollPhase {
                     onScrollPhase(now)
+                }
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { (g: ScrollGeometry) -> CGFloat in
+                return g.containerSize.height - g.contentInsets.top - g.contentInsets.bottom
+            } action: { (_: CGFloat, h: CGFloat) in
+                if let onVisibleHeight {
+                    onVisibleHeight(h)
                 }
             }
             .background(C.canvas.ignoresSafeArea())

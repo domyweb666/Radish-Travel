@@ -62,6 +62,19 @@ final class StopQCUITests: RadishUITestCase {
         return !frame.isEmpty && !frame.isInfinite && frame.minY.isFinite && frame.maxY.isFinite
     }
 
+    /// 黏在上面那一塊（這天的地圖和天數分頁）佔的上下緣。不在這趟頁就是 nil
+    private func pinBand() -> (top: CGFloat, bottom: CGFloat)? {
+        let map: XCUIElement = byId("open-map")
+        let tab: XCUIElement = byId("day-tab-1")
+        guard map.exists, tab.exists, placed(map.frame), placed(tab.frame) else { return nil }
+        return (top: map.frame.minY, bottom: tab.frame.maxY)
+    }
+
+    /// 是不是黏在上面那一塊裡面的東西（地圖、天數分頁）
+    private func inPin(_ id: String) -> Bool {
+        return id == "open-map" || id.hasPrefix("day-tab-")
+    }
+
     /// 捲到整個看得到。在上面就往回捲，在下面就往下捲；捲不動了就停
     @discardableResult
     private func bring(_ id: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
@@ -78,7 +91,11 @@ final class StopQCUITests: RadishUITestCase {
                 }
                 continue
             }
+            let band: (top: CGFloat, bottom: CGFloat)? = inPin(id) ? nil : pinBand()
+            // 狀態列底下點不到；黏在上面的地圖和天數分頁底下也點不到（點下去會開這天的路線）
             if before.minY < 64 {
+                drag(0.3, 0.62)
+            } else if let band, before.minY < band.bottom, before.maxY > band.top {
                 drag(0.3, 0.62)
             } else if before.maxY > bottomLimit() {
                 drag(0.66, 0.3)

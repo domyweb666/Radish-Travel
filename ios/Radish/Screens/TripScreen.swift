@@ -24,6 +24,8 @@ struct TripScreen: View {
     @State private var scroll: DayScroll = DayScroll()
     /// 黏在上面那一塊（地圖加天數分頁）多高。點分頁捲過去時，那一天要接在這一塊下面
     @State private var pinH: CGFloat = 0
+    /// 捲動區看得到的那一段多高（扣掉狀態列和下緣安全區）。點分頁捲過去時用來算落點
+    @State private var visibleH: CGFloat = 0
 
     init() {}
 
@@ -56,6 +58,9 @@ struct TripScreen: View {
             tripTitle(trip),
             onScrollPhase: { (p: ScrollPhase) in
                 scrolled(p, trip)
+            },
+            onVisibleHeight: { (h: CGFloat) in
+                visibleH = h
             },
             actions: {
                 TopActions(more: { sheets.open(.more(day: shown)) })
@@ -97,6 +102,11 @@ struct TripScreen: View {
                 arrive(trip, proxy)
             }
             .onChange(of: pinH) { (old: CGFloat, _: CGFloat) in
+                if old <= 0 {
+                    arrive(trip, proxy)
+                }
+            }
+            .onChange(of: visibleH) { (old: CGFloat, _: CGFloat) in
                 if old <= 0 {
                     arrive(trip, proxy)
                 }
@@ -147,12 +157,11 @@ struct TripScreen: View {
                 PlannedCard(trip: trip)
             }
             ForEach(list, id: \.self) { (d: Int) in
-                // 落點從這一天的上緣往上一個黏頂高度：落點排在這一天上面，再用負的上邊距收回去，版面不變
+                // 落點是這一天上緣一條沒有高度的線，捲過去時停在黏頂那一塊下面（見 landing）
                 VStack(alignment: .leading, spacing: 0) {
                     dayAnchor(d)
                     dayBlock(trip, d)
                 }
-                .padding(.top, -anchorH)
             }
             uncheckedNote(trip, phase)
         }
@@ -183,16 +192,20 @@ struct TripScreen: View {
         }
     }
 
-    /// 點分頁捲過去的落點：從這一天的上緣往上一個「黏在上面那一塊」的高度。
-    /// 捲到頂端時，這一天剛好接在地圖和分頁下面，不會被蓋住。
-    /// 不用 background 加 alignmentGuide 往上推：CI 實測 scrollTo 不認那個位移，這一天會被捲到最上面蓋住
-    private var anchorH: CGFloat {
-        return max(pinH, T.Size.hairline)
+    /// 點分頁捲過去時，這一天上緣要停在看得到那一段的哪裡：黏頂那一塊（地圖加分頁）下面再空一點。
+    /// scrollTo 的 anchor 是「這一站的那個比例點對齊捲動區的同一個比例點」，落點是沒有高度的線，
+    /// 所以比例 = 想停的高度 ÷ 看得到那一段的高度。
+    /// 以前用一塊黏頂高的透明落點、負的上邊距收回去（或 alignmentGuide 往上推），
+    /// CI 實測 scrollTo 都不認那個位移，這一天會被捲到最上面、蓋在地圖底下（QC-0013 CI run 45739291921）
+    private var landing: UnitPoint {
+        let stop: CGFloat = pinH + T.Space.s2
+        guard pinH > 0, visibleH > stop else { return .top }
+        return UnitPoint(x: 0.5, y: stop / visibleH) // domy-ignore: 比例點，不是版面數值
     }
 
     private func dayAnchor(_ d: Int) -> some View {
         Color.clear
-            .frame(height: anchorH)
+            .frame(height: 0)
             .id(dayKey(d))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
@@ -240,7 +253,7 @@ struct TripScreen: View {
         scroll.at = d
         nav.tripDay = d
         withAnimation(Motion.transition) {
-            proxy.scrollTo(dayKey(d), anchor: .top)
+            proxy.scrollTo(dayKey(d), anchor: landing)
         }
     }
 
@@ -250,14 +263,14 @@ struct TripScreen: View {
         if scroll.at == d { return }
         scroll.at = d
         withAnimation(Motion.transition) {
-            proxy.scrollTo(dayKey(d), anchor: .top)
+            proxy.scrollTo(dayKey(d), anchor: landing)
         }
     }
 
     /// 打開這一頁：旅途中先捲到今天（或在看的那一天）；出發前、回來後看第 1 天就從最上面看起。
-    /// 要等量到黏在上面那一塊多高，落點才對
+    /// 要等量到黏在上面那一塊多高、看得到那一段多高，落點才對
     private func arrive(_ trip: Trip, _ proxy: ScrollViewProxy) {
-        if pinH <= 0 { return }
+        if pinH <= 0 || visibleH <= 0 { return }
         let d: Int = shownDay(trip)
         if scroll.at == d { return }
         scroll.at = d
@@ -265,7 +278,7 @@ struct TripScreen: View {
         let key: String = dayKey(d)
         // 等這一輪排版做完再捲，剛出現的時候捲動範圍還沒算好
         Task { @MainActor in
-            proxy.scrollTo(key, anchor: .top)
+            proxy.scrollTo(key, anchor: landing)
         }
     }
 
