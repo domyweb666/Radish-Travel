@@ -440,6 +440,8 @@ final class ErrandsTests: XCTestCase {
             shelf[i]["trip"] = t
         }
         json["shelf"] = shelf
+        // 還沒放進哪一趟的那一份（AppState.errands）舊檔也沒有
+        json.removeValue(forKey: "errands")
         let oldData: Data = try JSONSerialization.data(withJSONObject: json)
         let text: String = try XCTUnwrap(String(data: oldData, encoding: .utf8))
         XCTAssertFalse(text.contains("errands"))
@@ -447,6 +449,7 @@ final class ErrandsTests: XCTestCase {
         let back: AppState = try XCTUnwrap(AppState.hydrate(oldData))
         XCTAssertNotNil(back.trip)
         XCTAssertNil(back.trip?.errands)
+        XCTAssertEqual(back.errands, [])
         XCTAssertEqual(back.shelf.count, 1)
         XCTAssertNil(back.shelf.first?.trip.errands)
         // 讀進來之後照樣加得進去
