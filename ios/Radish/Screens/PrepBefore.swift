@@ -88,7 +88,7 @@ struct PrepBefore: View {
         }
     }
 
-    /// 那一站下面的一列：外國人訂不訂得到、打開訂票頁（吃的寫訂位頁）。打勾了、去過了就不用再列
+    /// 那一站下面的一列：外國人訂不訂得到、打開訂票頁（吃的寫訂位頁），後面接 Klook、KKday（有連結才有）。打勾了、去過了就不用再列
     @ViewBuilder private func bookLink(_ r: BookRow) -> some View {
         if !r.checked && r.stop.status == StopStatus.kept {
             if let link = r.url, let host = bookHost(link) {
@@ -104,6 +104,16 @@ struct PrepBefore: View {
                 TextRow("外國人訂不訂得到", note: text)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("\(r.stop.n)，外國人訂不訂得到：\(text)")
+            }
+            // 官網後面接 Klook、KKday，順序固定。沒有連結就什麼都不多
+            ForEach(affiliateOptions(r.stop, buyLinkTable())) { (o: BuyOption) in
+                if let host = bookHost(o.url) {
+                    DomyListRow(title: "在 \(o.shop.name) 看　\(host)", label: "\(r.stop.n)，在 \(o.shop.name) 看，\(host)") {
+                        openWeb(o.url)
+                    }
+                    .accessibilityHint("會打開瀏覽器")
+                    .accessibilityIdentifier("book-\(o.shop.rawValue)-\(r.stop.id)")
+                }
             }
         }
     }

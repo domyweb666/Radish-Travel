@@ -1,0 +1,11 @@
+{
+  "note": "要先訂、不是吃的站在 Klook、KKday 的商品頁。只給畫面顯示用，排行程和 AI 都不讀這份（見 BuyLinks.swift）。null 是還沒有聯盟網址。沒對到商品頁的就留 null，不要硬放。",
+  "links": {
+    "p6": { "klook": null, "kkday": null },
+    "p50": { "klook": null, "kkday": null },
+    "p14a": { "klook": null, "kkday": null },
+    "p14b": { "klook": null, "kkday": null },
+    "p20a": { "klook": null, "kkday": null },
+    "p20b": { "klook": null, "kkday": null }
+  }
+}

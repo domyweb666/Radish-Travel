@@ -377,7 +377,7 @@ struct StopFactBlocks: View {
             .accessibilityIdentifier("stop-open")
         }
         if showBook {
-            StopBookSection(book: fact?.book, c: it.c, visit: visit)
+            StopBookSection(it: it, book: fact?.book, c: it.c, visit: visit)
         }
         if let f = fact, !f.src.isEmpty {
             StopSourceEntry(fact: f)
@@ -386,11 +386,13 @@ struct StopFactBlocks: View {
 }
 
 /// 怎麼訂：直接看得到的只有方法和開賣時間，其餘收進「訂之前要知道的」，最下面打開訂票頁（吃的寫訂位頁；外開，沒有網址就沒有這顆）
+/// 訂票頁下面接 Klook、KKday（BuyLinks.swift），只有要先訂、不是吃的站才有
 private struct StopBookSection: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
     @Environment(Nav.self) private var nav
     @Environment(\.openURL) private var openURL
+    let it: Stop
     let book: BookInfo?
     let c: Cat
     let visit: String?
@@ -417,6 +419,17 @@ private struct StopBookSection: View {
                 .padding(.vertical, T.Space.s3)
                 .accessibilityHint("會打開瀏覽器")
                 .accessibilityIdentifier("stop-book-open")
+            }
+            // 官網後面接 Klook、KKday，順序固定。沒有連結就什麼都不多；分潤在平常的我的「排序和連結」講
+            ForEach(affiliateOptions(it, buyLinkTable())) { (o: BuyOption) in
+                if let link = webURL(o.url) {
+                    DomyButton("在 \(o.shop.name) 看", variant: .secondary, size: .compact, fullWidth: true) {
+                        openURL(link)
+                    }
+                    .padding(.vertical, T.Space.s3)
+                    .accessibilityHint("會打開瀏覽器")
+                    .accessibilityIdentifier("stop-buy-\(o.shop.rawValue)")
+                }
             }
         }
         .accessibilityElement(children: .contain)

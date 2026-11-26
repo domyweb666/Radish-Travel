@@ -7,6 +7,7 @@
 //   -uitest-agreed                    那個地方當成同意過了
 //   -uitest-offline                   假裝沒網路（在 IO/Network.swift）
 //   -uitest-dark                      指定深色（RadishApp.swift 的 forcedScheme）。測試切系統深淺在 CI 上沒有作用
+//   -uitest-buylinks                  Klook、KKday 連結表換成假的（p6、p50、p14a、p20a 有假網址），看一站頁和平常的我
 // 日期多半從今天往前往後推，行程用 generate 排，所以資料包或規則改了這裡會跟著變。
 // 開不開跟星期幾有關的場景用固定日期（fixedDay），旅途中的用 debugDay 指定今天是第幾天。
 #if DEBUG
@@ -19,6 +20,9 @@
 
         /// RadishApp.init 叫，要在 AppStore 建起來之前：存檔、送去哪裡都先放好
         static func prepare(_ args: [String]) {
+            if args.contains("-uitest-buylinks") {
+                BuyLinkTable.override = fakeBuyLinks()
+            }
             if let dest = value("-uitest-dest", args) {
                 setDest(dest)
                 UITestAIProtocol.mode = value("-uitest-ai", args) ?? "fail"
@@ -30,6 +34,17 @@
                 agreeAI(&out, dest)
             }
             write(out)
+        }
+
+        /// 假的連結表：網址是假的商品頁，點了也只是打開瀏覽器
+        private static func fakeBuyLinks() -> BuyLinkTable {
+            var links: [String: BuyLink] = [:]
+            for id in ["p6", "p50", "p14a", "p20a"] {
+                links[id] = BuyLink(
+                    klook: "https://www.klook.com/activity/uitest-\(id)/",
+                    kkday: "https://www.kkday.com/product/uitest-\(id)")
+            }
+            return BuyLinkTable(links: links)
         }
 
         /// 參數後面那個字。沒有就是 nil

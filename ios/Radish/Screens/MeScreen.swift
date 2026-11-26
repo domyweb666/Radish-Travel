@@ -9,6 +9,7 @@ struct MeScreen: View {
     @State private var editing: MeEditing?
     @State private var backup: String = ""
     @State private var importErr: String?
+    @State private var aboutBuy: Bool = false
 
     init() {}
 
@@ -19,6 +20,7 @@ struct MeScreen: View {
             usualSection
             learnedSection
             budgetSection
+            buyLinksSection
             dataSection
             if let trip = store.s.trip {
                 debugSection(trip)
@@ -115,6 +117,22 @@ struct MeScreen: View {
         // 住宿只在上面「住宿偏好」改一個地方；住一晚多少照那裡估
         DomySection("預算", footer: "只拿來估這趟大概花多少，不會影響排哪些站。住一晚多少照上面的「住宿偏好」估。") {
             row("一天吃喝", money(st.budget), .budget)
+        }
+    }
+
+    /// 排序和連結：有 Klook、KKday 的連結才出現，講一次分潤，連結旁邊不寫
+    @ViewBuilder private var buyLinksSection: some View {
+        if hasAffiliate(buyLinkTable()) {
+            DomySection {
+                SettingsRow("排序和連結") {
+                    aboutBuy = true
+                }
+                .accessibilityIdentifier("me-row-buylinks")
+            }
+            .sheet(isPresented: $aboutBuy) {
+                BuyLinksAbout(onClose: { aboutBuy = false })
+                    .tint(C.accent)
+            }
         }
     }
 
