@@ -243,6 +243,36 @@ final class BookTests: XCTestCase {
         XCTAssertEqual(remindWhen(r), "12/2（三）早上 8:45（台灣時間）")
     }
 
+    func test吃的講訂位_不講開賣和訂票頁() throws {
+        var food: Stop = bStop("g", "Jungsik")
+        food.c = .eat
+        let r: Reminder = try XCTUnwrap(remindersOf(oneTrip(2, food), "2026-11-25", fact: gardenFact).first)
+        XCTAssertEqual(r.title, "Jungsik 9:00（台灣時間）開放訂位")
+        let day: BookInfo = BookInfo(how: "官網", opensDays: 6)
+        let dayFact: (String) -> PlaceFact? = { (_: String) -> PlaceFact? in bFact(day) }
+        let plain: Reminder = try XCTUnwrap(remindersOf(oneTrip(2, food), "2026-11-25", fact: dayFact).first)
+        XCTAssertEqual(plain.title, "Jungsik今天開放訂位")
+        XCTAssertTrue(plain.body.hasPrefix("幾點開放訂位還不知道。"), plain.body)
+
+        var t: Trip = bTrip()
+        bPut(&t, 2, .am, food)
+        let before: BookRow = try XCTUnwrap(bookPlan(t, [:], "2026-11-25", fact: gardenFact).first)
+        XCTAssertEqual(bookOpenText(before, "2026-11-25"), "12/2（三）9:00 開放訂位（台灣時間）")
+        let after: BookRow = try XCTUnwrap(bookPlan(t, [:], "2026-12-05", fact: gardenFact).first)
+        XCTAssertEqual(bookOpenText(after, "2026-12-05"), "已經可以訂位")
+        let none: BookRow = try XCTUnwrap(bookPlan(t, [:], "2026-11-25", fact: noFact).first)
+        XCTAssertEqual(bookOpenText(none, "2026-11-25"), "開放訂位時間還不知道")
+        let foodOnly: String = bookFooter(bookPlan(t, [:], "2026-11-25", fact: gardenFact))
+        XCTAssertTrue(foodOnly.contains("訂位頁") && !foodOnly.contains("訂票頁"), foodOnly)
+
+        // 有票也有吃的：兩個都講。看的照舊講開賣、訂票頁
+        bPut(&t, 3, .am, bStop("h", "昌德宮與後苑"))
+        let both: String = bookFooter(bookPlan(t, [:], "2026-11-25", fact: gardenFact))
+        XCTAssertTrue(both.contains("訂票頁、訂位頁"), both)
+        XCTAssertEqual(bookWords(.sight).opened, "已經開賣")
+        XCTAssertEqual(bookWords(.cafe).page, "訂位頁")
+    }
+
     func test怎麼訂_已經是一句就照寫_沒寫就用網站名() throws {
         func body(_ b: BookInfo) -> String {
             let fact: (String) -> PlaceFact? = { (_: String) -> PlaceFact? in bFact(b) }

@@ -88,12 +88,13 @@ struct PrepBefore: View {
         }
     }
 
-    /// 那一站下面的一列：外國人訂不訂得到、打開訂票頁。打勾了、去過了就不用再列
+    /// 那一站下面的一列：外國人訂不訂得到、打開訂票頁（吃的寫訂位頁）。打勾了、去過了就不用再列
     @ViewBuilder private func bookLink(_ r: BookRow) -> some View {
         if !r.checked && r.stop.status == StopStatus.kept {
             if let link = r.url, let host = bookHost(link) {
                 DomyListRow(
-                    meta: prepNote(r.foreigner), title: "打開訂票頁　\(host)", label: bookSpoken(r, host)
+                    meta: prepNote(r.foreigner), title: "打開\(bookWords(r.stop.c).page)　\(host)",
+                    label: bookSpoken(r, host)
                 ) {
                     openWeb(link)
                 }
@@ -109,7 +110,7 @@ struct PrepBefore: View {
 
     /// 開訂票頁那一列念的：先念站名，免得好幾列聽起來一樣
     private func bookSpoken(_ r: BookRow, _ host: String) -> String {
-        let head: String = "\(r.stop.n)，打開訂票頁，\(host)"
+        let head: String = "\(r.stop.n)，打開\(bookWords(r.stop.c).page)，\(host)"
         guard let text = prepNote(r.foreigner) else { return head }
         return head + "，外國人訂不訂得到：" + text
     }

@@ -62,12 +62,12 @@ API 金鑰要 App Manager 等級以上。人蔘修煉用的那一把就可以。
 推一個 `tf-` 開頭的標籤：
 
 ```bash
-git tag tf-1 && git push origin tf-1
+git tag tf-8 && git push origin tf-8
 ```
 
-下一版就 `tf-2`、`tf-3`。平常推程式不會出 TestFlight 版本，只跑檢查線。
+標籤不能重複，2026-11-25 已經用到 `tf-7`，下一版就 `tf-8`、`tf-9`。用到哪一號可以跑 `git tag -l "tf-*"` 看。平常推程式不會出 TestFlight 版本，只跑檢查線。
 
-十五到二十分鐘後，手機上的 TestFlight 會出現「蘿蔔旅行」。版本號是 `0.2.0`，後面括號裡的數字是這條工作流跑的第幾次。
+十五到二十分鐘後，手機上的 TestFlight 會出現「蘿蔔旅行」。版本號照 `ios/project.yml` 的 `MARKETING_VERSION`，現在是 `0.5.0`，要換版號就改那一行；後面括號裡的數字是這條工作流跑的第幾次。
 
 第一次送，Apple 可能會寄信問出口合規或缺什麼說明，把信轉給我看。
 

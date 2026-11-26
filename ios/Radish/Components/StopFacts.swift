@@ -252,8 +252,8 @@ func opensKnown(_ f: PlaceFact?, _ c: Cat, _ shut: StopShut?) -> Bool {
     return !openLines(f, c, shut).isEmpty
 }
 
-/// 開賣時間那一句，換成台灣時間（Book.swift）。不在這趟裡、不知道哪天去的，講規則
-private func openSaleText(_ b: BookInfo, _ visit: String?, _ today: String, _ now: Date) -> String? {
+/// 開賣時間那一句，換成台灣時間（Book.swift）。不在這趟裡、不知道哪天去的，講規則。吃的講訂位（bookWords）
+private func openSaleText(_ b: BookInfo, _ c: Cat, _ visit: String?, _ today: String, _ now: Date) -> String? {
     guard let visit else { return saleRuleText(b) }
     if let until = bookOnlineUntil(b, visit), until < today {
         return bookOnlineText(b, visit, today)
@@ -262,11 +262,11 @@ private func openSaleText(_ b: BookInfo, _ visit: String?, _ today: String, _ no
     if today >= visit { return nil }
     guard let sale = bookOpen(b, visit) else { return nil }
     if let at = sale.at, let minutes = bookMinutes(at), let taiwan = koreaToTaiwan(sale.on, at) {
-        if koreaSeconds(sale.on, minutes) <= now.timeIntervalSince1970 { return "已經開賣" }
+        if koreaSeconds(sale.on, minutes) <= now.timeIntervalSince1970 { return bookWords(c).opened }
         return "\(fmtDay(taiwan.on))\(taiwan.at)（台灣時間）"
     }
     // 沒寫幾點：過了那天才算已經開賣
-    if sale.on < today { return "已經開賣" }
+    if sale.on < today { return bookWords(c).opened }
     return "\(fmtDay(sale.on))，幾點還不知道"
 }
 
@@ -310,12 +310,12 @@ func bookUnknown(_ it: Stop, _ shut: StopShut?) -> Bool {
     return factOf(it.id)?.book == nil
 }
 
-/// 「怎麼訂」那組直接看得到的：怎麼訂、開賣時間
-func bookLines(_ book: BookInfo?, _ visit: String?, _ today: String, _ now: Date) -> [FactLine] {
+/// 「怎麼訂」那組直接看得到的：怎麼訂、開賣時間（吃的寫開放訂位時間）
+func bookLines(_ book: BookInfo?, _ c: Cat, _ visit: String?, _ today: String, _ now: Date) -> [FactLine] {
     var out: [FactLine] = []
     if let b = book {
         addLine(&out, "方法", b.how)
-        addLine(&out, "開賣時間", openSaleText(b, visit, today, now))
+        addLine(&out, bookWords(c).time, openSaleText(b, c, visit, today, now))
     }
     if out.isEmpty && webURL(book?.url) == nil {
         out.append(FactLine(label: "方法", text: "還沒查到怎麼訂，要自己查。", muted: true))
@@ -377,7 +377,7 @@ struct StopFactBlocks: View {
             .accessibilityIdentifier("stop-open")
         }
         if showBook {
-            StopBookSection(book: fact?.book, visit: visit)
+            StopBookSection(book: fact?.book, c: it.c, visit: visit)
         }
         if let f = fact, !f.src.isEmpty {
             StopSourceEntry(fact: f)
@@ -385,18 +385,19 @@ struct StopFactBlocks: View {
     }
 }
 
-/// 怎麼訂：直接看得到的只有方法和開賣時間，其餘收進「訂之前要知道的」，最下面打開訂票頁（外開，沒有網址就沒有這顆）
+/// 怎麼訂：直接看得到的只有方法和開賣時間，其餘收進「訂之前要知道的」，最下面打開訂票頁（吃的寫訂位頁；外開，沒有網址就沒有這顆）
 private struct StopBookSection: View {
     @Environment(AppStore.self) private var store
     @Environment(Sheets.self) private var sheets
     @Environment(Nav.self) private var nav
     @Environment(\.openURL) private var openURL
     let book: BookInfo?
+    let c: Cat
     let visit: String?
     @State private var showing: Bool = false
 
     var body: some View {
-        let lines: [FactLine] = bookLines(book, visit, store.today, Date())
+        let lines: [FactLine] = bookLines(book, c, visit, store.today, Date())
         let more: [FactLine] = bookMoreLines(book, visit, store.today)
         let url: URL? = webURL(book?.url)
         DomySection("怎麼訂") {
@@ -410,7 +411,7 @@ private struct StopBookSection: View {
                 .accessibilityIdentifier("stop-book-more")
             }
             if let url {
-                DomyButton("打開訂票頁", variant: .secondary, size: .compact, fullWidth: true) {
+                DomyButton("打開\(bookWords(c).page)", variant: .secondary, size: .compact, fullWidth: true) {
                     openURL(url)
                 }
                 .padding(.vertical, T.Space.s3)

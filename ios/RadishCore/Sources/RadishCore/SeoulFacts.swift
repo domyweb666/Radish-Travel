@@ -46,9 +46,11 @@ struct BookInfo: Codable, Hashable, Sendable {
     var onsiteAt: String?  // 去的當天現場幾點起賣，韓國時間
 }
 
+/// 來源。name 是給人看的網站名，不帶日期；那篇是哪天寫的放 date
 struct FactSource: Codable, Hashable, Sendable {
     var name: String
     var url: String
+    var date: String? = nil  // 那篇文章哪天寫的，"2026-10-08" 或只到月 "2026-11"。官方頁沒寫是 nil
 }
 
 struct PlaceFact: Codable, Hashable, Sendable {

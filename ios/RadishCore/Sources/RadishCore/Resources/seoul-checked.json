@@ -14,8 +14,9 @@
      "url": "https://royal.khs.go.kr/ROYAL/contents/R703000000.do"
     },
     {
-     "name": "Korea Times 2026-10-08",
-     "url": "https://www.koreatimes.co.kr/southkorea/20261008/govt-undecided-on-plan-to-raise-admission-fees-to-royal-palaces-tombs"
+     "name": "Korea Times",
+     "url": "https://www.koreatimes.co.kr/southkorea/20261008/govt-undecided-on-plan-to-raise-admission-fees-to-royal-palaces-tombs",
+     "date": "2026-10-08"
     }
    ],
    "closed": [
@@ -121,8 +122,9 @@
      "url": "https://www.ktriptips.com/kor/shopping/1590323"
     },
     {
-     "name": "首爾市 內手裡的首爾 2025-05",
-     "url": "https://mediahub.seoul.go.kr/archives/2014553"
+     "name": "首爾市 內手裡的首爾",
+     "url": "https://mediahub.seoul.go.kr/archives/2014553",
+     "date": "2025-05"
     }
    ],
    "hours": "市場 07:00 到 21:00，各店不同；銅錢便當 11:00 開始，下午就收",
@@ -1544,8 +1546,9 @@
    "checked": "2026-11-25",
    "src": [
     {
-     "name": "magister1318 部落格（2026-11）",
-     "url": "https://magister1318.blog/ja/euljiro-nogari-alley-price-winter-2026/"
+     "name": "magister1318 部落格",
+     "url": "https://magister1318.blog/ja/euljiro-nogari-alley-price-winter-2026/",
+     "date": "2026-11"
     }
    ],
    "hours": "各家不同；萬船 Hof 12:00 到隔天 5:00（2026 年 10 月）",
@@ -1689,8 +1692,9 @@
      "url": "https://mosuseoul.com"
     },
     {
-     "name": "infogoodman 部落格（2026-04）",
-     "url": "https://www.infogoodman.com/2026/04/mosu-seoul-menu-price-reservation.html"
+     "name": "infogoodman 部落格",
+     "url": "https://www.infogoodman.com/2026/04/mosu-seoul-menu-price-reservation.html",
+     "date": "2026-04"
     }
    ],
    "closed": [
@@ -1830,12 +1834,14 @@
      "url": "https://www.ktriptips.com/kor/tourspot/127797"
     },
     {
-     "name": "Insight（2026-11）",
-     "url": "https://www.insight.co.kr/news/581993"
+     "name": "Insight",
+     "url": "https://www.insight.co.kr/news/581993",
+     "date": "2026-11"
     },
     {
-     "name": "FoxCG 部落格（2026-10）",
-     "url": "https://foxcg.com/everland-autumn-visit-tips/"
+     "name": "FoxCG 部落格",
+     "url": "https://foxcg.com/everland-autumn-visit-tips/",
+     "date": "2026-10"
     }
    ],
    "closed": [],
