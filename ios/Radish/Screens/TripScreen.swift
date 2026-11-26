@@ -291,7 +291,8 @@ struct TripScreen: View {
         } else {
             proxy.scrollTo(dayKey(d), anchor: landing)
         }
-        settleLater(d, proxy, tries: 2)
+        // 修一次有時還差幾點（CI 有一輪蓋住分頁 5 點），多給兩次機會；對上了 settle 自己會停
+        settleLater(d, proxy, tries: 4)
     }
 
     private func settleLater(_ d: Int, _ proxy: ScrollViewProxy, tries: Int) {

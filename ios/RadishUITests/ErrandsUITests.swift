@@ -109,7 +109,9 @@ final class ErrandsUITests: RadishUITestCase {
         XCTAssertTrue(field.isHittable, "點不到輸入框 \(id)", file: file, line: line)
         field.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8), "點了 \(id)，鍵盤沒有出來", file: file, line: line)
-        field.typeText(text)
+        // 打完按換行收鍵盤：下一格可能在鍵盤底下，捲不到
+        field.typeText(text + "
+")
         pause()
     }
 

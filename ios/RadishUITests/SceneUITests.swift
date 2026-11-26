@@ -403,7 +403,8 @@ final class SceneUITests: RadishUITestCase {
         XCTAssertTrue(seen.contains { (d: Int) -> Bool in d > 1 }, "往下捲了六次，分頁還停在第 1 天")
         // 點分頁：捲到那一天，那天的第一行接在分頁下面
         byId("day-tab-4").tap()
-        pause(2)
+        // 捲過去之後 app 會量落點再修，最多修四次、一次隔 0.6 秒，等它停穩再量
+        pause(3)
         shot("點了第4天")
         XCTAssertEqual(selectedDay(5), 4, "點了第 4 天，分頁沒有標到第 4 天")
         let head: CGFloat = byId("day-head-4").frame.minY
