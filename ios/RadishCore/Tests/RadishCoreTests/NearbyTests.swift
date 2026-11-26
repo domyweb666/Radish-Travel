@@ -71,7 +71,7 @@ final class NearbyTests: XCTestCase {
             if i > 0 { XCTAssertTrue(ranked[i - 1].leg.km <= x.leg.km, "沒有照距離排") }
         }
         let first: [String] = nearbyPage(ranked, 0).map { (x: NearbyPick) -> String in x.place.n }
-        XCTAssertEqual(first, ["昌德宮與後苑", "清溪川散步", "鍾路蔘雞湯"])
+        XCTAssertEqual(first, ["鍾路 3 街布帳馬車街", "昌德宮與後苑", "清溪川散步"])
     }
 
     func test超過走路上限就寫地鐵或公車() throws {

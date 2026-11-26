@@ -55,7 +55,7 @@ private func dinnerLeft(_ t: Trip, _ si: Int, _ st: Settings) -> [Place] {
 final class DinnerTests: XCTestCase {
     func test每個該有晚餐的晚上都有晚餐_每種吃的組合都掃() {
         // 資料裡就是不夠的兩種，缺了不算錯，但那一晚要真的一間都不剩：
-        // 只吃路邊：市場一共四個，白天也會排；只吃精緻：一共六間，週日、一只開兩間
+        // 只吃路邊：市場和路邊攤一共九個，白天也會排，六天以上就可能不夠；只吃精緻：一共六間，週日、一只開兩間
         let scarce: [Set<FoodKind>] = [[.street], [.fine]]
         // 四天的七種出發日都掃，七天的掃兩種（本來就每個星期幾都碰得到）
         var trips: [(days: Int, w: Int)] = [(days: 7, w: 0), (days: 7, w: 3)]

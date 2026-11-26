@@ -1884,6 +1884,122 @@
     "pm",
     "eve"
    ]
+  },
+  "p52": {
+   "status": "second",
+   "checked": "2026-11-26",
+   "src": [
+    {
+     "name": "Treksplorer",
+     "url": "https://www.treksplorer.com/myeongdong-night-market-seoul/",
+     "date": "2026-10-31"
+    }
+   ],
+   "hours": "各攤不同；大約下午三、四點開始擺，九、十點收",
+   "tip": "多半收現金",
+   "parts": [
+    "eve"
+   ],
+   "partWhy": "攤位傍晚才擺出來"
+  },
+  "p53": {
+   "status": "second",
+   "checked": "2026-11-26",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/3056463"
+    },
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2019534",
+     "date": "2026-10-06"
+    }
+   ],
+   "hours": "各攤不同，白天在準備，傍晚才開",
+   "addr": "서울 종로구 관수동 종로3가역 부근",
+   "parts": [
+    "eve"
+   ],
+   "partWhy": "晚上才開"
+  },
+  "p54": {
+   "status": "second",
+   "checked": "2026-11-26",
+   "src": [
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/tourspot/699249"
+    }
+   ],
+   "hours": "各店不同",
+   "addr": "서울 중구 퇴계로76길 50"
+  },
+  "p55": {
+   "status": "second",
+   "checked": "2026-11-26",
+   "src": [
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2011640",
+     "date": "2024-07-11"
+    },
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2013696",
+     "date": "2025-03-17"
+    }
+   ],
+   "closedNth": [
+    {
+     "week": 3,
+     "dow": 0
+    }
+   ],
+   "hours": "各店不同；報導寫 4:00 或 7:00 開到 24:00",
+   "addr": "서울 중구 퇴계로85길 22",
+   "tip": "每月第三個週日休市是 2024 年報導寫的，各業種不同",
+   "parts": [
+    "am",
+    "pm",
+    "eve"
+   ]
+  },
+  "p56": {
+   "status": "second",
+   "checked": "2026-11-26",
+   "src": [
+    {
+     "name": "首爾市 내 손안에 서울",
+     "url": "https://mediahub.seoul.go.kr/archives/2011640",
+     "date": "2024-07-11"
+    },
+    {
+     "name": "K-TRIP TIPS（韓國觀光公社資料）",
+     "url": "https://www.ktriptips.com/kor/shopping/2704559"
+    }
+   ],
+   "closedNth": [
+    {
+     "week": 1,
+     "dow": 2
+    },
+    {
+     "week": 3,
+     "dow": 2
+    }
+   ],
+   "hours": "8:00 到 21:00，餐館各店不同",
+   "addr": "서울 송파구 가락로 243",
+   "tip": "每月第一、三個週二休，餐館各店自己決定",
+   "parts": [
+    "am",
+    "pm",
+    "eve"
+   ],
+   "times": [
+    "08:00-21:00"
+   ]
   }
  },
  "drop": [
