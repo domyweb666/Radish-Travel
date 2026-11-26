@@ -17,7 +17,18 @@ struct FoodText: Codable, Hashable, Sendable {
 
 struct StayText: Codable, Hashable, Sendable {
     var name: String
+    /// 一晚大約多少（台幣，粗估，沒核對）。只拿來估花費
     var perNight: Double
+    /// 住哪一類，例如「青旅、民宿」。五星級飯店名字已經講清楚，沒有這句
+    var what: String?
+}
+
+extension StayText {
+    /// 選項上的字：「便宜就好（青旅、民宿）」
+    var label: String {
+        guard let w = what, !w.isEmpty else { return name }
+        return "\(name)（\(w)）"
+    }
 }
 
 struct Allergen: Codable, Hashable, Sendable {

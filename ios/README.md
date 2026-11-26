@@ -27,7 +27,7 @@ bash ios/tools/watch-check.sh
 |---|---|
 | `project.yml` | XcodeGen 的專案定義。Xcode 專案檔不進 git，CI 每次重新產生。加 Swift 檔不用改這裡 |
 | `RadishCore/Sources/RadishCore/` | 資料型別和規則：排行程、喜好、花費、提醒、對話、地圖網頁、核對資料（`SeoulFacts`）、要先訂（`Book`）。只用 Foundation |
-| `RadishCore/Sources/RadishCore/Resources/seoul.json` | 首爾資料包，從 `mobile/src/data/seoul.ts` 轉出來的，裡面的須知和票價沒核對 |
+| `RadishCore/Sources/RadishCore/Resources/seoul.json` | 首爾資料包，從 `mobile/src/data/seoul.ts` 轉出來的，裡面的須知和票價沒核對。p52 到 p56（路邊和市場的店）是 SwiftUI 版才加的，`export-seoul.ts` 轉的時候接在最後面 |
 | `RadishCore/Sources/RadishCore/Resources/seoul-checked.json` | 首爾的核對資料，疊在 `seoul.json` 上面，看下面「核對資料」 |
 | `RadishCore/Tests/` | 規則的測試。從 `mobile/tests/` 搬來的，加上 SwiftUI 版之後才有的（跟 AI 講、同意、句數、復原、開一趟寫的那句、核對資料、休館、要先訂、長行程） |
 | `Radish/App/` | 外殼、三個分頁（這趟／問 AI／旅行）、推進頁總管（`Nav`）、狀態儲存（`AppStore`）、彈出卡總管（`Sheets`） |
@@ -37,7 +37,7 @@ bash ios/tools/watch-check.sh
 | `Radish/Components/` | 講的那一列（`TalkBar`）、剛排好和回來後的卡（`TripCards`）、表單、月曆、拔蘿蔔動畫、給司機看、過敏告知卡、一站頁的開放／怎麼訂／來源（`StopFacts`） |
 | `Radish/IO/` | 照片、本機通知、外部地圖、分享 |
 | `RadishUITests/` | 截圖的測試：主流程 `FlowUITests`、一個畫面一條的 `SceneUITests` |
-| `tools/` | 轉資料、檢查寫死數值、等 CI 的腳本 |
+| `tools/` | 轉資料、檢查寫死數值、等 CI 的腳本；`scan-street-dinner.mjs` 用 node 照搬排行程的規則，數只吃路邊的人有幾個晚上空著 |
 
 `RadishCore` 的原始碼是直接編進 app 的，跟 app 同一個模組。`Package.swift` 只給 Linux 上跑測試用。
 
@@ -65,6 +65,8 @@ bash ios/tools/watch-check.sh
 - 國定假日表只到 2028 年底。
 
 **同組一趟一間**：晚餐照喜好挑，這一帶沒有就找全首爾，再沒有就換一類，都沒有才排同組沒去過的另一間。超過七天的行程，白天整個時段挑不到才這樣放寬，而且不放吃的。同一間不會排兩次。吃的白天一天最多一站，加晚餐最多兩站。近郊那天沒有一站能去，就照平常的一天排。
+
+**只吃路邊**：路邊和市場的店一共九間（2026-11-26 補了明洞路邊攤、鍾路 3 街布帳馬車街、新堂洞炒年糕街、首爾中央市場、芳荑市場，全是二手資料）。同一間一趟只排一次，白天也會排掉，所以五天以內每晚都有，六天以上還是會有晚上空著。跑 `node ios/tools/scan-street-dinner.mjs` 看現在的數字。
 
 **要先訂**：
 - `needsBook` 看現在的資料，舊存檔裡的標記不算；自己加的、AI 加的才看那一站自己的。

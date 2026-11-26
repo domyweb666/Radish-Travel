@@ -45,7 +45,7 @@ jobs:
   ui-check:
     name: 編譯與模擬器截圖（macOS）
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 100  # QC-0013 這趟頁改成每天連續排，元件變多，UI 測試從 35 分鐘拉長到 70 分鐘上下
     steps:
       - uses: actions/checkout@v4
 

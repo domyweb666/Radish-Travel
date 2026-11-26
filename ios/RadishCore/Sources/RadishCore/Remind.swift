@@ -159,9 +159,10 @@ private func tripReminders(
     return out
 }
 
-/// 開賣前 15 分鐘；只知道哪天開賣的，那天早上九點。不知道或已經開賣就是 nil
+/// 開賣前 15 分鐘；只知道哪天開賣的，那天早上九點。不知道或已經開賣就是 nil。吃的講開放訂位
 private func openReminder(_ r: BookRow, _ key: String) -> Reminder? {
     guard r.stage == BookStage.notYet, let on = r.openOn else { return nil }
+    let open: String = bookWords(r.stop.c).open
     let id: String = "\(key)-open-\(r.id)"
     let body: String = "\(bookWhen(r))要去。" + bookHowText(r)
     if let seconds = r.openSeconds, let at = r.openAt {
@@ -170,7 +171,7 @@ private func openReminder(_ r: BookRow, _ key: String) -> Reminder? {
             id: id,
             on: taiwanLocal(early).on,
             at: early,
-            title: "\(r.stop.n) \(at)（台灣時間）開賣",
+            title: "\(r.stop.n) \(at)（台灣時間）\(open)",
             body: body
         )
     }
@@ -178,8 +179,8 @@ private func openReminder(_ r: BookRow, _ key: String) -> Reminder? {
         id: id,
         on: on,
         at: nil,
-        title: "\(r.stop.n)今天開賣",
-        body: "幾點開賣還不知道。" + body
+        title: "\(r.stop.n)今天\(open)",
+        body: "幾點\(open)還不知道。" + body
     )
 }
 

@@ -117,4 +117,39 @@ final class NowTests: XCTestCase {
         let old: String = aiPrompt("下一站去哪", t, st, [])
         XCTAssertFalse(old.contains("現在是"))
     }
+
+    func test旅途中移站_移到已經過了的時段擋掉_跟用講的同一句_今天現在和之後可以() throws {
+        var t: Trip = trip()
+        let now: TripNow? = tripNow(clock)
+        let x: Found = try XCTUnwrap(dayStops(t, 4).first, "第 4 天應該有站")
+        let id: String = x.it.id
+        XCTAssertNotNil(slotAt(t, 2, .pm))
+        XCTAssertNotNil(slotAt(t, 3, .am))
+        XCTAssertNotNil(slotAt(t, 3, .pm))
+        XCTAssertNotNil(slotAt(t, 5, .am))
+        let before: Trip = t
+
+        // 前一天：擋掉，行程沒動
+        XCTAssertEqual(moveItem(&t, id, 2, .pm, now), "第 2 天下午已經過了，不能再排")
+        // 今天更早的時段也算過了
+        XCTAssertEqual(moveItem(&t, id, 3, .am, now), "第 3 天上午已經過了，不能再排")
+        XCTAssertEqual(t, before, "擋下來的移站沒改到行程")
+
+        // 用講的移到同一個時段，講的是同一句
+        var chat: Trip = t
+        var seeds: [Seed] = []
+        let ops: [Any] = [["op": "move", "id": id, "day": 2, "part": "pm"] as [String: Any]]
+        let r: (changes: [String], notes: [String]) = applyOps(&chat, &seeds, ops, now)
+        XCTAssertEqual(r.notes.first, "第 2 天下午已經過了，不能再排")
+
+        // 今天現在這個時段、之後的日子照常移
+        XCTAssertNil(moveItem(&t, id, 3, .pm, now))
+        XCTAssertTrue(dayStops(t, 3).contains { (y: Found) -> Bool in y.it.id == id && y.s.part == .pm })
+        XCTAssertNil(moveItem(&t, id, 5, .am, now))
+        XCTAssertTrue(dayStops(t, 5).contains { (y: Found) -> Bool in y.it.id == id && y.s.part == .am })
+
+        // 還沒出發（沒有現在）：哪一天都能移
+        XCTAssertNil(moveItem(&t, id, 2, .pm))
+        XCTAssertTrue(dayStops(t, 2).contains { (y: Found) -> Bool in y.it.id == id })
+    }
 }

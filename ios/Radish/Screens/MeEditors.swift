@@ -68,7 +68,7 @@ enum MeOptions {
 
     static let stays: [MeOpt<StayKind>] = StayKind.allCases.map { (k: StayKind) -> MeOpt<StayKind> in
         let text: StayText = STAY[need: k]
-        return MeOpt<StayKind>(k, text.name, note: "一晚大約 \(money(text.perNight))，只拿來估花費")
+        return MeOpt<StayKind>(k, text.label, note: "一晚大約 \(money(text.perNight))（粗估）")
     }
 
     static let budget: [MeOpt<Double>] = {
@@ -228,7 +228,8 @@ struct MeEditorSheet: View {
                 onClose: close)
         case .stay:
             MePickSheet<StayKind>(
-                "住宿", options: MeOptions.stays, value: st.stay,
+                "住宿偏好", options: MeOptions.stays, value: st.stay,
+                footer: "手機自己排的行程不看這個。它拿來估住宿花費；接了 AI 的話，問住哪裡時也照這個推薦。一晚多少是粗估，沒核對。",
                 onPick: { (v: StayKind) in store.setSettings { (s: inout Settings) in s.stay = v } },
                 onClose: close)
         case .budget:

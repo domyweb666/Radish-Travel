@@ -1,13 +1,41 @@
-// 「這趟」分頁裡的幾塊：每天的分頁、一站的列、一天的行程卡、旅途中的「下一站」。
-// 對應 mobile/src/screens/TripScreen.tsx 裡的 DayTabs、StopRow、DayCard、NextStop。
+// 「這趟」分頁裡的幾塊：每天的分頁、黏在上面的這一天地圖、每一天前面那一行、一站的列、一天的行程卡、旅途中的「下一站」，
+// 還有記每一天捲到哪裡的 DayScroll。
+// 對應 mobile/src/screens/TripScreen.tsx 裡的 DayTabs、StopRow、DayCard、NextStop（地圖、每天那一行是 QC-0013 加的）。
 import SwiftUI
 
-/// 每一天一個分頁，橫向排，天數多可以左右滑
+/// 每一天第一行現在在螢幕上的哪裡，算現在看到第幾天。不是畫面狀態，改它不會讓畫面重畫
+final class DayScroll {
+    /// 每一天上緣的位置（global 座標）
+    var tops: [Int: CGFloat] = [:]
+    /// 黏在上面那一塊（地圖和天數分頁）的下緣（global 座標）
+    var line: CGFloat = 0
+    /// 手指在捲，或放開後還在滑。點分頁、程式捲的不算
+    var byHand: Bool = false
+    /// 捲到最下面了
+    var atEnd: Bool = false
+    /// 畫面現在停在第幾天。點分頁、捲到哪一天都先記在這裡，Nav 的那一天跟它一樣就不用再捲
+    var at: Int? = nil
+
+    /// 上緣已經捲到黏住那一塊下面（差一點也算）的最後一天。都還沒捲到就是第一天；捲到底就是最後一天
+    func dayNow() -> Int? {
+        if atEnd, let last = tops.keys.max() { return last }
+        let edge: CGFloat = line + T.Space.s4
+        var best: Int? = nil
+        for (d, top) in tops where top <= edge {
+            if d > (best ?? 0) { best = d }
+        }
+        return best ?? tops.keys.min()
+    }
+}
+
+/// 每一天一個分頁，橫向排，天數多可以左右滑。標到的那一天捲到看得到的地方
 struct TripDayTabs: View {
     let trip: Trip
     let value: Int
     let today: Int?
     let onChange: (Int) -> Void
+    /// 分頁那一排橫向捲到哪一格。只管這一排，不會動到外面整頁
+    @State private var at: Int? = nil
 
     var body: some View {
         let days: [Int] = Array(1...max(1, trip.days))
@@ -17,9 +45,20 @@ struct TripDayTabs: View {
                     tab(d)
                 }
             }
+            .scrollTargetLayout()
             .padding(.horizontal, T.Size.screenMargin)
         }
+        .scrollPosition(id: $at, anchor: .center)
         .padding(.horizontal, -T.Size.screenMargin)
+        .onChange(of: value, initial: true) { (old: Int, now: Int) in
+            if at == nil || old == now {
+                at = now
+            } else {
+                withAnimation(Motion.transition) {
+                    at = now
+                }
+            }
+        }
     }
 
     private func tab(_ d: Int) -> some View {
@@ -69,6 +108,7 @@ struct TripStopRow: View {
             HStack(spacing: T.Space.s3) {
                 CatIcon(it)
                 texts(part)
+                StopThumb(stop: it)
             }
             .padding(.vertical, T.Space.s3)
             .padding(.horizontal, T.Space.s4)
@@ -222,6 +262,73 @@ func tripDayRows(_ trip: Trip, _ settings: Settings, _ day: Int) -> (rows: [Trip
     return (rows: rows, stops: stops.count, total: total)
 }
 
+/// 黏在最上面的這一天地圖（QC-0013 #107，參照去趣：地圖在最上面、下面是天數分頁、再下面是這天的站）。
+/// 只給看、手指拖不動，往下滑是捲整頁；點了開這一天的路線（MapSheet）。跟著現在看的那一天換點
+struct TripDayMap: View {
+    let trip: Trip
+    let day: Int
+
+    @Environment(AppStore.self) private var store
+    @Environment(Sheets.self) private var sheets
+
+    var body: some View {
+        let h: HotelPt = hotelPt(store.s.settings, trip)
+        let stops: [Stop] = dayStops(trip, day).map { (x: Found) -> Stop in x.it }
+        let points: [MapPoint] = dayMapPoints(h, stops)
+        return Button {
+            sheets.open(.map(day: day))
+        } label: {
+            // 換天、站變了，DayMap 自己把鏡頭移過去框住這天的點
+            DayMap(points: points, compact: true, height: T.Size.tripMap, controls: false)
+                .allowsHitTesting(false)
+                .overlay(alignment: .topTrailing) {
+                    badge
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken(stops.count))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("open-map")
+    }
+
+    /// 地圖右上角寫這是哪一天的路線，點得出去
+    private var badge: some View {
+        HStack(spacing: T.Space.s1) {
+            DomyText("第 \(day) 天的路線", .footnote, weight: .semibold, lines: 1)
+            Chevron()
+        }
+        .padding(.horizontal, T.Space.s3)
+        .padding(.vertical, T.Space.s1 + T.Space.s1 / 2)
+        .background(C.surface, in: Capsule())
+        .domyElevation(T.Elevation.level1)
+        .padding(T.Space.s2)
+    }
+
+    private func spoken(_ count: Int) -> String {
+        if count == 0 {
+            return "第 \(day) 天的地圖，這天沒有排站。點了看這天的路線"
+        }
+        return "第 \(day) 天的地圖，\(count) 站。點了看這天的路線"
+    }
+}
+
+/// 每一天前面那一行：第 N 天・日期，旅途中的今天後面多寫今天
+struct TripDayHead: View {
+    let trip: Trip
+    let day: Int
+    let today: Int?
+
+    var body: some View {
+        let date: String = tripDayLabel(trip, day)
+        let text: String = "第 \(day) 天・\(date)" + (day == today ? "・今天" : "")
+        return DomyText(text, .headline)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("day-head-\(day)")
+    }
+}
+
 /// frames：這天每一站的位置都記在裡面，操作說明要照亮第一站
 struct TripDayCard: View {
     let trip: Trip
@@ -229,26 +336,18 @@ struct TripDayCard: View {
     let frames: SpotFrames
 
     @Environment(AppStore.self) private var store
-    @Environment(Sheets.self) private var sheets
     @Environment(Nav.self) private var nav
 
+    /// 這天的地圖在最上面那張（TripDayMap），點了開路線，這裡不再放「看這天的地圖」
     var body: some View {
         let plan: (rows: [TripDayRow], stops: Int, total: Int) = tripDayRows(trip, store.s.settings, day)
         let footer: String? =
             plan.stops > 0
             ? "\(plan.stops) 站・路上大約 \(plan.total) 分鐘（估）。點一站看韓文名稱、花費、怎麼去，也可以移走或換掉。"
             : nil
-        return VStack(alignment: .leading, spacing: T.Space.s3) {
-            DomySection(footer: footer) {
-                ForEach(plan.rows) { (row: TripDayRow) in
-                    rowView(row)
-                }
-            }
-            if plan.stops > 0 {
-                DomyButton("看這天的地圖", variant: .secondary, fullWidth: true) {
-                    sheets.open(.map(day: day))
-                }
-                .accessibilityIdentifier("open-map")
+        return DomySection(footer: footer) {
+            ForEach(plan.rows) { (row: TripDayRow) in
+                rowView(row)
             }
         }
     }

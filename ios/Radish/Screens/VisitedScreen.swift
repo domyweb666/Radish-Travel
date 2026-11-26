@@ -336,16 +336,9 @@ struct VisitedScreen: View {
 
     /* ---------- 收起來時一起留的：花費、沒去的站、順路清單 ---------- */
 
-    private func twdText(_ krw: Double, _ trip: Trip) -> String? {
-        guard let t = toTwd(krw, trip.rate) else { return nil }
-        return "約 \(money(t))"
-    }
-
+    /// 一站頁記的台幣那幾筆分開加，不當成韓元（Spend.swift 的 spendSum）
     private func spendFooter(_ trip: Trip) -> String {
-        let sum: (count: Int, krw: Double, twd: Double?) = spendTotal(trip)
-        let head: String = "\(sum.count) 筆，一共 \(krwText(sum.krw))"
-        guard let twd = twdText(sum.krw, trip) else { return head + "。" }
-        return head + "，\(twd)（照你填的匯率算）。"
+        return spendSumText(spendSum(trip.spend ?? [], trip.rate)) + "。"
     }
 
     /// 沒有記花費、站都去了、沒加過順路的就不顯示
@@ -356,7 +349,7 @@ struct VisitedScreen: View {
             if !list.isEmpty {
                 DomySection("實際花的", footer: spendFooter(trip)) {
                     ForEach(list, id: \.id) { (x: Spend) in
-                        TextRow(krwText(x.krw), note: spendNote(x, trip))
+                        TextRow(spendAmountText(x), note: spendNote(x, trip))
                     }
                 }
             }
@@ -386,8 +379,9 @@ struct VisitedScreen: View {
     private func spendNote(_ x: Spend, _ trip: Trip) -> String {
         var bits: [String] = []
         if let day = x.day { bits.append("第 \(day) 天") }
+        if let place = spendPlaceName(trip, x) { bits.append("在「\(place)」") }
         if let note = x.note, !note.isEmpty { bits.append(note) }
-        if let twd = twdText(x.krw, trip) { bits.append(twd) }
+        if let twd = spendTwdText(x, trip.rate) { bits.append(twd) }
         return bits.joined(separator: "・")
     }
 

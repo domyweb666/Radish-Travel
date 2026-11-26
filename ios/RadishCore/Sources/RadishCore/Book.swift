@@ -212,6 +212,25 @@ func bookWhen(_ r: BookRow) -> String {
     return "第 \(r.day) 天 \(fmtDay(r.visit))\(PART[need: r.part])"
 }
 
+/// 講「開賣」「訂票頁」還是講訂位。吃的和咖啡講訂位，其他照票的講法
+struct BookWords: Hashable, Sendable {
+    /// 接在日期時間後面：開賣、開放訂位
+    let open: String
+    /// 已經開賣、已經可以訂位
+    let opened: String
+    /// 訂票頁、訂位頁
+    let page: String
+    /// 一站頁那一列的小標：開賣時間、開放訂位時間
+    let time: String
+}
+
+func bookWords(_ c: Cat) -> BookWords {
+    if c == .eat || c == .cafe {
+        return BookWords(open: "開放訂位", opened: "已經可以訂位", page: "訂位頁", time: "開放訂位時間")
+    }
+    return BookWords(open: "開賣", opened: "已經開賣", page: "訂票頁", time: "開賣時間")
+}
+
 /// 網路賣到哪一天。沒有分網路和現場的是 nil
 func bookOnlineUntil(_ b: BookInfo, _ visit: String) -> String? {
     guard let n = b.onlineUntilDays, n >= 0 else { return nil }
@@ -233,22 +252,23 @@ private func bookOnlineLine(_ until: String, _ at: String?, _ visit: String, _ t
     return "\(line)，\(when) \(clock) 起現場賣（當地時間）"
 }
 
-/// 開賣那一句。網路已經停賣的照資料講，不說已經開賣
+/// 開賣那一句。網路已經停賣的照資料講，不說已經開賣。吃的講訂位（bookWords）
 func bookOpenText(_ r: BookRow, _ today: String) -> String {
+    let w: BookWords = bookWords(r.stop.c)
     if r.stage == BookStage.open {
         if let until = r.onlineUntil, until < today {
             return bookOnlineLine(until, r.onsiteAt, r.visit, today)
         }
-        return "已經開賣"
+        return w.opened
     }
     if r.stage == BookStage.unknown && r.how != nil {
-        return bookHost(r.url) == nil ? "怎麼訂，在這趟點開這一站看" : "哪天開賣沒查到，看下面的訂票頁"
+        return bookHost(r.url) == nil ? "怎麼訂，在這趟點開這一站看" : "哪天\(w.open)沒查到，看下面的\(w.page)"
     }
-    guard r.stage == BookStage.notYet, let on = r.openOn else { return "開賣時間還不知道" }
+    guard r.stage == BookStage.notYet, let on = r.openOn else { return "\(w.time)還不知道" }
     let date: String = on == today ? "今天" : fmtDay(on)
-    guard let at = r.openAt else { return "\(date)開賣，幾點還不知道" }
+    guard let at = r.openAt else { return "\(date)\(w.open)，幾點還不知道" }
     let gap: String = on == today ? " " : ""
-    return "\(date)\(gap)\(at) 開賣（台灣時間）"
+    return "\(date)\(gap)\(at) \(w.open)（台灣時間）"
 }
 
 /// 免費取消那一句。不知道就是 nil
@@ -265,10 +285,14 @@ func bookNote(_ r: BookRow, _ today: String) -> String {
     return first + "\n" + bookOpenText(r, today)
 }
 
-/// 這一段下面那句：有查到的、沒查到的，照實講
+/// 這一段下面那句：有查到的、沒查到的，照實講。全是吃的講訂位頁，有票也有吃的兩個都講
 func bookFooter(_ rows: [BookRow]) -> String {
     let known: Bool = rows.contains { (r: BookRow) -> Bool in r.how != nil }
-    if known { return "訂好了就打勾。查到的規則會變，訂之前再看一次訂票頁。沒寫的就是還沒查到，要自己查。" }
+    let pages: [String] = ["訂票頁", "訂位頁"].filter { (p: String) -> Bool in
+        rows.contains { (r: BookRow) -> Bool in bookWords(r.stop.c).page == p }
+    }
+    let page: String = pages.isEmpty ? "訂票頁" : pages.joined(separator: "、")
+    if known { return "訂好了就打勾。查到的規則會變，訂之前再看一次\(page)。沒寫的就是還沒查到，要自己查。" }
     return "訂好了就打勾。怎麼訂、外國人訂不訂得到，還沒查到，要自己查。"
 }
 

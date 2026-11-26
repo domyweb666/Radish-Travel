@@ -595,8 +595,7 @@ private func chatStopFrozen(_ t: Trip, _ id: Any?, _ now: TripNow?) -> String? {
 /// 這個時段能不能排東西進去。能回 nil
 private func chatSlotFrozen(_ dayRaw: Any?, _ partRaw: Any?, _ now: TripNow?) -> String? {
     guard let day = chatWhole(chatNum(dayRaw)), let part = chatPart(partRaw) else { return nil }
-    if slotPast(now, day, part) { return "\(chatWhere(day, part))已經過了，不能再排" }
-    return nil
+    return slotPastWhy(now, day, part)
 }
 
 /// 這一步會不會動到不能動的東西。會就回原因，這一步不做。找不到站、時段不對這類錯，留給 chatApplyOne 講
@@ -994,6 +993,7 @@ func aiPrompt(
 - 使用者的過敏是硬規則：不要加主打那些食材的店或小吃。你不知道每家店的食材，所以只要動到吃的站，reply 裡提醒他點餐前出示過敏告知卡、自己確認。
 - 「絕對不吃」的不要排；「不愛吃」的盡量避開，真的排了要在 reply 裡先講。
 - 使用者說過「以後都不排」的站或類別，不要加回來。
+- 使用者問住哪、要你推薦旅館時，照習慣裡的「住宿偏好」和住的那一帶推薦真實存在的旅館；價錢只說大概，請他訂之前自己查。推薦旅館不用動行程，ops 給空陣列。
 - 動到標「自己加的」站、或用 setTweak 改這趟的調整，app 會跳一張卡讓他按「套用」才改。這種時候 reply 說要他確認，不要說已經改好。
 """
 

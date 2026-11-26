@@ -342,12 +342,14 @@ func newId(_ prefix: String) -> String {
     return id
 }
 
-func moveItem(_ t: inout Trip, _ id: String, _ day: Int, _ part: Part) -> String? {
+/// 把一站移到第 day 天的 part。now 有給（旅途中）時，已經過了的時段移不進去（跟用講的同一句，見 slotPastWhy）
+func moveItem(_ t: inout Trip, _ id: String, _ day: Int, _ part: Part, _ now: TripNow? = nil) -> String? {
     let found: Found? = findItem(t, id)
     let toIndex: Int? = slotAt(t, day, part)
     guard let x = found else { return "找不到那一站" }
     guard let to = toIndex else { return "第 \(day) 天\(PART[part] ?? "")你在路上，放不進去" }
     if to == x.si { return nil }
+    if let why = slotPastWhy(now, day, part) { return why }
     t.slots[x.si].items.remove(at: x.ii)
     if t.slots[x.si].items.isEmpty { t.slots[x.si].rest = true }
     t.slots[to].items.append(x.it)
@@ -953,7 +955,8 @@ func settingsSummary(_ st: Settings) -> String {
     let never: String = neverBits.joined(separator: "、")
     let likeText: String = likes.isEmpty ? "什麼都可以" : likes.joined(separator: "、")
 
-    var out: String = "住\(STAY[need: st.stay].name)、\(HOTEL[need: st.base].n)一帶"
+    // 住宿偏好也送給 AI，問到住哪時照這個推薦（QC-0013 #105）
+    var out: String = "住\(HOTEL[need: st.base].n)一帶，住宿偏好：\(STAY[need: st.stay].label)"
     out += "；吃的是\(food)，一天吃喝 \(money(st.budget))"
     if !eat.isEmpty { out += "，" + eat }
     out += "；喜歡\(likeText)"

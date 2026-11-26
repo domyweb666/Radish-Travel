@@ -45,6 +45,8 @@ enum IconPaths {
     /// 須知：圓圈裡一個 i
     static let notes = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5M12 8h.01"
     static let send = "M12 19V5M5 12l7-7 7 7"
+    /// 加一個：加號（一站頁的「加照片」方塊）
+    static let plus = "M12 5v14M5 12h14"
     static let sprout = "M12 21v-9M12 14c-5 0-7-3-7-7 5 0 7 3 7 7zM12 11c0-4 2-6 7-6 0 4-2 6-7 6z"
 }
 

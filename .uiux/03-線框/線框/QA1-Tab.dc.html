@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>總覽 1・上面一排切換</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#96400F}a:hover{color:#7A330B}
+</style>
+</helmet>
+<div style="width: 393px; height: 852px; position: relative; overflow: hidden; background: #F7F4EC; color: #1D1D1F; font-family: -apple-system, 'PingFang TC', 'Noto Sans TC', sans-serif;">
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 393px; height: 59px; box-sizing: border-box; padding-bottom: 6px; background: #EFEBE3; display: flex; align-items: flex-end; justify-content: center; font-size: 11px; line-height: 14px; color: #66666D;">系統：狀態列、動態島</div>
+
+  <div style="position: absolute; left: 0; top: 59px; width: 393px; display: flex; flex-direction: column;">
+    <div style="height: 44px; display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px;">
+      <button type="button" aria-label="更多" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0;">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="3" stroke-linecap="round"><path d="M5 12h.01M12 12h.01M19 12h.01"></path></svg>
+      </button>
+      <button type="button" aria-label="平常的我" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; padding: 0;">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"></path></svg>
+      </button>
+    </div>
+    <div style="padding: 0 20px; display: flex; flex-direction: column; gap: 4px;">
+      <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700;">首爾 8 天</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 20px; color: #66666D;">12/1（二）– 12/8（二）・還有 5 天・住東大門一帶</p>
+    </div>
+
+    <div role="tablist" aria-label="總覽和每一天" style="display: flex; gap: 8px; padding: 12px 20px 0; overflow: hidden;">
+      <button type="button" role="tab" aria-selected="true" style="flex-shrink: 0; height: 52px; padding: 0 18px; border: 0; border-radius: 16px; background: #B5501B; color: #FFFFFF; font: inherit; font-size: 16px; line-height: 21px; font-weight: 700;">總覽</button>
+      <button type="button" role="tab" aria-selected="false" style="flex-shrink: 0; height: 52px; padding: 0 14px; border: 0; border-radius: 16px; background: #FFFFFF; color: #1D1D1F; font: inherit; display: flex; flex-direction: column; justify-content: center; align-items: center;"><span style="font-size: 16px; line-height: 21px; font-weight: 600;">第 1 天</span><span style="font-size: 12px; line-height: 16px; color: #66666D;">12/1（二）</span></button>
+      <button type="button" role="tab" aria-selected="false" style="flex-shrink: 0; height: 52px; padding: 0 14px; border: 0; border-radius: 16px; background: #FFFFFF; color: #1D1D1F; font: inherit; display: flex; flex-direction: column; justify-content: center; align-items: center;"><span style="font-size: 16px; line-height: 21px; font-weight: 600;">第 2 天</span><span style="font-size: 12px; line-height: 16px; color: #66666D;">12/2（三）</span></button>
+      <button type="button" role="tab" aria-selected="false" style="flex-shrink: 0; height: 52px; padding: 0 14px; border: 0; border-radius: 16px; background: #FFFFFF; color: #1D1D1F; font: inherit; display: flex; flex-direction: column; justify-content: center; align-items: center;"><span style="font-size: 16px; line-height: 21px; font-weight: 600;">第 3 天</span><span style="font-size: 12px; line-height: 16px; color: #66666D;">12/3（四）</span></button>
+    </div>
+
+    <div style="margin: 24px 20px 0; display: flex; align-items: center; gap: 12px;">
+      <div style="display: flex;">
+        <span aria-label="你" style="width: 36px; height: 36px; border-radius: 18px; background: #F8E2D2; color: #96400F; font-size: 13px; line-height: 36px; font-weight: 700; text-align: center;">你</span>
+        <span aria-hidden="true" style="width: 36px; height: 36px; box-sizing: border-box; margin-left: -8px; border-radius: 18px; border: 2px dashed #D8D3C8; background: #F7F4EC;"></span>
+      </div>
+      <button type="button" style="height: 44px; padding: 0 16px; border: 1px solid #D8D3C8; border-radius: 22px; background: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600; color: #1D1D1F; display: flex; align-items: center; gap: 6px;"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"></path></svg>邀請一起排</button>
+      <span style="font-size: 12px; line-height: 16px; padding: 2px 8px; border-radius: 999px; background: #EFEBE3; color: #66666D;">要後端，未定</span>
+    </div>
+
+    <div style="margin: 24px 20px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+      <button type="button" style="min-height: 96px; padding: 16px; border: 0; border-radius: 16px; background: #FFFFFF; font: inherit; color: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">檢查這趟</span>
+        <span style="font-size: 22px; line-height: 28px; font-weight: 700; color: #96400F;">2 站還沒訂</span>
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">要先訂的有 4 站</span>
+      </button>
+      <button type="button" style="min-height: 96px; padding: 16px; border: 0; border-radius: 16px; background: #FFFFFF; font: inherit; color: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">須知</span>
+        <span style="font-size: 22px; line-height: 28px; font-weight: 700;">6 條</span>
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">第 2 天有 2 條</span>
+      </button>
+      <button type="button" style="min-height: 96px; padding: 16px; border: 0; border-radius: 16px; background: #FFFFFF; font: inherit; color: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">花費</span>
+        <span style="font-size: 22px; line-height: 28px; font-weight: 700;">還沒記</span>
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">粗估每人 NT$ 28,000</span>
+      </button>
+      <button type="button" style="min-height: 96px; padding: 16px; border: 0; border-radius: 16px; background: #FFFFFF; font: inherit; color: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">地圖</span>
+        <span style="font-size: 22px; line-height: 28px; font-weight: 700;">8 天的路線</span>
+        <span style="font-size: 13px; line-height: 18px; color: #66666D;">點了看整趟</span>
+      </button>
+    </div>
+
+    <div style="margin: 24px 20px 0; font-size: 13px; line-height: 18px; color: #66666D;">這趟會用到的票</div>
+    <div style="margin: 8px 20px 0; padding: 4px 16px; border-radius: 16px; background: #FFFFFF; outline: 2px dashed #D8D3C8; outline-offset: 2px; display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 52px; border-bottom: 1px solid #E5E1D8;">
+        <span style="flex: 1; min-width: 0; font-size: 15px; line-height: 20px;">樂天世界・一日券</span>
+        <a href="#" style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #F8E2D2; text-decoration: none;">Klook</a>
+        <a href="#" style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #F8E2D2; text-decoration: none;">KKday</a>
+      </div>
+      <p style="margin: 0; padding: 8px 0; font-size: 12px; line-height: 16px; color: #66666D;">聯盟連結，未定，跟「排序沒有私心」的鐵則要一起看</p>
+    </div>
+  </div>
+
+  <nav aria-label="分頁" style="position: absolute; left: 46px; top: 742px; width: 300px; height: 64px; box-sizing: border-box; padding: 6px; display: flex; gap: 4px; background: #FFFFFF; border-radius: 32px; box-shadow: 0 4px 16px rgba(25, 22, 20, 0.12);">
+    <button type="button" aria-current="page" style="flex: 1; border: 0; border-radius: 26px; background: #F8E2D2; color: #96400F; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#96400F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 700;">這趟</span>
+    </button>
+    <button type="button" style="flex: 1; border: 0; border-radius: 26px; background: transparent; color: #1D1D1F; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4zM8 9.5h8M8 12.5h5"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500;">問 AI</span>
+    </button>
+    <button type="button" style="flex: 1; border: 0; border-radius: 26px; background: transparent; color: #1D1D1F; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; padding: 0;">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16"></path></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500;">旅行</span>
+    </button>
+  </nav>
+
+  <div aria-hidden="true" style="position: absolute; left: 0; top: 818px; width: 393px; height: 34px; background: #EFEBE3; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 14px; color: #66666D;">系統：主畫面指示條</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":393,"height":852}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

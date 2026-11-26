@@ -29,7 +29,12 @@ final class FactsDataTests: XCTestCase {
         for (id, f) in file.facts {
             XCTAssertTrue(isDate(f.checked), "\(id) 核對日期 \(f.checked)")
             if f.status != FactStatus.none { XCTAssertFalse(f.src.isEmpty, "\(id) 沒有來源") }
-            for s in f.src { XCTAssertTrue(s.url.hasPrefix("http"), "\(id) \(s.url)") }
+            for s in f.src {
+                XCTAssertTrue(s.url.hasPrefix("http"), "\(id) \(s.url)")
+                // 來源名是給人看的，不帶日期。哪天寫的放 date
+                XCTAssertNil(s.name.range(of: "(19|20)[0-9]{2}", options: .regularExpression), "\(id) 來源名帶了日期：\(s.name)")
+                if let d = s.date { XCTAssertNotNil(d.range(of: "^20[0-9]{2}-[0-9]{2}(-[0-9]{2})?$", options: .regularExpression), "\(id) \(d)") }
+            }
             for d in f.closed ?? [] { XCTAssertTrue(d >= 0 && d <= 6, "\(id) 星期 \(d)") }
             for key in f.closedOn ?? [] {
                 let known: Bool = file.lunar[key] != nil || isDate(key) || isDate("2027-" + key)

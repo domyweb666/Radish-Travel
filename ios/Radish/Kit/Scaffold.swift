@@ -16,15 +16,24 @@ struct Screen<Actions: View, Content: View>: View {
     let title: String
     /// 設了就捲到那個 id（操作說明用）。捲完自己不會清掉，要呼叫的人清
     var scrollTo: String?
+    /// 捲動的階段變了就叫（手指在捲、放開後還在滑、停了、程式在捲）。沒給就不管。
+    /// 這趟分頁用它分辨是手指捲的還是點分頁程式捲的，手指捲到哪一天，天數分頁才跟著換
+    var onScrollPhase: ((ScrollPhase) -> Void)?
+    /// 看得到的那一段有多高（扣掉狀態列、下緣安全區）。這趟分頁點天數捲過去時，用它算那一天要停在哪
+    var onVisibleHeight: ((CGFloat) -> Void)?
     @ViewBuilder var actions: Actions
     @ViewBuilder var content: Content
 
     init(
-        _ title: String, scrollTo: String? = nil, @ViewBuilder actions: () -> Actions,
+        _ title: String, scrollTo: String? = nil, onScrollPhase: ((ScrollPhase) -> Void)? = nil,
+        onVisibleHeight: ((CGFloat) -> Void)? = nil,
+        @ViewBuilder actions: () -> Actions,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.scrollTo = scrollTo
+        self.onScrollPhase = onScrollPhase
+        self.onVisibleHeight = onVisibleHeight
         self.actions = actions()
         self.content = content()
     }
@@ -48,6 +57,18 @@ struct Screen<Actions: View, Content: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDismissesKeyboard(.interactively)
+            .onScrollPhaseChange { (_: ScrollPhase, now: ScrollPhase) in
+                if let onScrollPhase {
+                    onScrollPhase(now)
+                }
+            }
+            .onScrollGeometryChange(for: CGFloat.self) { (g: ScrollGeometry) -> CGFloat in
+                return g.containerSize.height - g.contentInsets.top - g.contentInsets.bottom
+            } action: { (_: CGFloat, h: CGFloat) in
+                if let onVisibleHeight {
+                    onVisibleHeight(h)
+                }
+            }
             .background(C.canvas.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) { statusCover }
             .onChange(of: scrollTo) { _, target in
@@ -247,7 +268,7 @@ final class KeyboardStage {
     }
 }
 
-/// 這一天、一站最下面常駐講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
+/// 問 AI 分頁最下面講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
 let talkBarClearance: CGFloat = T.Size.touch + T.Size.field + T.Space.s4
 
 /// 半頁開著多久還沒關，提示條才在半頁裡出現。做完就自己收起來的半頁不會閃一下

@@ -1,5 +1,7 @@
 // 「行前」的第四段，花費：每人粗估、機票自己填、韓元換算、一筆一筆記實際花的。
 // 對應 mobile/src/screens/PrepScreen.tsx 的 Cost 和 Spent。
+// QC-0013：一站頁「在這裡花的」也記在同一份 trip.spend，這裡的合計一起算；那邊可以記台幣，台幣那一筆不換算。
+// 填匯率那一格（SpendRateField）兩邊共用。
 import SwiftUI
 
 /// TS 的 String(number)：整數不帶小數點
@@ -158,7 +160,7 @@ struct PrepSpent: View {
                 convertedCard(trip)
                 noteField
                 addButton
-                rateField
+                SpendRateField(text: $rate, base: $rateBase)
                 quickTable(trip)
                 records(trip)
             }
@@ -234,49 +236,6 @@ struct PrepSpent: View {
         note = ""
     }
 
-    private var rateField: some View {
-        DomyTextField(
-            "1000 韓元換多少台幣", text: $rate, placeholder: "例如 23",
-            helper: "自己填，照你實際換到的匯率。這個 app 不會去抓匯率。", keyboard: .decimalPad
-        )
-        .accessibilityIdentifier("spend-rate")
-        .onAppear { fillRate() }
-        .onChange(of: rate) { (_: String, text: String) in
-            if let cut = overLimit(text, 6) {
-                rate = cut
-            }
-        }
-        // 按了復原，框裡的字跟著變回去
-        .onChange(of: store.s.trip?.rate ?? 0) { (_: Double, now: Double) in
-            let shownNow: Double = parseRate(rate) ?? 0
-            if shownNow != now { fillRate() }
-        }
-        .onFieldDone { saveRate() }
-    }
-
-    /// 把存著的匯率放進框裡
-    private func fillRate() {
-        let r: Double = store.s.trip?.rate ?? 0
-        let text: String = r != 0 ? plainNumber(r) : ""
-        rate = text
-        rateBase = text
-    }
-
-    /// 打完了存一次，可以復原。沒有變就不留一步
-    private func saveRate() {
-        guard let base = rateBase, rate != base else { return }
-        guard let trip = store.s.trip else { return }
-        let text: String = rate
-        rateBase = text
-        let r: Double? = parseRate(text)
-        if trip.rate == r { return }
-        store.act(undoable: true) { (d: inout AppState) -> String? in
-            d.trip?.rate = r
-            if let r { return "匯率改成 1000 韓元換 NT$ \(plainNumber(r))。" }
-            return text.isEmpty ? "匯率清掉了。" : "這個匯率看不懂，先當成沒填。"
-        }
-    }
-
     @ViewBuilder private func quickTable(_ trip: Trip) -> some View {
         if let r = trip.rate, r != 0 {
             DomySection("對照表", footer: "照你填的匯率算，四捨五入到元。") {
@@ -290,14 +249,11 @@ struct PrepSpent: View {
     }
 
     private func recordsFooter(_ trip: Trip, _ list: [Spend]) -> String {
-        if list.isEmpty { return "在當地花了錢就記一筆，存在手機裡，沒網路也能記。" }
-        let sum: (count: Int, krw: Double, twd: Double?) = spendTotal(trip)
-        let head: String = "\(sum.count) 筆，一共 \(krwText(sum.krw))"
-        let mid: String =
-            sum.twd == nil
-            ? "。填了上面的匯率才會換成台幣"
-            : "，\(twdOf(sum.krw, trip) ?? "")（照你填的匯率算）"
-        return head + mid + "。點一筆可以刪掉，刪錯了按「復原」。"
+        if list.isEmpty { return "在當地花了錢就記一筆，存在手機裡，沒網路也能記。在一站頁記的也會列在這裡。" }
+        // 一站頁記的也在 trip.spend 裡，一起算；台幣那幾筆分開加，不當成韓元
+        let sum: SpendSum = spendSum(list, trip.rate)
+        let mid: String = spendNeedsRate(sum) ? "。填了上面的匯率，韓元才會換成台幣" : ""
+        return spendSumText(sum) + mid + "。點一筆可以刪掉，刪錯了按「復原」。"
     }
 
     private func records(_ trip: Trip) -> some View {
@@ -307,7 +263,7 @@ struct PrepSpent: View {
                 TextRow("還沒有記")
             } else {
                 ForEach(list, id: \.id) { (x: Spend) in
-                    PrepSpendRow(x: x, twd: twdOf(x.krw, trip)) {
+                    PrepSpendRow(x: x, twd: spendTwdText(x, trip.rate), place: spendPlaceName(trip, x)) {
                         removeOne(x.id)
                     }
                 }
@@ -321,31 +277,36 @@ struct PrepSpent: View {
             guard var trip = d.trip else { return nil }
             guard let gone = removeSpend(&trip, id) else { return nil }
             d.trip = trip
-            return "刪掉「\(gone.note ?? krwText(gone.krw))」這一筆了。"
+            return "刪掉「\(gone.note ?? spendAmountText(gone))」這一筆了。"
         }
     }
 }
 
-/// 實際花的一筆：點一下刪掉
+/// 實際花的一筆：點一下刪掉。place 是在一站頁記的那一站
 private struct PrepSpendRow: View {
     let x: Spend
     let twd: String?
+    let place: String?
     let onDelete: () -> Void
 
     private var title: String {
-        return x.note ?? "沒寫花在哪"
+        if let note = x.note { return note }
+        if let place { return "在「\(place)」" }
+        return "沒寫花在哪"
     }
 
     private var dayNote: String? {
-        guard let day = x.day, day != 0 else { return nil }
-        return "第 \(day) 天"
+        var bits: [String] = []
+        if let day = x.day, day != 0 { bits.append("第 \(day) 天") }
+        if let place, x.note != nil { bits.append("在「\(place)」記的") }
+        return bits.isEmpty ? nil : bits.joined(separator: "・")
     }
 
     var body: some View {
         Button(action: onDelete) {
             TextRow(title, note: dayNote) {
                 VStack(alignment: .trailing, spacing: 0) {
-                    DomyText(krwText(x.krw), .headline)
+                    DomyText(spendAmountText(x), .headline)
                     if let twd {
                         DomyText(twd, .footnote, tone: .secondary)
                     }
@@ -357,8 +318,65 @@ private struct PrepSpendRow: View {
         .buttonStyle(RowPressStyle())
         .padding(.horizontal, -T.Space.s4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title)，\(krwText(x.krw))，點一下刪掉")
+        .accessibilityLabel("\(title)，\(spendAmountText(x))，點一下刪掉")
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("spend-row-\(x.id)")
+    }
+}
+
+/// 「1000 韓元換 NT$ 23」
+func rateWords(_ r: Double) -> String {
+    return "1000 韓元換 NT$ \(plainNumber(r))"
+}
+
+/// 填匯率那一格：花費頁和一站頁「在這裡花的」共用。text、base 由外面拿著，外面才能邊打邊換算。
+/// base 是上次存的或放進框裡的字，跟框裡一樣就是沒改；nil 是還沒放進去。打完才存一次，可以復原
+struct SpendRateField: View {
+    @Environment(AppStore.self) private var store
+    @Binding var text: String
+    @Binding var base: String?
+    var testId: String = "spend-rate"
+
+    var body: some View {
+        DomyTextField(
+            "1000 韓元換多少台幣", text: $text, placeholder: "例如 23",
+            helper: "自己填，照你實際換到的匯率。這個 app 不會去抓匯率。", keyboard: .decimalPad
+        )
+        .accessibilityIdentifier(testId)
+        .onAppear { fill() }
+        .onChange(of: text) { (_: String, now: String) in
+            if let cut = overLimit(now, 6) {
+                text = cut
+            }
+        }
+        // 按了復原，框裡的字跟著變回去
+        .onChange(of: store.s.trip?.rate ?? 0) { (_: Double, now: Double) in
+            let shownNow: Double = parseRate(text) ?? 0
+            if shownNow != now { fill() }
+        }
+        .onFieldDone { save() }
+    }
+
+    /// 把存著的匯率放進框裡
+    private func fill() {
+        let r: Double = store.s.trip?.rate ?? 0
+        let next: String = r != 0 ? plainNumber(r) : ""
+        text = next
+        base = next
+    }
+
+    /// 打完了存一次，可以復原。沒有變就不留一步
+    private func save() {
+        guard let was = base, text != was else { return }
+        guard let trip = store.s.trip else { return }
+        let typed: String = text
+        base = typed
+        let r: Double? = parseRate(typed)
+        if trip.rate == r { return }
+        store.act(undoable: true) { (d: inout AppState) -> String? in
+            d.trip?.rate = r
+            if let r { return "匯率改成 \(rateWords(r))。" }
+            return typed.isEmpty ? "匯率清掉了。" : "這個匯率看不懂，先當成沒填。"
+        }
     }
 }
