@@ -147,7 +147,12 @@ struct TripScreen: View {
                 PlannedCard(trip: trip)
             }
             ForEach(list, id: \.self) { (d: Int) in
-                dayBlock(trip, d)
+                // 落點從這一天的上緣往上一個黏頂高度：落點排在這一天上面，再用負的上邊距收回去，版面不變
+                VStack(alignment: .leading, spacing: 0) {
+                    dayAnchor(d)
+                    dayBlock(trip, d)
+                }
+                .padding(.top, -anchorH)
             }
             uncheckedNote(trip, phase)
         }
@@ -167,9 +172,6 @@ struct TripScreen: View {
             DayShutBanner(trip: trip, day: d)
             TripDayCard(trip: trip, day: d, frames: frames)
         }
-        .background(alignment: .top) {
-            dayAnchor(d)
-        }
         .onGeometryChange(for: CGFloat.self) { (g: GeometryProxy) -> CGFloat in
             return g.frame(in: .global).minY
         } action: { (y: CGFloat) in
@@ -182,13 +184,15 @@ struct TripScreen: View {
     }
 
     /// 點分頁捲過去的落點：從這一天的上緣往上一個「黏在上面那一塊」的高度。
-    /// 捲到頂端時，這一天剛好接在地圖和分頁下面，不會被蓋住
+    /// 捲到頂端時，這一天剛好接在地圖和分頁下面，不會被蓋住。
+    /// 不用 background 加 alignmentGuide 往上推：CI 實測 scrollTo 不認那個位移，這一天會被捲到最上面蓋住
+    private var anchorH: CGFloat {
+        return max(pinH, T.Size.hairline)
+    }
+
     private func dayAnchor(_ d: Int) -> some View {
         Color.clear
-            .frame(height: max(pinH, T.Size.hairline))
-            .alignmentGuide(VerticalAlignment.top) { (v: ViewDimensions) -> CGFloat in
-                return v[VerticalAlignment.bottom]
-            }
+            .frame(height: anchorH)
             .id(dayKey(d))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
