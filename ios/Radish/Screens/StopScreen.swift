@@ -1,7 +1,7 @@
 // 一站（S06，線框 .uiux/03-線框/線框/A5-Stop）：推進頁。建議停留、須知、預估花費、韓文名、找路、移到別的時段、換一個，
 // 照線框的順序；核對資料的開放／怎麼訂／來源（有查到才有）排在後面，不把要按的擠到後面幾頁。
 // QC-0013：不再顯示「為什麼排」；照片（去沒去過都能加）和「在這裡花的」在 StopScreenMine.swift。
-// 右上角是不想去這一站。最下面掛跟 AI 講的那一列（小標是站名）。
+// 右上角是不想去這一站。最下面原本掛跟 AI 講的那一列，QC-0013 拿掉了，要問 AI 到問 AI 分頁。
 // 原本是彈出卡 mobile/src/sheets/StopSheet.tsx（SwiftUI 版的 Sheets/StopSheet.swift），2026-11-23 改成推進頁。
 // 這趟裡找不到的話改查首爾資料包（附近還有什麼的「看那站」、剛拿掉又從舊的入口進來的），只給看。
 // 每一塊的畫面在 StopScreenParts.swift；換一個、不去這一站、過敏告知卡是這一頁自己開的半頁，給司機看是全螢幕。
@@ -187,7 +187,6 @@ private struct StopPage: View {
                 }
             }
         }
-        .talkBar(it.n, target: .stop(id: id))
         .sheet(item: $pane, onDismiss: runAfterPane) { (p: StopPane) in
             paneView(p)
                 .environment(store)

@@ -29,7 +29,7 @@ final class FormQCUITests: RadishUITestCase {
     /// 畫面最下面那幾層（講的那一列、分頁列）最上緣在哪
     private func coverTop() -> CGFloat {
         var top = app.frame.maxY
-        for id in ["tab-trip", "talk-hint-0", "talk-input"] {
+        for id in ["tab-trip"] {
             let el = app.descendants(matching: .any).matching(identifier: id).firstMatch
             if el.exists && !el.frame.isEmpty {
                 top = min(top, el.frame.minY)

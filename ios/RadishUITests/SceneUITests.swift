@@ -52,7 +52,7 @@ final class SceneUITests: RadishUITestCase {
     private func bottomLimit(_ inSheet: Bool) -> CGFloat {
         var limit: CGFloat = app.frame.maxY - 34
         if !inSheet {
-            for id in ["tab-trip", "talk-hint-0", "talk-input"] {
+            for id in ["tab-trip"] {
                 let element: XCUIElement = byId(id)
                 if element.exists && !element.frame.isEmpty {
                     limit = min(limit, element.frame.minY - 8)
@@ -279,67 +279,59 @@ final class SceneUITests: RadishUITestCase {
 
     /* ---------- 跟 AI 講 ---------- */
 
-    /// 這趟分頁最下面沒有講的那一列了（QC-0013 #95），跟 AI 講改從一站頁最下面那一列。
-    /// 那一列的說法是一站的：這站要注意什麼、換一個類似的、移到別天
-    private func openFirstStop() {
-        let rows: XCUIElementQuery = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier BEGINSWITH %@", "stop-row-"))
-        XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 15), "清單裡沒有站")
+    /// 跟 AI 講只在問 AI 分頁（QC-0013 #95）：這趟分頁和一站頁最下面都沒有講的那一列了。
+    /// 問 AI 分頁送出後不升半頁，回覆、復原、再送一次、同意都接在對話裡
+    private func openAsk() {
         XCTAssertFalse(byId("talk-input").exists, "這趟分頁最下面不該再有講的那一列")
-        tapId(rows.firstMatch.identifier)
-        see("stop-move")
+        openTab("ask")
+        see("chat-input")
         pause()
     }
 
     func test08沒網路講一句() {
         openScene("plan", ["-uitest-dest", "bridge", "-uitest-agreed", "-uitest-offline"])
-        openFirstStop()
-        see("talk-hold")
+        openAsk()
+        see("chat-hold")
         shot("沒網路")
-        see("talk-input")
-        typeAndCheck("talk-input", "第二天多排一間咖啡廳", "沒網路-打了一句")
+        typeAndCheck("chat-input", "第二天多排一間咖啡廳", "沒網路-打了一句")
     }
 
     func test09句數用完() {
         openScene("quota", ["-uitest-dest", "endpoint", "-uitest-agreed"])
-        openFirstStop()
-        see("talk-hold")
+        openAsk()
+        see("chat-hold")
         pause()
         shot("句數用完")
     }
 
     func test10沒回好() {
         openScene("plan", ["-uitest-dest", "endpoint", "-uitest-agreed", "-uitest-ai", "fail"])
-        openFirstStop()
-        see("talk-hint-1").tap()
-        see("reply-retry")
+        openAsk()
+        see("chat-hint-1").tap()
+        see("chat-retry")
         pause()
         shot("沒回好")
     }
 
-    func test11AI改了行程的剛剛那一則() {
+    func test11AI改了行程的那一則() {
         openScene("plan", ["-uitest-dest", "key", "-uitest-agreed", "-uitest-ai", "ok"])
-        openFirstStop()
-        see("talk-hint-1").tap()
-        see("reply-undo")
+        openAsk()
+        see("chat-hint-1").tap()
+        let undo: XCUIElement = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "chat-undo-")).firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 15), "AI 改了行程，對話裡沒有復原")
         pause()
-        shot("剛剛那一則-AI改了")
-        drag(0.75, 0.3)
-        pause()
-        shot("剛剛那一則-拉高")
+        shot("AI改了")
     }
 
     /// 三種送去的地方，說明裡的字不一樣
     private func consent(_ dest: String, _ title: String) {
         openScene("plan", ["-uitest-dest", dest, "-uitest-ai", "fail"])
-        openFirstStop()
-        see("talk-hint-1").tap()
+        openAsk()
+        see("chat-hint-1").tap()
         see("chat-consent-where")
         pause()
         shot(title)
-        drag(0.75, 0.3)
-        pause()
-        shot(title + "-拉高")
     }
 
     func test12第一次同意電腦CLI() {

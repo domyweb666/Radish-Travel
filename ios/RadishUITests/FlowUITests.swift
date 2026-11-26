@@ -38,10 +38,10 @@ final class FlowUITests: RadishUITestCase {
         element.tap()
     }
 
-    /// 畫面最下面那幾層（一站頁講的那一列、分頁列）最上緣在哪。這趟分頁最下面沒有講的那一列了（QC-0013）
+    /// 畫面最下面那一層（分頁列）最上緣在哪。這趟分頁和一站頁最下面都沒有講的那一列了（QC-0013）
     private func coverTop() -> CGFloat {
         var top = app.frame.maxY
-        for id in ["tab-trip", "talk-hint-0", "talk-input"] {
+        for id in ["tab-trip"] {
             let el = app.descendants(matching: .any).matching(identifier: id).firstMatch
             if el.exists && !el.frame.isEmpty {
                 top = min(top, el.frame.minY)
@@ -166,19 +166,8 @@ final class FlowUITests: RadishUITestCase {
         tapButton("關閉")
         scrollShots("一站", count: 2)
 
-        // 這趟分頁最下面沒有講的那一列了（QC-0013 #95），改在一站最下面那一列：點第一個說法，升起剛剛那一則
-        shot("一站最下面的講")
-        tapId("talk-hint-0")
-        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
-        shot("剛剛那一則")
-        if tapIfShown("chat-ask-apply") {
-            RunLoop.current.run(until: Date().addingTimeInterval(1))
-            shot("剛剛那一則-按了套用")
-        }
-        if !tapIfShown("reply-done") {
-            tapIfShown("reply-skip")
-        }
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        // 一站頁最下面也沒有講的那一列了（QC-0013 #95），跟 AI 講只在問 AI 分頁（test03 走）
+        XCTAssertFalse(idQuery("talk-input").firstMatch.exists, "一站頁最下面不該再有講的那一列")
         goBack()
         XCTAssertFalse(idQuery("talk-input").firstMatch.exists, "這趟分頁最下面不該再有講的那一列")
 

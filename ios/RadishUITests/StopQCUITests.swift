@@ -45,7 +45,7 @@ final class StopQCUITests: RadishUITestCase {
     /// 看得到、不會被講的那一列、分頁列、鍵盤蓋住的最下緣
     private func bottomLimit() -> CGFloat {
         var limit: CGFloat = app.frame.maxY - 34
-        for id in ["tab-trip", "talk-hint-0", "talk-input"] {
+        for id in ["tab-trip"] {
             let element: XCUIElement = byId(id)
             if element.exists && !element.frame.isEmpty {
                 limit = min(limit, element.frame.minY - 8)

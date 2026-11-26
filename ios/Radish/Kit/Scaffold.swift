@@ -257,7 +257,7 @@ final class KeyboardStage {
     }
 }
 
-/// 這一天、一站最下面常駐講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
+/// 問 AI 分頁最下面講的那一列（Components/TalkBar.swift）大約多高：說法一排加輸入框。提示條要浮在它上面
 let talkBarClearance: CGFloat = T.Size.touch + T.Size.field + T.Space.s4
 
 /// 半頁開著多久還沒關，提示條才在半頁裡出現。做完就自己收起來的半頁不會閃一下
