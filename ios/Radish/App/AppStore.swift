@@ -278,6 +278,7 @@ final class AppStore {
         syncAIUsed(&draft)
         // 還沒放進哪一趟的順路清單，有了這趟就放進去
         movePool(&draft)
+        moveErrands(&draft)
         let swap: Bool = tripSwapped(prev, draft)
         if undoable || swap {
             undoStack.append(undoSnap(prev, swap: swap, mark: mark))
@@ -862,6 +863,8 @@ extension AppStore {
         let day: Int = talkDayOf(target)
         let stop: String? = talkStopId(target)
         let settings: Settings = s.settings
+        // 以前收起來的旅行去過哪些站：給 AI 的候選標「去過 N 次」
+        let visited: [String: Int] = visitedOf(s.baskets)
         // 送給 AI 的前面幾句不含這一句（這一句在提示詞裡另外寫）
         var history: [ChatMsg] = s.chat
         if let i = retry { history = Array(s.chat.prefix(i)) }
@@ -897,7 +900,7 @@ extension AppStore {
         Task { @MainActor in
             if let dest {
                 do {
-                    let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus)
+                    let prompt: String = aiPrompt(msg, trip, settings, history, clock, focus, visited: visited)
                     let out: BrainOut = try await askAI(prompt, dest)
                     self.countAISentence(trip.id)
                     if self.talkSeq != seq { return }
@@ -955,7 +958,7 @@ extension AppStore {
             let before: Trip = trip
             var changes: [String] = []
             if regen {
-                trip = replanTrip(trip, draftOf(trip), d.settings, true)
+                trip = replanTrip(trip, draftOf(trip), d.settings, true, visited: visitedOf(d.baskets))
                 d.settingsDirty = false
                 changes.append("整趟照現在的設定重排了")
             }

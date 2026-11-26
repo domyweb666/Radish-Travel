@@ -104,6 +104,7 @@ struct Place: Codable, Identifiable, Hashable, Sendable {
     var up: Bool?  // 坡多或階梯多。粗略標的，沒核對
     var f: FoodKind?
     var ic: IconKey?
+    var star: Int?  // 第一次來的外國遊客多想去：3 幾乎都會去、2 值得排、1 在地人才會去。估的，見 Stars.swift
 }
 
 struct Stop: Codable, Identifiable, Hashable, Sendable {
@@ -197,6 +198,17 @@ struct Trip: Codable, Hashable, Sendable {
     var wishChanges: [String]?  // 這一版裡照那句改了哪些。復原、重排之後就沒有了（重排不帶）
     var wishOff: WishOff?  // 那句還沒送，使用者自己拿掉了，或改過字才講。沒有這回事是 nil，舊檔也沒有
     var pool: [String]?  // 這趟的順路清單：自己加的、不排時間，有空再去。重排、放一邊都留著。空的是 nil，舊檔沒有
+    var errands: [Errand]?  // 代購清單：別人託這趟幫買的東西。重排、放一邊都留著。空的是 nil，舊檔沒有
+}
+
+/// 代購清單的一列：誰託的、買什麼、幾個、買了沒。不算進花費（定稿不做記帳）
+struct Errand: Codable, Identifiable, Hashable, Sendable {
+    var id: String
+    var who: String  // 誰託的，使用者自己打的
+    var what: String  // 買什麼
+    var qty: Int  // 幾個，至少 1
+    var note: String?  // 備註：預算、顏色、尺寸、在哪買，使用者自己打的。沒寫是 nil
+    var done: Bool  // 買到了
 }
 
 /// 從行程學到的一條：以後不排某一站、某一類、某一種吃的。source 寫明是哪一次學到的
@@ -353,6 +365,7 @@ struct AppState: Codable, Hashable, Sendable {
     var shelf: [Shelved] = []  // 其他排好的
     var seeds: [Seed] = []
     var pool: [String] = []  // 還沒放進哪一趟的順路清單：舊檔不分趟的、不要這一版拿下來的。有了這趟就搬進去（movePool）
+    var errands: [Errand] = []  // 還沒放進哪一趟的代購清單：不要這一版拿下來的。有了這趟就搬進去（moveErrands）
     var checks: [String: Bool] = [:]
     var chat: [ChatMsg] = []
     var baskets: [Basket] = []
@@ -374,6 +387,7 @@ extension AppState {
         out.shelf = try box.decodeIfPresent([Shelved].self, forKey: .shelf) ?? []
         out.seeds = try box.decodeIfPresent([Seed].self, forKey: .seeds) ?? []
         out.pool = try box.decodeIfPresent([String].self, forKey: .pool) ?? []
+        out.errands = try box.decodeIfPresent([Errand].self, forKey: .errands) ?? []
         out.checks = try box.decodeIfPresent([String: Bool].self, forKey: .checks) ?? [:]
         out.chat = try box.decodeIfPresent([ChatMsg].self, forKey: .chat) ?? []
         out.baskets = try box.decodeIfPresent([Basket].self, forKey: .baskets) ?? []
@@ -388,6 +402,7 @@ extension AppState {
         out.aiLog = try box.decodeIfPresent([String: Int].self, forKey: .aiLog) ?? [:]
         // 舊檔的順路清單不分趟：有現在這趟就放進這趟，沒有就先留著
         movePool(&out)
+        moveErrands(&out)
         self = out
     }
 

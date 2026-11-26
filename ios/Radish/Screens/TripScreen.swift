@@ -336,13 +336,14 @@ struct TripScreen: View {
         }
     }
 
-    /// 標題下面：日期那一行，再來是檢查這趟、須知兩個常駐入口（每一天都在，不靠提醒條才出現）
+    /// 標題下面：日期那一行，再來是檢查這趟、須知、代購三個常駐入口（每一天都在，不靠提醒條才出現）。
+    /// 代購先放這裡，總覽頁做好之後收進總覽。字放大排不下時換行，不把字擠成「…」
     @ViewBuilder
     private func header(_ trip: Trip, _ phase: Phase) -> some View {
         DomyText(subtitle(trip, phase), .subheadline, tone: .secondary)
             .padding(.top, -T.Space.s4)
             .id("trip-top")
-        HStack(spacing: T.Space.s2) {
+        FlowLayout(spacing: T.Space.s2, lineSpacing: T.Space.s2) {
             EntryChip("檢查這趟", icon: IconPaths.check) {
                 nav.push(.check)
             }
@@ -351,7 +352,12 @@ struct TripScreen: View {
                 nav.push(.notes)
             }
             .accessibilityIdentifier("open-notes")
+            EntryChip("代購", icon: IconPaths.tabBasket) {
+                nav.push(.errands)
+            }
+            .accessibilityIdentifier("open-errands")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, -T.Space.s2)
     }
 

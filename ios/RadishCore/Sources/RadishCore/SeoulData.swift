@@ -124,7 +124,8 @@ let DATA_CHECKED: String = SeoulData.shared.dataChecked
 let AREA: [AreaKey: String] = SeoulData.shared.area
 let ADJ: [AreaKey: [AreaKey]] = SeoulData.shared.adj
 let HOTEL: [BaseKey: HotelPt] = SeoulData.shared.hotel
-let PLACES: [Place] = mergePlaces(SeoulData.shared.places, SeoulChecked.shared)
+/// 候選地點。星級（star）在這裡補齊：新加的真店沒寫在資料包裡，見 Stars.swift
+let PLACES: [Place] = withStars(mergePlaces(SeoulData.shared.places, SeoulChecked.shared))
 let CAT: [Cat: String] = SeoulData.shared.cat
 let FOOD: [FoodKind: FoodText] = SeoulData.shared.food
 let FLV: [String] = SeoulData.shared.flv

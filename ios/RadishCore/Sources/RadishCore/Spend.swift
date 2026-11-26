@@ -35,9 +35,12 @@ func ownOf(_ t: Trip) -> (flight: Double, spend: [Spend]?, rate: Double?) {
 }
 
 /// 同一趟整趟重排：照 d 和 st 重新排，ownOf 那三樣、這趟的代號、問了 AI 幾句、順路清單都留著。
-/// 重排同一趟一律走這裡，不要直接用 generate() 換掉（那是開新的一趟，句數從 0 算）
-func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = false) -> Trip {
-    var next: Trip = generate(d, st, shuffle)
+/// 重排同一趟一律走這裡，不要直接用 generate() 換掉（那是開新的一趟，句數從 0 算）。
+/// visited 是以前去過的地點（visitedOf(d.baskets)），沒給就當第一次來
+func replanTrip(
+    _ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = false, visited: [String: Int] = [:]
+) -> Trip {
+    var next: Trip = generate(d, st, shuffle, visited: visited)
     let own: (flight: Double, spend: [Spend]?, rate: Double?) = ownOf(old)
     next.flight = own.flight
     next.spend = own.spend
@@ -51,6 +54,8 @@ func replanTrip(_ old: Trip, _ d: TripDraft, _ st: Settings, _ shuffle: Bool = f
     next.wishOff = old.wishOff
     // 順路清單是使用者自己加的，跟排法無關
     next.pool = old.pool
+    // 代購清單也是使用者自己打的，重排不能弄丟
+    next.errands = old.errands
     keepPhotos(old, &next)
     return next
 }

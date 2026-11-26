@@ -79,7 +79,10 @@ final class PlanTests: XCTestCase {
         XCTAssertTrue(blocked.contains("在路上"), blocked)
         let swapped: String? = swapParts(&t, 2, .am, .pm)
         XCTAssertNil(swapped)
-        let target: Stop = try XCTUnwrap(dayStops(t, 3).first).it
+        // 加了星級之後第 3 天第一站變成樂天世界：蠶室和隔壁兩帶沒有別的大站，換不了。
+        // 這條測的是「換一個」接得起來，所以挑第 3 天第一個有得換的站，不綁死第一站
+        let hasAlt: Found? = dayStops(t, 3).first { (y: Found) -> Bool in !alternatives(t, st, y.it).isEmpty }
+        let target: Stop = try XCTUnwrap(hasAlt, "第 3 天至少有一站換得了").it
         let alts: [Place] = alternatives(t, st, target)
         XCTAssertTrue(alts.count > 0)
         let alt: Place = try XCTUnwrap(alts.first)

@@ -17,6 +17,8 @@ enum Push: Hashable {
     case notes
     /// 花費：從更多進來，旅途中也從下一站卡下面進來
     case cost
+    /// 代購：別人託這趟幫買的。從這趟標題下面的常駐入口進來（總覽頁做好之後收進總覽）
+    case errands
     /// 平常的我：右上角進來
     case me
     /// 一站（S06，線框 A5）：從這一天的清單、下一站卡、須知、檢查這趟、去過的那一趟進來
@@ -103,6 +105,8 @@ struct PushPage: View {
                 NotesScreen()
             case .cost:
                 CostScreen()
+            case .errands:
+                ErrandsScreen()
             case .me:
                 MeScreen()
             case .stop(let id):

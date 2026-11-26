@@ -123,7 +123,7 @@ let NO_REGEN_VISITED: String = "這趟已經有去過的站，整趟重排會把
 func replanCurrent(_ d: inout AppState) -> String? {
     guard let old = d.trip else { return nil }
     if tripVisited(old) { return NO_REGEN_VISITED }
-    d.trip = replanTrip(old, draftOf(old), d.settings)
+    d.trip = replanTrip(old, draftOf(old), d.settings, visited: visitedOf(d.baskets))
     d.settingsDirty = false
     return "照新的設定重排了。手動改過的地方也一起重排了。"
 }
@@ -571,15 +571,24 @@ func planCardText(_ t: Trip, _ st: Settings, _ chat: [ChatMsg] = [], _ busy: Boo
 }
 
 /// 剛排好那張卡的「不要這一版」：這一版拿掉，回到開一趟。復原拿得回行程和對話。
-/// 順路清單是使用者自己加的，不跟著不見：先留著，有了下一趟就放進去
+/// 順路清單是使用者自己加的，不跟著不見：先留著，有了下一趟就放進去。
+/// 代購清單也一樣：先留在 AppState.errands，有了下一趟就放進去（放一邊、收起來是整趟留著，代購清單在裡面）
 @discardableResult
 func dropPlan(_ d: inout AppState) -> String? {
     guard let trip = d.trip else { return nil }
     let list: [String] = trip.pool ?? []
+    let errands: Int = (trip.errands ?? []).count
     d.pool = mergePool(d.pool, list)
+    d.errands = mergeErrands(d.errands, trip.errands ?? [])
     clearCurrent(&d, true)
-    if list.isEmpty { return "這一版拿掉了，可以重新開一趟。" }
-    return "這一版拿掉了，可以重新開一趟。順路清單的 \(list.count) 個地方留著，會放進下一趟。"
+    var text: String = "這一版拿掉了，可以重新開一趟。"
+    if !list.isEmpty {
+        text += "順路清單的 \(list.count) 個地方留著，會放進下一趟。"
+    }
+    if errands > 0 {
+        text += "代購清單的 \(errands) 樣也留著，會放進下一趟。"
+    }
+    return text
 }
 
 /* ---------- 順路清單：自己加的、不排時間，每趟一份（2026-11-25 多米定） ---------- */
@@ -617,6 +626,43 @@ func movePool(_ d: inout AppState) {
     d.pool = []
 }
 
+/* ---------- 代購清單：還沒放進哪一趟的那一份 ---------- */
+
+/// 接在後面，同一列（同一個代號）不重複加
+private func mergeErrands(_ base: [Errand], _ more: [Errand]) -> [Errand] {
+    var out: [Errand] = base
+    for e in more where !out.contains(where: { (x: Errand) -> Bool in x.id == e.id }) {
+        out.append(e)
+    }
+    return out
+}
+
+/// 不要這一版拿下來的代購清單，搬進現在這趟。搬過就清空；沒有這趟就先留著
+func moveErrands(_ d: inout AppState) {
+    if d.errands.isEmpty { return }
+    guard var trip = d.trip else { return }
+    let list: [Errand] = mergeErrands(trip.errands ?? [], d.errands)
+    trip.errands = list.isEmpty ? nil : list
+    d.trip = trip
+    d.errands = []
+}
+
+/// 復原之後，同一列代購不能同時在兩趟：退回去那一步之後才搬進別趟（現在放在其他排好的）的，從那一趟拿掉
+private func keepErrandsOnce(_ d: inout AppState, _ snap: UndoSnap) {
+    var back: Set<String> = Set(snap.errands.map { (x: Errand) -> String in x.id })
+    for e in d.trip?.errands ?? [] { back.insert(e.id) }
+    if back.isEmpty { return }
+    for i in d.shelf.indices {
+        guard let list = d.shelf[i].trip.errands else { continue }
+        let id: String? = d.shelf[i].trip.id
+        // 那一步之前這一趟自己就有的，不是搬進來的
+        let old: Shelved? = snap.shelf.first(where: { (x: Shelved) -> Bool in x.trip.id == id })
+        let had: Set<String> = Set((old?.trip.errands ?? []).map { (x: Errand) -> String in x.id })
+        let left: [Errand] = list.filter { (x: Errand) -> Bool in !back.contains(x.id) || had.contains(x.id) }
+        d.shelf[i].trip.errands = left.isEmpty ? nil : left
+    }
+}
+
 /// 加進現在這趟的順路清單。沒有這趟、沒有名字回 nil；已經有了就不重複加。回提示條要講的那一句
 @discardableResult
 func addToPool(_ d: inout AppState, _ name: String) -> String? {
@@ -650,6 +696,8 @@ struct UndoSnap: Sendable {
     var seeds: [Seed]
     /// 還沒放進哪一趟的順路清單（AppState.pool）
     var pool: [String]
+    /// 還沒放進哪一趟的代購清單（AppState.errands）
+    var errands: [Errand] = []
     var baskets: [Basket]
     var settingsDirty: Bool
     /// 設定裡「從行程學到的」：拿掉一站順便記的，要能跟著那一步一起復原
@@ -674,7 +722,7 @@ func tripSwapped(_ before: AppState, _ after: AppState) -> Bool {
 
 func undoSnap(_ prev: AppState, swap: Bool, mark: String? = nil) -> UndoSnap {
     return UndoSnap(
-        trip: prev.trip, seeds: prev.seeds, pool: prev.pool, baskets: prev.baskets,
+        trip: prev.trip, seeds: prev.seeds, pool: prev.pool, errands: prev.errands, baskets: prev.baskets,
         settingsDirty: prev.settingsDirty, learned: prev.settings.learned,
         shelf: prev.shelf, chat: prev.chat, checks: prev.checks, debugDay: prev.debugDay,
         swap: swap, mark: mark)
@@ -703,6 +751,8 @@ func applyUndo(_ d: inout AppState, _ snap: UndoSnap) -> String {
     d.seeds = snap.seeds
     d.pool = snap.pool
     keepPoolOnce(&d, snap)
+    d.errands = snap.errands
+    keepErrandsOnce(&d, snap)
     d.baskets = snap.baskets
     d.settings.learned = snap.learned
     d.settingsDirty = dirty && d.trip != nil

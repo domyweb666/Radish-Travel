@@ -11,8 +11,8 @@ private let PURPOSE_CATS: [Purpose: [Cat]] = [
     .see: [.sight, .art],
 ]
 
-/// 這一站為什麼被排進來：先講使用者自己說過的，沒有才講位置
-private func prefWhy(_ p: Place, _ st: Settings) -> String {
+/// 這一站為什麼被排進來：先講使用者自己說過的，再講第一次來多半會去（估的），都沒有才講位置
+private func prefWhy(_ p: Place, _ st: Settings, _ firstTime: Bool) -> String {
     let like: Int = st.play[p.c] ?? 0
     if like == 2 { return "你最愛\(CAT[need: p.c])" }
     if like == 1 { return "你喜歡\(CAT[need: p.c])" }
@@ -22,6 +22,7 @@ private func prefWhy(_ p: Place, _ st: Settings) -> String {
         return cats.contains(p.c) || (purpose == .rest && p.l == true)
     }
     if let h = hit { return "你旅行想\(PURPOSE[need: h])" }
+    if firstTime && starOf(p) >= 3 { return STAR_FIRST_WHY }
     let area: String = AREA[need: p.a]
     return p.s == .L ? "\(area)這一帶的主要景點" : "\(area)這一帶順路的小地方"
 }
@@ -59,22 +60,25 @@ private struct AreaScore {
     let v: Double
 }
 
-/// closed 是休館判斷、parts 是時段判斷，平常照核對資料；測試會換成假的
+/// closed 是休館判斷、parts 是時段判斷，平常照核對資料；測試會換成假的。
+/// visited 是以前去過的地點（代號 → 去過幾趟，visitedOf 從收起來的旅行算）。
+/// 空的就是第一次來：三星的優先。去過的往後排，真的沒別的可排才排，而且那一站會講
 func generate(
     _ d: TripDraft, _ base0: Settings, _ shuffle: Bool = false,
     _ rnd: () -> Double = { Double.random(in: 0..<1) },
-    closed: @escaping ClosedCheck = closedByFacts, parts partCheck: @escaping PartCheck = partClosedByFacts
+    closed: @escaping ClosedCheck = closedByFacts, parts partCheck: @escaping PartCheck = partClosedByFacts,
+    visited: [String: Int] = [:]
 ) -> Trip {
     // 裡面有好幾個小函式都要用到 rnd，所以先讓它在這個呼叫期間可以被帶著走
     let out: Trip = withoutActuallyEscaping(rnd) { r in
-        generateBody(d, base0, shuffle, r, closed, partCheck)
+        generateBody(d, base0, shuffle, r, closed, partCheck, visited)
     }
     return out
 }
 
 private func generateBody(
     _ d: TripDraft, _ base0: Settings, _ shuffle: Bool, _ rnd: @escaping () -> Double,
-    _ closed: @escaping ClosedCheck, _ partCheck: @escaping PartCheck
+    _ closed: @escaping ClosedCheck, _ partCheck: @escaping PartCheck, _ visited: [String: Int]
 ) -> Trip {
     let st: Settings = tripSettings(base0, d.tweaks)
     let w: [Cat: Int] = planWeights(st)
@@ -99,16 +103,26 @@ private func generateBody(
     var nowPart: Part = .am
     // 這一天白天排了幾站吃的。白天最多一站，加上晚餐一天最多兩站
     var eatToday: Int = 0
+    // 沒去過首爾任何一個資料包裡的地方，就是第一次來
+    let firstTime: Bool = visited.isEmpty
+    // 去過的地方平常不排。一個時段照順序都挑不到，才打開這個再挑一次（firstPick）
+    var allowVisited: Bool = false
 
     func jit() -> Double {
         return shuffle ? rnd() * 2.5 : 0
     }
-    func score(_ p: Place) -> Int {
-        var v: Int = w[p.c] ?? 0
+    func score(_ p: Place) -> Double {
+        var v: Double = Double(w[p.c] ?? 0)
         if wantRest && p.l == true { v += 2 }
         if st.walk == .less && p.l == true { v += 2 }
         if weather && outdoor(p) { v -= 3 }
+        // 星級比喜好小一階：喜歡一類 +2，第一次來的三星 +1.5（Stars.swift 的 starBonus）
+        v += starBonus(starOf(p), firstTime: firstTime)
         return v
+    }
+    /// 以前去過、這一輪還不准排
+    func skipVisited(_ p: Place) -> Bool {
+        return !allowVisited && visited[p.id] != nil
     }
     func fits(_ p: Place) -> Bool {
         return !banned(p, st) && !(noUp && p.up == true)
@@ -126,7 +140,7 @@ private func generateBody(
     /// 這一帶這天還有沒有這種大小的地方可以排
     func anyOpen(_ a: AreaKey, _ size: StopSize) -> Bool {
         for p in PLACES where p.a == a && p.s == size {
-            if taken(p) || !fits(p) || shut(p) { continue }
+            if taken(p) || !fits(p) || shut(p) || skipVisited(p) { continue }
             return true
         }
         return false
@@ -141,8 +155,9 @@ private func generateBody(
             if !fits(p) { continue }
             if let sz = size, p.s != sz { continue }
             if let wantFn = want, !wantFn(p) { continue }
+            if skipVisited(p) { continue }
             if shut(p) { continue }
-            let v: Double = Double(score(p)) + jit()
+            let v: Double = score(p) + jit()
             if best == nil || v > bestScore {
                 best = p
                 bestScore = v
@@ -152,21 +167,41 @@ private func generateBody(
         used.insert(hit.id)
         usedGroup.insert(placeGroup(hit.id))
         if hit.c == .eat && nowPart != .eve { eatToday += 1 }
+        // 去過的只有在 firstPick 放寬那一輪才挑得到，講明為什麼又排它
+        if let times = visited[hit.id] { return planToStop(hit, visitedWhy(times)) }
         return planToStop(hit, why(hit))
+    }
+    /// 照順序試，去過的不排；一站都挑不到，again 是 true 才放寬去過的、再照順序試一次
+    func firstPick(_ tries: [() -> Stop?], again: Bool = true) -> Stop? {
+        for t in tries {
+            if let x = t() { return x }
+        }
+        if !again || visited.isEmpty { return nil }
+        allowVisited = true
+        defer { allowVisited = false }
+        for t in tries {
+            if let x = t() { return x }
+        }
+        return nil
     }
     func near(_ a: AreaKey) -> [AreaKey] {
         return [a] + (ADJ[a] ?? [])
     }
     let ALL: [AreaKey] = AreaKey.allCases
+    // 去過的不算進那一帶的平均：那一帶去過的越多，越晚輪到。
+    // 再加上那一帶最值得去的主要景點（大站）的星級分：第一次來，有景福宮這種三星大站的那一帶先排。
+    // 不加這個的話，吃的分數高，平均會被店多的那一帶拉走
     func areaScore(_ a: AreaKey) -> Double {
-        var sum: Int = 0
+        var sum: Double = 0
         var count: Int = 0
-        for p in PLACES where p.a == a && fits(p) {
+        var mainStar: Double = 0
+        for p in PLACES where p.a == a && fits(p) && visited[p.id] == nil {
             sum += score(p)
             count += 1
+            if p.s == .L { mainStar = max(mainStar, starBonus(starOf(p), firstTime: firstTime)) }
         }
-        let avg: Double = count > 0 ? Double(sum) / Double(count) : 0
-        return avg + jit()
+        let avg: Double = count > 0 ? sum / Double(count) : 0
+        return avg + mainStar + jit()
     }
     var scored: [AreaScore] = []
     for a in ALL where a != .J {
@@ -191,6 +226,8 @@ private func generateBody(
     }
     var full: [Int] = []
     for i in stride(from: 2, to: d.days, by: 1) { full.append(i) }
+    // 超過七天的行程，白天挑不到時下面還會放寬同一組的另一間（fill），去過的等那裡才放寬
+    let longTrip: Bool = d.days > 7
     var tripDays: Set<Int> = []
     let wSight: Int = w[.sight] ?? 0
     let wFun: Int = w[.fun] ?? 0
@@ -210,7 +247,7 @@ private func generateBody(
         return (f == .street || f == .local) && (lv[f] ?? 0) > 0
     }
     func pref(_ p: Place) -> String {
-        return prefWhy(p, st)
+        return prefWhy(p, st, firstTime)
     }
     // 晚餐照吃的比例分
     var tot: Int = 0
@@ -320,17 +357,20 @@ private func generateBody(
                 let isKind: (Place) -> Bool = { (p: Place) -> Bool in
                     return p.c == .eat && p.f == kind
                 }
-                var dinner: Stop? = take(city, StopSize.S, isKind, dinnerWhy)
-                if dinner == nil { dinner = take(ALL, StopSize.S, isKind, dinnerWhy) }
-                if dinner == nil { dinner = take(city, StopSize.S, eatsNow, dinnerWhy) }
-                if dinner == nil { dinner = take(ALL, StopSize.S, eatsNow, dinnerWhy) }
-                if dinner == nil {
-                    // 還開著的每一組都排過了：排同一組沒去過的另一間，不要讓晚餐空著
+                // 還開著的每一組都排過了：排同一組這趟還沒排的另一間，不要讓晚餐空著
+                let sameGroup: () -> Stop? = { () -> Stop? in
                     sameGroupOK = true
-                    dinner = take(city, StopSize.S, eatsNow, sameGroupWhy)
-                    if dinner == nil { dinner = take(ALL, StopSize.S, eatsNow, sameGroupWhy) }
-                    sameGroupOK = false
+                    defer { sameGroupOK = false }
+                    if let x = take(city, StopSize.S, eatsNow, sameGroupWhy) { return x }
+                    return take(ALL, StopSize.S, eatsNow, sameGroupWhy)
                 }
+                let dinner: Stop? = firstPick([
+                    { () -> Stop? in take(city, StopSize.S, isKind, dinnerWhy) },
+                    { () -> Stop? in take(ALL, StopSize.S, isKind, dinnerWhy) },
+                    { () -> Stop? in take(city, StopSize.S, eatsNow, dinnerWhy) },
+                    { () -> Stop? in take(ALL, StopSize.S, eatsNow, dinnerWhy) },
+                    sameGroup,
+                ])
                 if let x = dinner { items.append(x) }
                 if pace == .fast && !edge {
                     let notEatNotEasy: (Place) -> Bool = { (p: Place) -> Bool in
@@ -348,15 +388,18 @@ private func generateBody(
                 let noBookOK: (Place) -> Bool = { (p: Place) -> Bool in
                     return dayOK(p) && p.b != true
                 }
-                var pick: Stop? = take(near(a), StopSize.S, easyOK, edgeWhy)
-                if pick == nil { pick = take(near(a), StopSize.S, noBookOK, edgeWhy) }
+                let pick: Stop? = firstPick(
+                    [
+                        { () -> Stop? in take(near(a), StopSize.S, easyOK, edgeWhy) },
+                        { () -> Stop? in take(near(a), StopSize.S, noBookOK, edgeWhy) },
+                    ], again: !longTrip)
                 if let x = pick { items.append(x) }
             } else if a == AreaKey.J {
                 if part == .am {
                     let farWhy: (Place) -> String = { (p: Place) -> String in
                         return "\(pref(p))；近郊來回要一整個白天，排在行程中段"
                     }
-                    let far: Stop? = take([AreaKey.J], StopSize.L, nil, farWhy)
+                    let far: Stop? = firstPick([{ () -> Stop? in take([AreaKey.J], StopSize.L, nil, farWhy) }])
                     if let x = far { items.append(x) }
                 } else {
                     restFlag = true
@@ -369,10 +412,12 @@ private func generateBody(
                     bigTime = pace != .slow || st.wake == .late
                 }
                 let big: Bool = !lightDay && bigTime
-                var pick: Stop? = nil
-                if big { pick = take([a], StopSize.L, nil, pref) }
-                if pick == nil { pick = take([a], StopSize.S, dayOK, pref) }
-                if pick == nil { pick = take(near(a), StopSize.S, dayOK, pref) }
+                var tries: [() -> Stop?] = []
+                if big { tries.append({ () -> Stop? in take([a], StopSize.L, nil, pref) }) }
+                tries.append({ () -> Stop? in take([a], StopSize.S, dayOK, pref) })
+                tries.append({ () -> Stop? in take(near(a), StopSize.S, dayOK, pref) })
+                // 順路的第二站（下面的 more）不放寬去過的：空著比排去過的好
+                let pick: Stop? = firstPick(tries, again: !longTrip)
                 if let x = pick { items.append(x) }
                 // 要少走的話，半天只排一站（選「排滿」的例外）
                 let first: Stop? = items.first
@@ -395,7 +440,7 @@ private func generateBody(
                 let notEat: (Place) -> Bool = { (p: Place) -> Bool in
                     return p.c != .eat && dayOK(p)
                 }
-                var fill: Stop? = nil
+                var fillTries: [() -> Stop?] = []
                 sameGroupOK = true
                 if edge {
                     let easy: (Place) -> Bool = { (p: Place) -> Bool in
@@ -404,12 +449,14 @@ private func generateBody(
                     let noBook: (Place) -> Bool = { (p: Place) -> Bool in
                         return notEat(p) && p.b != true
                     }
-                    fill = take(near(a), StopSize.S, easy, edgeWhy)
-                    if fill == nil { fill = take(near(a), StopSize.S, noBook, edgeWhy) }
+                    fillTries.append({ () -> Stop? in take(near(a), StopSize.S, easy, edgeWhy) })
+                    fillTries.append({ () -> Stop? in take(near(a), StopSize.S, noBook, edgeWhy) })
                 } else {
-                    fill = take([a], StopSize.S, notEat, pref)
-                    if fill == nil { fill = take(near(a), StopSize.S, notEat, pref) }
+                    fillTries.append({ () -> Stop? in take([a], StopSize.S, notEat, pref) })
+                    fillTries.append({ () -> Stop? in take(near(a), StopSize.S, notEat, pref) })
                 }
+                // 同一組的另一間也是「別的可排」，所以超過七天的行程，去過的等到這裡才放寬
+                let fill: Stop? = firstPick(fillTries)
                 sameGroupOK = false
                 if let x = fill { items.append(x) }
             }

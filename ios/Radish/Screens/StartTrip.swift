@@ -204,7 +204,8 @@ struct StartTrip: View {
                 stayName: filled.cleanStayName, name: filled.cleanName, cover: filled.cover,
                 start: start, days: days, arrive: arrive, leave: leave, people: people
             )
-            var trip: Trip = generate(draft, d.settings)
+            // 以前收起來的旅行裡去過的，這趟往後排；一個都沒有就是第一次來，熱門的先排
+            var trip: Trip = generate(draft, d.settings, visited: visitedOf(d.baskets))
             trip.planTweaks = draft.tweaks ?? []
             trip.wish = wish
             d.trip = trip

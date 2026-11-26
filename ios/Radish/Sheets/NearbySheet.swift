@@ -77,7 +77,9 @@ struct NearbySheet: View {
             return tip.status == FactStatus.none || tip.extra != nil
         }
         let base: String = "手機算的，沒有問 AI：距離照直線加三成估，沒有查路線。"
-        return hasTip ? base + "寫未核對的須知是資料包寫的。" : base
+        // 每張卡上的星星只寫「估」，是什麼意思在這裡講一次
+        let withTip: String = hasTip ? base + "寫未核對的須知是資料包寫的。" : base
+        return withTip + STAR_NOTE
     }
 
     /// left 是這天還有沒有能排的時段。有的話，每個地方再各自避開它不開的時段
@@ -194,6 +196,9 @@ private struct NearbyCard: View {
             VStack(alignment: .leading, spacing: T.Space.s1) {
                 HStack(spacing: T.Space.s2) {
                     DomyText(pick.place.n, .headline)
+                    // 估的熱門程度（Stars.swift），排序還是照遠近
+                    Tag("估 \(starMarks(starOf(pick.place)))")
+                        .accessibilityLabel(starSpoken(starOf(pick.place)))
                     if pick.place.b == true {
                         Tag("要先訂")
                     }

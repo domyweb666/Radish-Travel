@@ -1,5 +1,6 @@
 // 從這趟推進的三頁：檢查這趟、須知、花費。原本是「行前」分頁的四段（.uiux/02-流程-暫定.md 5-4）。
 // 裡面的內容沿用 PrepBefore、PrepThere、PrepBack、PrepCost；這個檔只放外框和「按天」那一段。
+// 同一層的第四頁「代購」在 ErrandsScreen.swift。
 // 線框：.uiux/03-線框/線框/Check.dc.html、Notes.dc.html、A18-Cost.dc.html
 import SwiftUI
 
@@ -8,8 +9,8 @@ private func tripRange(_ trip: Trip) -> String {
     return "\(fmtDay(trip.start)) – \(fmtDay(addDays(trip.start, trip.days - 1)))"
 }
 
-/// 沒有這趟時的空白頁（從開一趟那頁進來、或這趟剛收起來）
-private struct NoTrip: View {
+/// 沒有這趟時的空白頁（從開一趟那頁進來、或這趟剛收起來）。代購（ErrandsScreen.swift）也用這個
+struct NoTrip: View {
     @Environment(Nav.self) private var nav
     let message: String
 

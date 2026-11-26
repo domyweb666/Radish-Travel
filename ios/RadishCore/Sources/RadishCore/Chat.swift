@@ -943,9 +943,11 @@ func askAI(_ prompt: String, _ dest: AIDest) async throws -> BrainOut {
 }
 
 /// clock 是按下送出那一刻的「現在」。沒給（舊的測試）就不講現在、不標日期。
-/// focus 是使用者講這句時在看哪裡（talkFocus 組的一行），沒給就不講
+/// focus 是使用者講這句時在看哪裡（talkFocus 組的一行），沒給就不講。
+/// visited 是以前去過的地點（visitedOf 從收起來的旅行算），候選上標「去過幾次」；沒給就當第一次來
 func aiPrompt(
-    _ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ clock: ChatClock? = nil, _ focus: String = ""
+    _ msg: String, _ t: Trip, _ base: Settings, _ chat: [ChatMsg], _ clock: ChatClock? = nil, _ focus: String = "",
+    visited: [String: Int] = [:]
 ) -> String {
     let st: Settings = tripSettings(base, t.tweaks)
     let tweak: String = tweakSummary(t)
@@ -958,7 +960,10 @@ func aiPrompt(
         let size: String = p.s == .L ? "大" : "小"
         let book: String = p.b == true ? ",要先訂" : ""
         let shut: String = closedTag(t, p.id)
-        candLines.append("[\(p.id)] \(p.n)(\(size),\(CAT[need: p.c]),\(AREA[need: p.a])\(book)\(shut))")
+        // 星級是估的熱門程度（Stars.swift），規則裡跟 AI 講怎麼用
+        let star: String = ",估\(starOf(p))星"
+        let been: String = visited[p.id].map { (n: Int) -> String in ",去過\(n)次" } ?? ""
+        candLines.append("[\(p.id)] \(p.n)(\(size),\(CAT[need: p.c]),\(AREA[need: p.a])\(star)\(been)\(book)\(shut))")
     }
     let cand: String = candLines.joined(separator: "\n")
     let talk: [ChatMsg] = chat.filter { (m: ChatMsg) -> Bool in m.r != .sys }
@@ -989,6 +994,7 @@ func aiPrompt(
 - 同一個半天的站盡量在同一帶，減少來回跑。
 - 你不知道即時資訊。營業時間、票價、是否需要預約都不要講成確定的事，說「去之前查一下」。
 - 要加新的地方時，優先從候選清單挑（用它的 id）。清單裡沒有適合的，才自己提一個真實存在的首爾地點，給中文名、韓文名、類別、大小、大概經緯度。
+- 候選後面的「估3星」是估的熱門程度：3 是第一次來首爾的外國遊客幾乎都會去、2 值得排、1 在地人才會去。使用者自己說過的喜好比星級重要。第一次來（候選裡沒有標「去過」的）先挑 3 星的；標「去過幾次」的，除非使用者自己要，不要再排。跟使用者講星級時要說是估的。
 - 使用者只是問問題、沒有要改行程時，ops 給空陣列。
 - 使用者的過敏是硬規則：不要加主打那些食材的店或小吃。你不知道每家店的食材，所以只要動到吃的站，reply 裡提醒他點餐前出示過敏告知卡、自己確認。
 - 「絕對不吃」的不要排；「不愛吃」的盡量避開，真的排了要在 reply 裡先講。

@@ -89,7 +89,7 @@ struct TripSettingsSheet: View {
                 next.name = form.cleanName
                 next.cover = form.cover
                 // 重排不該弄丟的（機票、花費紀錄、匯率、問了 AI 幾句）replanTrip 會帶著
-                d.trip = replanTrip(trip, next, d.settings)
+                d.trip = replanTrip(trip, next, d.settings, visited: visitedOf(d.baskets))
                 d.settingsDirty = false
                 return "行程設定改了，整趟重排了。手動改過的地方也一起重排了。"
             }
