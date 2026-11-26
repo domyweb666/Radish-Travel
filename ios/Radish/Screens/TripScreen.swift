@@ -26,6 +26,8 @@ struct TripScreen: View {
     @State private var pinH: CGFloat = 0
     /// 捲動區看得到的那一段多高（扣掉狀態列和下緣安全區）。點分頁捲過去時用來算落點
     @State private var visibleH: CGFloat = 0
+    /// 捲過去之後量到的「比例點換算成多高」。第一次照 visibleH 估，落點差太多就用量到的改，之後都用這個
+    @State private var landW: CGFloat = 0
 
     init() {}
 
@@ -199,8 +201,9 @@ struct TripScreen: View {
     /// CI 實測 scrollTo 都不認那個位移，這一天會被捲到最上面、蓋在地圖底下（QC-0013 CI run 45739291921）
     private var landing: UnitPoint {
         let stop: CGFloat = pinH + T.Space.s2
-        guard pinH > 0, visibleH > stop else { return .top }
-        return UnitPoint(x: 0.5, y: stop / visibleH) // domy-ignore: 比例點，不是版面數值
+        let w: CGFloat = landW > 0 ? landW : visibleH
+        guard pinH > 0, w > stop else { return .top }
+        return UnitPoint(x: 0.5, y: stop / w) // domy-ignore: 比例點，不是版面數值
     }
 
     private func dayAnchor(_ d: Int) -> some View {
@@ -252,9 +255,7 @@ struct TripScreen: View {
     private func pick(_ d: Int, _ proxy: ScrollViewProxy) {
         scroll.at = d
         nav.tripDay = d
-        withAnimation(Motion.transition) {
-            proxy.scrollTo(dayKey(d), anchor: landing)
-        }
+        land(d, proxy, animated: true)
     }
 
     /// 別的地方換了天（問 AI 的「看這一天」、跨了一天、換了一趟）：捲到那一天。手指捲出來的不用再捲
@@ -262,9 +263,7 @@ struct TripScreen: View {
         let d: Int = shownDay(trip)
         if scroll.at == d { return }
         scroll.at = d
-        withAnimation(Motion.transition) {
-            proxy.scrollTo(dayKey(d), anchor: landing)
-        }
+        land(d, proxy, animated: true)
     }
 
     /// 打開這一頁：旅途中先捲到今天（或在看的那一天）；出發前、回來後看第 1 天就從最上面看起。
@@ -275,11 +274,49 @@ struct TripScreen: View {
         if scroll.at == d { return }
         scroll.at = d
         if d == 1 && today == nil { return }
-        let key: String = dayKey(d)
         // 等這一輪排版做完再捲，剛出現的時候捲動範圍還沒算好
         Task { @MainActor in
-            proxy.scrollTo(key, anchor: landing)
+            land(d, proxy, animated: false)
         }
+    }
+
+    /// 捲到第 d 天，停穩之後量一次落點：那一天的上緣該在黏頂那一塊下面再空一點，
+    /// 差太多就用量到的換算高度（landW）再捲一次。scrollTo 比例點對到哪個高度，CI 實測跟算的差一截，
+    /// 所以不猜，量了改（QC-0013 CI run 45747093606：多了 32 點）
+    private func land(_ d: Int, _ proxy: ScrollViewProxy, animated: Bool) {
+        if animated {
+            withAnimation(Motion.transition) {
+                proxy.scrollTo(dayKey(d), anchor: landing)
+            }
+        } else {
+            proxy.scrollTo(dayKey(d), anchor: landing)
+        }
+        settleLater(d, proxy, tries: 2)
+    }
+
+    private func settleLater(_ d: Int, _ proxy: ScrollViewProxy, tries: Int) {
+        if tries <= 0 { return }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600)) // domy-ignore: 等捲動動畫停穩
+            settle(d, proxy, tries: tries)
+        }
+    }
+
+    /// 量落點、差太多就修。手指在捲、已經換看別天、捲到底了（本來就到不了）都不修
+    private func settle(_ d: Int, _ proxy: ScrollViewProxy, tries: Int) {
+        guard scroll.at == d, !scroll.byHand, !scroll.atEnd, pinH > 0 else { return }
+        guard let top = scroll.tops[d] else { return }
+        let want: CGFloat = scroll.line + T.Space.s2
+        if abs(top - want) <= T.Size.hairline { return }
+        let f: CGFloat = landing.y
+        guard f > 0 else { return }
+        // 黏頂那一塊的上緣就是看得到那一段的上緣；這一天停在它下面 top - pinTop，對應比例 f
+        let pinTop: CGFloat = scroll.line - pinH
+        let w: CGFloat = (top - pinTop) / f
+        guard w > pinH else { return }
+        landW = w
+        proxy.scrollTo(dayKey(d), anchor: landing)
+        settleLater(d, proxy, tries: tries - 1)
     }
 
     /// 標題下面一行（線框 A1、A2、A9）：
