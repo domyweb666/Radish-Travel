@@ -595,8 +595,7 @@ private func chatStopFrozen(_ t: Trip, _ id: Any?, _ now: TripNow?) -> String? {
 /// 這個時段能不能排東西進去。能回 nil
 private func chatSlotFrozen(_ dayRaw: Any?, _ partRaw: Any?, _ now: TripNow?) -> String? {
     guard let day = chatWhole(chatNum(dayRaw)), let part = chatPart(partRaw) else { return nil }
-    if slotPast(now, day, part) { return "\(chatWhere(day, part))已經過了，不能再排" }
-    return nil
+    return slotPastWhy(now, day, part)
 }
 
 /// 這一步會不會動到不能動的東西。會就回原因，這一步不做。找不到站、時段不對這類錯，留給 chatApplyOne 講

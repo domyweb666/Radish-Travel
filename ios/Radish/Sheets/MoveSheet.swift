@@ -1,5 +1,5 @@
 // 移到別的時段（S07，線框 .uiux/03-線框/線框/A6-Move）：半頁。每一天一列、上午下午晚上三格，
-// 在路上的時段不能選，這一站現在在的那一格寫「現在在這」。選好一格，下面寫那天現在有幾個主要景點、共幾站，
+// 在路上的時段不能選；旅途中已經過了的時段也不能選（格子寫「已經過了」，規則在 moveItem 也擋），這一站現在在的那一格寫「現在在這」。選好一格，下面寫那天現在有幾個主要景點、共幾站，
 // 移過去之後主要景點會超過 2 個就先講；這一站那天不開、那個時段不開也講（那一列、那一格標出來，選了寫為什麼），不擋。
 // 移過去之後關掉，提示條帶復原。
 // 開法：sheets.open(.move(id:))。原本是 mobile/src/sheets/StopSheet.tsx 的 move 那一面（Sheets/StopSheetParts.swift 的 StopSheetMove）。
@@ -26,6 +26,12 @@ struct MoveSheet: View {
 
     init(id: String) {
         self.id = id
+    }
+
+    /// 旅途中的現在；出發前、回來後是 nil。它之前的時段不能選
+    private var now: TripNow? {
+        guard let phase = store.phase else { return nil }
+        return tripNow(chatClock(phase))
     }
 
     var body: some View {
@@ -69,7 +75,7 @@ struct MoveSheet: View {
                     if typeSize.isAccessibilitySize {
                         note(found)
                     }
-                    MoveGrid(trip: trip, from: found, to: to) { (next: MoveTarget) -> Void in
+                    MoveGrid(trip: trip, from: found, to: to, now: now) { (next: MoveTarget) -> Void in
                         Haptic.select()
                         to = next
                     }
@@ -86,8 +92,9 @@ struct MoveSheet: View {
 
     private func note(_ found: Found) -> some View {
         let name: String = typeSize.isAccessibilitySize ? "「\(found.it.n)」" : ""
+        let cannot: String = now == nil ? "在路上的時段不能選。" : "在路上、已經過了的時段不能選。"
         return DomyText(
-            "\(name)現在在第 \(found.s.day) 天\(PART[need: found.s.part])。在路上的時段不能選。",
+            "\(name)現在在第 \(found.s.day) 天\(PART[need: found.s.part])。\(cannot)",
             .footnote, tone: .secondary)
     }
 
@@ -112,9 +119,11 @@ struct MoveSheet: View {
         let words: KindWords = kindWords(it.c)
         let day: Int = to.day
         let part: Part = to.part
+        // 按下那一刻的現在：半頁開著的時候那個時段過了，就不移
+        let at: TripNow? = now
         store.act(undoable: true) { (d: inout AppState) -> String? in
             guard var trip = d.trip else { return nil }
-            let err: String? = moveItem(&trip, stopId, day, part)
+            let err: String? = moveItem(&trip, stopId, day, part, at)
             d.trip = trip
             if let err { return err }
             // 只講移去的那一天：別天本來就太滿的，跟這一步沒關係
@@ -137,6 +146,8 @@ private struct MoveGrid: View {
     let trip: Trip
     let from: Found
     let to: MoveTarget?
+    /// 旅途中的現在。它之前的時段不能選
+    let now: TripNow?
     let onPick: (MoveTarget) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -220,8 +231,14 @@ private struct MoveGrid: View {
         .fixedSize(horizontal: true, vertical: false)
     }
 
-    /// 那天整天不開，給旁白念的。有開是 nil
+    /// 這一天整天都過了（晚上也過了）：不用再講那天開不開
+    private func dayGone(_ d: Int) -> Bool {
+        return slotPast(now, d, .eve)
+    }
+
+    /// 那天整天不開，給旁白念的。有開、整天都過了是 nil
     private func shutText(_ d: Int) -> String? {
+        if dayGone(d) { return nil }
         guard let why = moveClosed(trip, from.it.id, d) else { return nil }
         return "這天\(kindWords(from.it.c).shut)：\(why)"
     }
@@ -260,7 +277,7 @@ private struct MoveGrid: View {
 
     @ViewBuilder
     private func offText(_ d: Int) -> some View {
-        if moveClosed(trip, from.it.id, d) != nil {
+        if !dayGone(d), moveClosed(trip, from.it.id, d) != nil {
             DomyText(kindWords(from.it.c).off, .caption, tone: .destructive, lines: 1)
         }
     }
@@ -268,6 +285,7 @@ private struct MoveGrid: View {
     private func state(_ d: Int, _ p: Part) -> MoveCellState {
         guard let si = slotAt(trip, d, p) else { return .off }
         if si == from.si { return .here }
+        if slotPast(now, d, p) { return .past }
         let count: Int = trip.slots[si].items.count
         let picked: Bool = to == MoveTarget(day: d, part: p)
         return .open(count: count, picked: picked)
@@ -279,6 +297,8 @@ private enum MoveCellState: Equatable {
     case off
     /// 這一站現在在的那一格
     case here
+    /// 旅途中已經過了的時段，不能選
+    case past
     case open(count: Int, picked: Bool)
 }
 
@@ -308,6 +328,7 @@ private struct MoveCell: View {
         switch state {
         case .off: return "在路上"
         case .here: return "現在在這"
+        case .past: return "已經過了"
         case .open(let count, _): return count == 0 ? "空著" : "\(count) 站"
         }
     }
@@ -318,7 +339,12 @@ private struct MoveCell: View {
     }
 
     private var showsPartShut: Bool {
-        return partShut != nil && state != .off
+        return partShut != nil && state != .off && state != .past
+    }
+
+    /// 在路上、已經過了：灰掉不能選
+    private var dimmed: Bool {
+        return state == .off || state == .past
     }
 
     private var enabled: Bool {
@@ -332,6 +358,7 @@ private struct MoveCell: View {
         switch state {
         case .off: return "\(at)，在路上，不能選"
         case .here: return "\(at)，這一站現在在這" + why
+        case .past: return "\(at)，已經過了，不能選"
         case .open: return "\(at)，\(title)" + why + (picked ? "，選了" : "")
         }
     }
@@ -341,7 +368,7 @@ private struct MoveCell: View {
         Button(action: action) {
             VStack(spacing: 0) {
                 if showsPart {
-                    DomyText(PART[need: part], .caption, tone: state == .off ? .disabled : .secondary, lines: 1)
+                    DomyText(PART[need: part], .caption, tone: dimmed ? .disabled : .secondary, lines: 1)
                 }
                 HStack(spacing: T.Space.s1) {
                     if picked {
@@ -374,7 +401,7 @@ private struct MoveCell: View {
 
     private var tone: TextTone {
         switch state {
-        case .off: return .disabled
+        case .off, .past: return .disabled
         case .here: return .primary
         case .open: return picked ? .strong : .primary
         }
@@ -382,7 +409,7 @@ private struct MoveCell: View {
 
     private var fill: Color {
         switch state {
-        case .off: return C.surfaceMuted
+        case .off, .past: return C.surfaceMuted
         case .here: return C.soft
         case .open: return C.surface
         }
@@ -390,7 +417,7 @@ private struct MoveCell: View {
 
     private var border: Color {
         if picked { return C.strong }
-        return state == .off ? Color.clear : C.fieldBorder
+        return dimmed ? Color.clear : C.fieldBorder
     }
 }
 

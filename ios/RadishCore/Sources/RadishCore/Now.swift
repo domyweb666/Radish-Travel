@@ -53,6 +53,12 @@ func slotPast(_ now: TripNow?, _ day: Int, _ part: Part) -> Bool {
     return partIndex(part) < partIndex(n.part)
 }
 
+/// 這個時段還能不能排東西進去（移進去、加進去）。能回 nil，不能回原因。用講的和移站共用這一句
+func slotPastWhy(_ now: TripNow?, _ day: Int, _ part: Part) -> String? {
+    if slotPast(now, day, part) { return "第 \(day) 天\(PART[part] ?? "")已經過了，不能再排" }
+    return nil
+}
+
 /// 這一天有沒有不能整天搬的東西：過去的時段，或拔起來的站
 func dayFrozen(_ t: Trip, _ now: TripNow?, _ day: Int) -> Bool {
     for p in PARTS where slotPast(now, day, p) { return true }
