@@ -409,7 +409,13 @@ final class SceneUITests: RadishUITestCase {
         let head: CGFloat = byId("day-head-4").frame.minY
         XCTAssertGreaterThanOrEqual(head, tabsBottom() - 2, "第 4 天那一行被黏在上面的那一塊蓋住")
         XCTAssertLessThan(head, tabsBottom() + 48, "點了第 4 天，第 4 天沒有接在分頁下面")
-        byId("day-tab-1").tap()
+        // 分頁列把第 4 天捲到中間，第 1 天在畫面左邊外面：先往右滑分頁列，跟手指一樣
+        let first: XCUIElement = byId("day-tab-1")
+        for _ in 0..<3 where !(placed(first.frame) && first.frame.minX >= 0 && first.isHittable) {
+            byId("day-tab-4").swipeRight()
+            pause()
+        }
+        first.tap()
         pause(2)
         shot("點回第1天")
         XCTAssertEqual(selectedDay(5), 1, "點了第 1 天，分頁沒有標回第 1 天")
