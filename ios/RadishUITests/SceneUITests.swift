@@ -408,7 +408,7 @@ final class SceneUITests: RadishUITestCase {
         XCTAssertEqual(selectedDay(5), 4, "點了第 4 天，分頁沒有標到第 4 天")
         let head: CGFloat = byId("day-head-4").frame.minY
         XCTAssertGreaterThanOrEqual(head, tabsBottom() - 2, "第 4 天那一行被黏在上面的那一塊蓋住")
-        XCTAssertLessThan(head, tabsBottom() + 72, "點了第 4 天，第 4 天沒有接在分頁下面")
+        XCTAssertLessThan(head, tabsBottom() + 48, "點了第 4 天，第 4 天沒有接在分頁下面")
         // 分頁列把第 4 天捲到中間，第 1 天在畫面左邊外面：先往右滑分頁列，跟手指一樣
         let first: XCUIElement = byId("day-tab-1")
         for _ in 0..<3 where !(placed(first.frame) && first.frame.minX >= 0 && first.isHittable) {
@@ -429,7 +429,7 @@ final class SceneUITests: RadishUITestCase {
         XCTAssertEqual(selectedDay(8), 2, "旅途中第 2 天打開，分頁要標第 2 天")
         let head: CGFloat = byId("day-head-2").frame.minY
         XCTAssertGreaterThanOrEqual(head, tabsBottom() - 2, "今天那一行被黏在上面的那一塊蓋住")
-        XCTAssertLessThan(head, tabsBottom() + 72, "旅途中打開沒有捲到今天")
+        XCTAssertLessThan(head, tabsBottom() + 48, "旅途中打開沒有捲到今天")
         XCTAssertGreaterThan(byId("next-pull").frame.minY, head, "下一站要接在今天那一行下面")
         // 點地圖開這一天的路線
         byId("open-map").tap()
